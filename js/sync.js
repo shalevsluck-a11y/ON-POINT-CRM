@@ -22,28 +22,26 @@ const SyncManager = (() => {
     const payload = _jobToSheetRow(job);
 
     try {
+      // Use text/plain Content-Type — avoids CORS preflight and survives
+      // the Apps Script redirect (script.google.com → googleusercontent.com).
+      // Do NOT use no-cors: the POST body gets dropped on redirect with that mode.
       const response = await fetch(url, {
         method: 'POST',
-        mode: 'no-cors', // Apps Script requires no-cors
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'upsertJob',
-          data: payload,
-        }),
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ action: 'upsertJob', data: payload }),
       });
 
-      // no-cors gives opaque response — we assume success if no error thrown
-      // Update job sync status
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
       Storage.saveJob({ ...job, syncStatus: 'synced', syncedAt: new Date().toISOString() });
       Storage.removeFromSyncQueue(job.jobId);
 
       return { success: true };
     } catch (error) {
       console.error(`Sync failed for job ${job.jobId}:`, error);
-
-      // Mark as error but keep in queue for retry
       Storage.saveJob({ ...job, syncStatus: 'error' });
-
       return { success: false, error: error.message };
     }
   }
@@ -129,13 +127,12 @@ const SyncManager = (() => {
     }
 
     try {
-      await fetch(url, {
+      const response = await fetch(url, {
         method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ action: 'ping' }),
       });
-      // no-cors always gives opaque response — if no exception, URL is reachable
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return { success: true };
     } catch (error) {
       return { success: false, error: 'Could not reach Apps Script URL. Check the URL in Settings.' };
