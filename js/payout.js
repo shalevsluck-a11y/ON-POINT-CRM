@@ -107,12 +107,11 @@ const PayoutEngine = (() => {
     techPayout   = 0,
     jobId        = '',
   } = {}) {
-    // Short memo for Zelle: job ref + street snippet + amount
+    // Short memo for Zelle: job ref + street snippet (no dollar amount)
     const ref    = jobId ? '#' + jobId.slice(-8).toUpperCase() : '';
     const street = address ? address.split(',')[0].trim() : '';
-    const amount = `$${(+techPayout).toFixed(2)}`;
 
-    return [ref, street, amount].filter(Boolean).join(' ');
+    return [ref, street].filter(Boolean).join(' ');
   }
 
   /**

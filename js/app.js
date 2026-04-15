@@ -1544,7 +1544,7 @@ const App = (() => {
         </div>
         <div class="field-group" style="flex:1">
           <label class="field-label">Time</label>
-          <input type="time" id="edit-time" class="field-input" value="${job.scheduledTime || ''}">
+          <input type="time" id="edit-time" class="field-input" min="08:00" max="20:00" value="${job.scheduledTime || ''}">
         </div>
       </div>
       <div class="field-group">
