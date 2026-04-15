@@ -45,14 +45,15 @@ const PayoutEngine = (() => {
       afterTax  = round2(total - taxAmount);
     }
 
-    // ── Step 2: Tech and contractor % both come from gross ──
-    // Everyone's cut is calculated on the full job amount.
-    // Parts are a cost that reduces the owner's take-home.
-    const techPayout    = round2(afterTax * (techPct  / 100));
-    const contractorFee = round2(afterTax * (contrPct / 100));
+    // ── Step 2: Parts deducted first, then % applied to net ─
+    // Parts come out first. Everyone's % is calculated on the
+    // net amount (total minus parts), not the gross.
+    const netAfterParts = round2(afterTax - partsActual);
+    const techPayout    = round2(netAfterParts * (techPct  / 100));
+    const contractorFee = round2(netAfterParts * (contrPct / 100));
 
     // ── Step 3: Owner gets the remainder ───────────────────
-    const ownerPayout = round2(afterTax - techPayout - contractorFee - partsActual);
+    const ownerPayout = round2(netAfterParts - techPayout - contractorFee);
 
     // ── Validation warnings ─────────────────────────────────
     const warnings = [];
@@ -82,6 +83,7 @@ const PayoutEngine = (() => {
       // Computed
       taxAmount,
       afterTax,
+      netAfterParts,
       contractorFee,
       techPayout,
       ownerPayout,
@@ -142,6 +144,17 @@ const PayoutEngine = (() => {
 
     rows.push(`<div class="payout-divider"></div>`);
 
+    if (calc.partsCost > 0) {
+      rows.push(`<div class="payout-row">
+        <span class="payout-label">Parts / Materials</span>
+        <span class="payout-value deduct">-$${calc.partsCost.toFixed(2)}</span>
+      </div>`);
+      rows.push(`<div class="payout-row" style="opacity:0.6;font-size:12px">
+        <span class="payout-label">Net (after parts)</span>
+        <span class="payout-value">$${calc.netAfterParts.toFixed(2)}</span>
+      </div>`);
+    }
+
     rows.push(`<div class="payout-row">
       <span class="payout-label">${techName} (${calc.techPercent}%)</span>
       <span class="payout-value deduct">-$${calc.techPayout.toFixed(2)}</span>
@@ -151,13 +164,6 @@ const PayoutEngine = (() => {
       rows.push(`<div class="payout-row">
         <span class="payout-label">Contractor Fee (${calc.contractorPct}%)</span>
         <span class="payout-value deduct">-$${calc.contractorFee.toFixed(2)}</span>
-      </div>`);
-    }
-
-    if (calc.partsCost > 0) {
-      rows.push(`<div class="payout-row">
-        <span class="payout-label">Parts / Materials</span>
-        <span class="payout-value deduct">-$${calc.partsCost.toFixed(2)}</span>
       </div>`);
     }
 

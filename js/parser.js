@@ -62,11 +62,25 @@ const LeadParser = (() => {
     return { value: '', confidence: 'low' };
   }
 
+  // Words that should never be treated as a person's name
+  const _NAME_BLOCKLIST = new Set([
+    'sunday','monday','tuesday','wednesday','thursday','friday','saturday',
+    'january','february','march','april','may','june','july','august',
+    'september','october','november','december',
+    'today','tomorrow','morning','afternoon','evening','night',
+    'contracting','contractor','contractors','construction','services',
+    'service','company','group','associates','enterprises','management',
+    'llc','inc','corp','co','ltd',
+  ]);
+
   function _isPlausibleName(str) {
     if (!str) return false;
     if (/\d/.test(str)) return false;
     const words = str.split(/\s+/);
-    return words.length >= 1 && words.length <= 5 && str.length >= 2;
+    if (words.length < 1 || words.length > 5 || str.length < 2) return false;
+    // Reject if any word is a day, month, or known non-name term
+    if (words.some(w => _NAME_BLOCKLIST.has(w.toLowerCase()))) return false;
+    return true;
   }
 
   function _titleCase(str) {
@@ -124,6 +138,11 @@ const LeadParser = (() => {
     // Check each line
     for (const line of lines) {
       if (/^\d+\s+/.test(line) && line.length < 80) {
+        // Skip lines that look like phone numbers (many digits, few/no letters)
+        const digits  = (line.match(/\d/g) || []).length;
+        const letters = (line.match(/[a-zA-Z]/g) || []).length;
+        if (digits >= 7 && letters < 3) continue;
+
         // Remove city/state/zip from the line
         const addr = line.replace(/,?\s*[A-Z]{2}\s+\d{5}(-\d{4})?$/, '')
                         .replace(/,?\s*(?:NY|NJ|CT|PA|FL|TX)\b/gi, '')

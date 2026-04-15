@@ -144,15 +144,11 @@
     <!-- ==================== NEW JOB ==================== -->
     <section id="view-new-job" class="view">
 
-      <!-- Step Indicator -->
+      <!-- Step Indicator (2 steps only) -->
       <div class="step-indicator">
         <div class="step-dot active" data-step="1">1</div>
         <div class="step-line"></div>
         <div class="step-dot" data-step="2">2</div>
-        <div class="step-line"></div>
-        <div class="step-dot" data-step="3">3</div>
-        <div class="step-line"></div>
-        <div class="step-dot" data-step="4">4</div>
       </div>
 
       <!-- STEP 1: Paste Lead -->
@@ -168,9 +164,9 @@
         <button class="btn btn-secondary btn-full" onclick="App.startBlankJob()">Enter Manually &rarr;</button>
       </div>
 
-      <!-- STEP 2: Review Parsed Fields -->
+      <!-- STEP 2: All Details + Save -->
       <div id="step-2" class="step-content">
-        <h2 class="step-title">Review &amp; Confirm</h2>
+        <h2 class="step-title">Job Details</h2>
 
         <div class="returning-banner hidden" id="returning-banner">
           &#128260; Returning customer detected
@@ -228,25 +224,18 @@
 
         <div class="field-group">
           <label class="field-label">Job Description <span id="conf-desc" class="conf-badge"></span></label>
-          <textarea id="f-description" class="field-input field-textarea" rows="3"
-                    placeholder="What needs to be done? (spring, opener, cable, etc.)"></textarea>
+          <textarea id="f-description" class="field-input field-textarea" rows="2"
+                    placeholder="Spring, opener, cable, etc."></textarea>
         </div>
 
         <div class="field-group">
-          <label class="field-label">Quick Notes</label>
+          <label class="field-label">Notes</label>
           <textarea id="f-notes" class="field-input field-textarea" rows="2"
-                    placeholder="Access code, call before, special instructions..."></textarea>
+                    placeholder="Access code, call before..."></textarea>
         </div>
 
-        <div class="step-actions">
-          <button class="btn btn-secondary" onclick="App.goToStep(1)">&larr; Back</button>
-          <button class="btn btn-primary" onclick="App.goToStep(3)">Next &rarr;</button>
-        </div>
-      </div>
-
-      <!-- STEP 3: Assignment -->
-      <div id="step-3" class="step-content">
-        <h2 class="step-title">Assignment</h2>
+        <!-- Assignment section -->
+        <p class="form-section-divider">Assignment</p>
 
         <div class="field-group">
           <label class="field-label">Lead Source</label>
@@ -263,8 +252,7 @@
             </div>
             <div class="field-group" style="flex:1">
               <label class="field-label">Contractor %</label>
-              <input type="number" id="f-contractor-pct" class="field-input" placeholder="0" min="0" max="100"
-                     oninput="App.updatePayoutPreview()">
+              <input type="number" id="f-contractor-pct" class="field-input" placeholder="0" min="0" max="100">
             </div>
           </div>
         </div>
@@ -279,21 +267,10 @@
         </div>
 
         <div class="field-group">
-          <label class="field-label">Technician Payout %</label>
+          <label class="field-label">Tech Payout %</label>
           <input type="number" id="f-tech-pct" class="field-input" placeholder="e.g. 60"
-                 min="0" max="100" oninput="App.updatePayoutPreview()">
+                 min="0" max="100">
         </div>
-
-        <div class="step-actions">
-          <button class="btn btn-secondary" onclick="App.goToStep(2)">&larr; Back</button>
-          <button class="btn btn-primary" onclick="App.goToStep(4)">Next &rarr;</button>
-        </div>
-      </div>
-
-      <!-- STEP 4: Payment & Save -->
-      <div id="step-4" class="step-content">
-        <h2 class="step-title">Payment</h2>
-        <p class="step-sub">The actual total is entered when you close the job.</p>
 
         <div class="field-group">
           <label class="field-label">Parts / Materials Cost</label>
@@ -305,7 +282,7 @@
         </div>
 
         <div class="field-group">
-          <label class="field-label">Expected Payment Method</label>
+          <label class="field-label">Payment Method</label>
           <div class="payment-methods" id="pay-method-picker">
             <button class="pay-btn active" data-method="cash" onclick="App.selectPayMethod(this)">Cash</button>
             <button class="pay-btn" data-method="zelle" onclick="App.selectPayMethod(this)">Zelle</button>
@@ -316,10 +293,8 @@
         </div>
 
         <div class="step-actions">
-          <button class="btn btn-secondary" onclick="App.goToStep(3)">&larr; Back</button>
-          <button class="btn btn-primary btn-full" onclick="App.saveNewJob()">
-            &#10003; Save Job
-          </button>
+          <button class="btn btn-secondary" onclick="App.goToStep(1)">&larr; Back</button>
+          <button class="btn btn-primary" onclick="App.saveNewJob()">&#10003; Save Job</button>
         </div>
       </div>
 

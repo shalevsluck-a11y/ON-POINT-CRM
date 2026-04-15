@@ -445,7 +445,7 @@
 
 .lead-textarea {
   width: 100%;
-  min-height: 180px;
+  min-height: 130px;
   padding: var(--sp-md);
   background: var(--color-surface-2);
   border: 1.5px solid var(--color-border);

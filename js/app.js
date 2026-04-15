@@ -385,26 +385,6 @@ const App = (() => {
     const textarea = document.getElementById('raw-lead-input');
     if (textarea) textarea.value = '';
 
-    // Reset payout preview (may have been replaced by outerHTML on prior visit)
-    // Re-inject a fresh hidden placeholder so the element exists for next visit
-    const existingPreview = document.getElementById('payout-preview');
-    if (!existingPreview) {
-      // Element was replaced without id — find step-4 and inject fresh placeholder
-      const step4 = document.getElementById('step-4');
-      if (step4) {
-        const ph = document.createElement('div');
-        ph.id = 'payout-preview';
-        ph.className = 'payout-preview hidden';
-        const partsGroup = step4.querySelector('.field-group:nth-child(2)');
-        if (partsGroup && partsGroup.nextSibling) {
-          step4.insertBefore(ph, partsGroup.nextSibling);
-        }
-      }
-    } else {
-      existingPreview.classList.add('hidden');
-      existingPreview.innerHTML = '';
-    }
-
     // Reset form fields for new job
     ['f-name','f-phone','f-address','f-city','f-zip','f-description','f-notes',
      'f-tech-pct','f-parts-est','f-contractor','f-contractor-pct'].forEach(id => {
@@ -456,8 +436,7 @@ const App = (() => {
     _state.currentStep = stepNum;
     _updateStepIndicator(stepNum);
 
-    // On entering step 4, update payout preview
-    if (stepNum === 4) updatePayoutPreview();
+    // (no step 3/4 — merged into step 2)
 
     // Auto-save draft
     _autosaveDraft();
@@ -469,10 +448,6 @@ const App = (() => {
       const phone = document.getElementById('f-phone')?.value?.trim();
       if (!name) { showToast('Enter customer name', 'warning'); return false; }
       if (!phone) { showToast('Enter phone number', 'warning'); return false; }
-    }
-    if (step === 3) {
-      const techId = document.getElementById('f-tech-id')?.value;
-      if (!techId) { showToast('Select a technician', 'warning'); return false; }
     }
     return true;
   }
@@ -753,9 +728,9 @@ const App = (() => {
     const phone  = document.getElementById('f-phone')?.value?.trim();
     const techId = document.getElementById('f-tech-id')?.value;
 
-    if (!name)  { showToast('Enter customer name', 'warning'); goToStep(2); return; }
-    if (!phone) { showToast('Enter phone number', 'warning');  goToStep(2); return; }
-    if (!techId){ showToast('Select a technician', 'warning'); goToStep(3); return; }
+    if (!name)  { showToast('Enter customer name', 'warning'); return; }
+    if (!phone) { showToast('Enter phone number', 'warning');  return; }
+    if (!techId){ showToast('Select a technician', 'warning'); return; }
 
     const total = 0; // Actual total is entered when closing the job
 
@@ -873,7 +848,7 @@ const App = (() => {
       if (draft.techPct)     { const el = document.getElementById('f-tech-pct');     if(el) el.value = draft.techPct; }
       if (draft.total)       { const el = document.getElementById('f-total-est');    if(el) el.value = draft.total; }
       if (draft.parts)       { const el = document.getElementById('f-parts-est');    if(el) el.value = draft.parts; }
-      if (draft.step)        goToStep(Math.min(draft.step, 4));
+      if (draft.step)        goToStep(Math.min(draft.step, 2));
     }
   }
 
@@ -926,10 +901,10 @@ const App = (() => {
     // Status actions
     const statusActions = _buildStatusActions(job);
 
-    // Quick close button
+    // Close job button
     const closeBtn = (job.status !== 'paid')
       ? `<button class="quick-close-btn" onclick="App.showCloseJobModal('${job.jobId}')">
-           &#10003; Quick Close &amp; Pay
+           &#10003; Close Job
          </button>`
       : `<div class="quick-close-btn" style="background:var(--color-surface-3);color:var(--color-text-faint);cursor:default;box-shadow:none">
            &#10003; Paid on ${_formatDate(job.paidAt || '')}
@@ -960,14 +935,10 @@ const App = (() => {
         ${waLink}
         ${job.address ? `<button class="btn btn-secondary" onclick="App.navigateToJob('${job.jobId}')" style="flex:1">&#128205; Navigate</button>` : ''}
         <button class="btn btn-secondary" onclick="App.showEditJobModal('${job.jobId}')" style="flex:1">&#9998; Edit</button>
-        <button class="btn btn-secondary" onclick="App.exportJobPDF('${job.jobId}')" style="width:44px;min-width:44px;padding:0;flex:none">&#128196;</button>
       </div>
 
-      <!-- Quick Close -->
+      <!-- Close Job -->
       ${closeBtn}
-
-      <!-- Status actions -->
-      ${statusActions}
 
       <!-- Customer Info -->
       <div class="detail-section" id="ds-customer">
@@ -1315,7 +1286,7 @@ const App = (() => {
         <button class="btn btn-secondary" style="flex:1" onclick="App.closeModal()">Cancel</button>
         <button class="btn btn-success" style="flex:1;font-size:16px;font-weight:800"
                 onclick="App.finalizeJob('${jobId}')">
-          &#10003; Mark Paid
+          &#10003; Close Job
         </button>
       </div>
 
