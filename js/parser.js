@@ -138,15 +138,16 @@ const LeadParser = (() => {
     // Check each line
     for (const line of lines) {
       if (/^\d+\s+/.test(line) && line.length < 80) {
-        // Skip lines that look like phone numbers (many digits, few/no letters)
-        const digits  = (line.match(/\d/g) || []).length;
-        const letters = (line.match(/[a-zA-Z]/g) || []).length;
-        if (digits >= 7 && letters < 3) continue;
-
-        // Remove city/state/zip from the line
+        // Remove city/state/zip from the line first
         const addr = line.replace(/,?\s*[A-Z]{2}\s+\d{5}(-\d{4})?$/, '')
                         .replace(/,?\s*(?:NY|NJ|CT|PA|FL|TX)\b/gi, '')
                         .trim();
+
+        // Phone numbers start with 7+ consecutive digits when separators removed
+        // Real house numbers are at most 5–6 digits — never 7+
+        const stripped = addr.replace(/[\s\-\.\(\)]/g, '');
+        if (/^\d{7,}/.test(stripped)) continue;
+
         if (addr.length > 5 && /\d/.test(addr)) {
           return { value: _titleCase(addr), confidence: 'medium' };
         }
