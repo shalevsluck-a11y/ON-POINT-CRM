@@ -416,7 +416,7 @@
   position: relative;
   z-index: 1;
 }
-.step-dot.active  { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.step-dot.active  { background: var(--color-primary); border-color: var(--color-primary); color: #0F172A; }
 .step-dot.done    { background: var(--color-success); border-color: var(--color-success); color: #fff; }
 
 .step-line {

@@ -959,6 +959,7 @@ const App = (() => {
       <div class="detail-action-bar">
         ${callLink}
         ${waLink}
+        ${job.address ? `<button class="btn btn-secondary" onclick="App.navigateToJob('${job.jobId}')" style="flex:1">&#128205; Navigate</button>` : ''}
         <button class="btn btn-secondary" onclick="App.showEditJobModal('${job.jobId}')" style="flex:1">&#9998; Edit</button>
         <button class="btn btn-secondary" onclick="App.exportJobPDF('${job.jobId}')" style="width:44px;min-width:44px;padding:0;flex:none">&#128196;</button>
       </div>
@@ -1705,6 +1706,17 @@ const App = (() => {
   // PDF EXPORT
   // ══════════════════════════════════════════════════════════
 
+  function navigateToJob(jobId) {
+    const job = Storage.getJobById(jobId);
+    if (!job) { showToast('Job not found', 'error'); return; }
+
+    const parts = [job.address, job.city, job.state, job.zip].filter(Boolean);
+    if (!parts.length) { showToast('No address on this job', 'warning'); return; }
+
+    const encoded = encodeURIComponent(parts.join(', '));
+    window.open('https://maps.apple.com/?daddr=' + encoded, '_blank');
+  }
+
   function exportJobPDF(jobId) {
     const job = Storage.getJobById(jobId);
     if (!job) { showToast('Job not found', 'error'); return; }
@@ -2281,6 +2293,7 @@ const App = (() => {
     calendarToday,
 
     // PDF
+    navigateToJob,
     exportJobPDF,
 
     // Settings
