@@ -900,6 +900,7 @@ const App = (() => {
       techPercent: parseFloat(job.techPercent) || 0,
       contractorPct: parseFloat(job.contractorPct) || 0,
       taxOption: job.taxOption || 'none',
+      isSelfAssigned: job.isSelfAssigned,
       taxRateNY: settings.taxRateNY,
       taxRateNJ: settings.taxRateNJ,
     });
@@ -1314,12 +1315,6 @@ const App = (() => {
         </button>
       </div>
 
-      ${tech ? `
-        <div style="margin-top:var(--sp-md)">
-          <button class="btn btn-ghost btn-full" onclick="App.showZelleMemo('${jobId}')">
-            &#128196; Generate Zelle Memo for ${_esc(tech.name)}
-          </button>
-        </div>` : ''}
     `;
 
     if (currentTotal > 0) _updateClosePreview();
@@ -1363,6 +1358,7 @@ const App = (() => {
       techPercent: parseFloat(job.techPercent) || 0,
       contractorPct: parseFloat(job.contractorPct) || 0,
       taxOption,
+      isSelfAssigned: job.isSelfAssigned,
       taxRateNY: settings.taxRateNY,
       taxRateNJ: settings.taxRateNJ,
     });
@@ -1391,6 +1387,7 @@ const App = (() => {
       techPercent: parseFloat(job.techPercent) || 0,
       contractorPct: parseFloat(job.contractorPct) || 0,
       taxOption,
+      isSelfAssigned: job.isSelfAssigned,
       taxRateNY: settings.taxRateNY,
       taxRateNJ: settings.taxRateNJ,
     });
@@ -1430,7 +1427,13 @@ const App = (() => {
     });
 
     closeModal();
-    showToast(`Paid! Owner: ${_fmt(calc.ownerPayout)} · Tech: ${_fmt(calc.techPayout)}`, 'success');
+    const _myTake = calc.isSelfAssigned
+      ? calc.ownerPayout + calc.techPayout
+      : calc.ownerPayout;
+    showToast(calc.isSelfAssigned
+      ? `Paid! Your take: ${_fmt(_myTake)}`
+      : `Paid! Owner: ${_fmt(calc.ownerPayout)} · Tech: ${_fmt(calc.techPayout)}`,
+      'success');
 
     // Refresh detail view
     const container = document.getElementById('job-detail-content');

@@ -20,13 +20,14 @@ const PayoutEngine = (() => {
    * @param {number} opts.taxRateNJ
    */
   function calculate({
-    jobTotal      = 0,
-    partsCost     = 0,
-    techPercent   = 0,
-    contractorPct = 0,
-    taxOption     = 'none',
-    taxRateNY     = 8.875,
-    taxRateNJ     = 6.625,
+    jobTotal       = 0,
+    partsCost      = 0,
+    techPercent    = 0,
+    contractorPct  = 0,
+    taxOption      = 'none',
+    isSelfAssigned = false,   // carried through for display only
+    taxRateNY      = 8.875,
+    taxRateNJ      = 6.625,
   } = {}) {
 
     // ── Input sanitization ──────────────────────────────────
@@ -75,6 +76,7 @@ const PayoutEngine = (() => {
       techPercent:   techPct,
       contractorPct: contrPct,
       taxOption,
+      isSelfAssigned: !!isSelfAssigned,
       taxRatePercent: round4(taxRate * 100),
 
       // Computed
@@ -154,10 +156,18 @@ const PayoutEngine = (() => {
       </div>`);
     }
 
-    rows.push(`<div class="payout-row">
-      <span class="payout-label">${techName} (${calc.techPercent}%)</span>
-      <span class="payout-value deduct">-$${calc.techPayout.toFixed(2)}</span>
-    </div>`);
+    if (calc.isSelfAssigned) {
+      // Owner IS the tech — their row is a "you earn" line, not a deduction
+      rows.push(`<div class="payout-row">
+        <span class="payout-label">You as Tech (${calc.techPercent}%)</span>
+        <span class="payout-value" style="color:var(--color-success)">+$${calc.techPayout.toFixed(2)}</span>
+      </div>`);
+    } else {
+      rows.push(`<div class="payout-row">
+        <span class="payout-label">${techName} (${calc.techPercent}%)</span>
+        <span class="payout-value deduct">-$${calc.techPayout.toFixed(2)}</span>
+      </div>`);
+    }
 
     if (calc.contractorFee > 0) {
       rows.push(`<div class="payout-row">
@@ -168,10 +178,19 @@ const PayoutEngine = (() => {
 
     rows.push(`<div class="payout-divider"></div>`);
 
-    rows.push(`<div class="payout-total-row">
-      <span class="payout-total-label">Your Payout (Owner)</span>
-      <span class="payout-total-value">$${calc.ownerPayout.toFixed(2)}</span>
-    </div>`);
+    if (calc.isSelfAssigned) {
+      // Your total = what you earn as tech + whatever remains as owner
+      const yourTotal = round2(calc.ownerPayout + calc.techPayout);
+      rows.push(`<div class="payout-total-row">
+        <span class="payout-total-label">Your Total (Tech + Owner)</span>
+        <span class="payout-total-value">$${yourTotal.toFixed(2)}</span>
+      </div>`);
+    } else {
+      rows.push(`<div class="payout-total-row">
+        <span class="payout-total-label">Your Payout (Owner)</span>
+        <span class="payout-total-value">$${calc.ownerPayout.toFixed(2)}</span>
+      </div>`);
+    }
 
     const warnings = calc.warnings.map(w =>
       `<div class="payout-warning">⚠ ${w}</div>`
