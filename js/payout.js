@@ -107,17 +107,12 @@ const PayoutEngine = (() => {
     techPayout   = 0,
     jobId        = '',
   } = {}) {
-    const parts = [
-      `On Point Home Services`,
-      techName     ? `To: ${techName}`        : '',
-      customerName ? `Job: ${customerName}`   : '',
-      address      ? address                  : '',
-      jobDate      ? `Date: ${jobDate}`        : '',
-      `Payout: $${techPayout.toFixed(2)}`,
-      jobId        ? `Ref: ${jobId.slice(-6).toUpperCase()}` : '',
-    ].filter(Boolean);
+    // Short memo for Zelle: job ref + street snippet + amount
+    const ref    = jobId ? '#' + jobId.slice(-8).toUpperCase() : '';
+    const street = address ? address.split(',')[0].trim() : '';
+    const amount = `$${(+techPayout).toFixed(2)}`;
 
-    return parts.join('\n');
+    return [ref, street, amount].filter(Boolean).join(' ');
   }
 
   /**

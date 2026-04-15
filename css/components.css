@@ -264,6 +264,8 @@
   pointer-events: none;
 }
 .revenue-card:active { transform: scale(0.96); }
+.revenue-card-static { cursor: default; }
+.revenue-card-static:active { transform: none; }
 .revenue-card.featured {
   border-color: transparent;
   background: linear-gradient(135deg, #1C1C1E 0%, #000000 100%);

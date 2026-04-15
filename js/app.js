@@ -1458,15 +1458,23 @@ const App = (() => {
     const tech = job.assignedTechId ? settings.technicians.find(t => t.id === job.assignedTechId) : null;
     const memo = job.zelleMemo || '';
 
+    const waMsg  = encodeURIComponent(_buildWhatsAppJobText(job));
+    const waHref = `https://wa.me/?text=${waMsg}`;
+
     const body = document.getElementById('modal-zelle-body');
     body.innerHTML = `
       <div style="font-size:12px;font-weight:700;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">
         Memo for ${tech ? _esc(tech.name) : 'Tech'}
       </div>
       <div class="zelle-memo-box" style="white-space:pre-wrap;user-select:all">${_esc(memo)}</div>
-      <button class="btn btn-primary btn-full" style="margin-top:16px" onclick="App._copyZelleMemo('${jobId}')">
-        &#128203; Copy Memo
-      </button>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn btn-primary" style="flex:1" onclick="App._copyZelleMemo('${jobId}')">
+          &#128203; Copy Memo
+        </button>
+        <a href="${waHref}" class="btn btn-secondary" style="flex:1;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px">
+          &#128196; Receipt
+        </a>
+      </div>
     `;
 
     showModal('modal-zelle');
