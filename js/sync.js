@@ -15,7 +15,7 @@ const SyncManager = (() => {
     const settings = Storage.getSettings();
     const url = settings.appsScriptUrl;
 
-    if (!url || !url.startsWith('https://')) {
+    if (!url || !url.includes('script.google.com')) {
       return { success: false, error: 'Apps Script URL not configured' };
     }
 

@@ -790,8 +790,11 @@ const App = (() => {
     const saved = Storage.saveJob(job);
     if (!saved) { showToast('Failed to save job', 'error'); return; }
 
-    // Queue for sync
+    // Push to Google Sheets immediately
     SyncManager.queueJob(job.jobId);
+    SyncManager.syncJob(job).then(r => {
+      if (!r.success) showToast('Saved locally — sync pending (check Settings URL)', 'warning');
+    });
 
     // Clear draft
     Storage.clearDraft();
@@ -1395,6 +1398,12 @@ const App = (() => {
     Storage.saveUndo(Storage.getJobById(jobId));
     Storage.saveJob(updated);
     SyncManager.queueJob(jobId);
+
+    // Push to Google Sheets immediately, show result
+    SyncManager.syncJob(updated).then(r => {
+      if (r.success) showToast('Synced to Google Sheets', 'success');
+      else showToast('Saved locally — sync pending (check Settings URL)', 'warning');
+    });
 
     closeModal();
     showToast(`Paid! Owner: ${_fmt(calc.ownerPayout)} · Tech: ${_fmt(calc.techPayout)}`, 'success');
