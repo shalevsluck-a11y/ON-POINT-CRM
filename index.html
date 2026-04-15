@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="On Point">
+  <meta name="theme-color" content="#0F172A">
+  <title>On Point Home Services</title>
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- TOP HEADER                                 -->
+  <!-- ══════════════════════════════════════════ -->
+  <header id="app-header">
+    <div class="header-left">
+      <button id="btn-back" class="btn-icon hidden" onclick="App.goBack()">&#8592;</button>
+      <div id="header-brand">
+        <span class="brand-dot"></span>
+        <span>On Point</span>
+      </div>
+    </div>
+    <div class="header-center">
+      <h1 id="header-title">Dashboard</h1>
+    </div>
+    <div class="header-right">
+      <button id="btn-sync" class="btn-icon" onclick="App.syncAll()" title="Sync to Sheets">
+        <span id="sync-icon">&#8635;</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- MAIN CONTENT                               -->
+  <!-- ══════════════════════════════════════════ -->
+  <main id="main-content">
+
+    <!-- ==================== DASHBOARD ==================== -->
+    <section id="view-dashboard" class="view active">
+
+      <div class="section-title">Revenue</div>
+      <div class="revenue-grid">
+        <div class="revenue-card" onclick="App.navigate('jobs', {filter:'today'})">
+          <div class="rev-label">Today</div>
+          <div class="rev-amount" id="rev-today-amount">$0</div>
+          <div class="rev-count" id="rev-today-count">0 jobs</div>
+        </div>
+        <div class="revenue-card" onclick="App.navigate('jobs', {filter:'week'})">
+          <div class="rev-label">This Week</div>
+          <div class="rev-amount" id="rev-week-amount">$0</div>
+          <div class="rev-count" id="rev-week-count">0 jobs</div>
+        </div>
+        <div class="revenue-card featured" onclick="App.navigate('jobs', {filter:'month'})">
+          <div class="rev-label">This Month</div>
+          <div class="rev-amount" id="rev-month-amount">$0</div>
+          <div class="rev-count" id="rev-month-count">0 jobs</div>
+        </div>
+      </div>
+
+      <div class="section-title">Jobs by Status</div>
+      <div class="status-strip">
+        <div class="status-pill s-new" onclick="App.navigate('jobs',{filter:'new'})">
+          <span class="pill-count" id="count-new">0</span>
+          <span class="pill-label">New</span>
+        </div>
+        <div class="status-pill s-scheduled" onclick="App.navigate('jobs',{filter:'scheduled'})">
+          <span class="pill-count" id="count-scheduled">0</span>
+          <span class="pill-label">Sched</span>
+        </div>
+        <div class="status-pill s-inprogress" onclick="App.navigate('jobs',{filter:'in_progress'})">
+          <span class="pill-count" id="count-inprogress">0</span>
+          <span class="pill-label">Active</span>
+        </div>
+        <div class="status-pill s-closed" onclick="App.navigate('jobs',{filter:'closed'})">
+          <span class="pill-count" id="count-closed">0</span>
+          <span class="pill-label">Closed</span>
+        </div>
+        <div class="status-pill s-paid" onclick="App.navigate('jobs',{filter:'paid'})">
+          <span class="pill-count" id="count-paid">0</span>
+          <span class="pill-label">Paid</span>
+        </div>
+      </div>
+
+      <div class="section-title">Technician Performance</div>
+      <div id="tech-performance-list" class="tech-perf-list">
+        <div class="empty-state-sm">No technicians configured yet</div>
+      </div>
+
+      <div class="section-title-row">
+        <div class="section-title" style="margin:0">Recent Jobs</div>
+        <button class="btn-link" onclick="App.navigate('jobs')">See All</button>
+      </div>
+      <div id="recent-jobs-list" class="job-list">
+        <div class="empty-state">
+          <div class="empty-icon">&#128295;</div>
+          <div class="empty-title">No jobs yet</div>
+          <div class="empty-sub">Tap + to add your first job</div>
+        </div>
+      </div>
+
+      <!-- Next Job Strip -->
+      <div id="next-job-strip" class="next-job-strip hidden">
+        <div class="next-job-label">NEXT JOB</div>
+        <div id="next-job-info" class="next-job-info"></div>
+        <button class="next-job-btn" onclick="App.openNextJob()">View</button>
+      </div>
+
+    </section>
+
+    <!-- ==================== JOB LIST ==================== -->
+    <section id="view-jobs" class="view">
+
+      <div class="search-container">
+        <span class="search-icon">&#128269;</span>
+        <input type="search" id="job-search" class="search-input"
+               placeholder="Name, phone, address, zip..."
+               oninput="App.filterJobs()">
+      </div>
+
+      <div class="filter-chips" id="filter-chips">
+        <button class="chip active" data-filter="all" onclick="App.setJobFilter('all',this)">All</button>
+        <button class="chip" data-filter="new" onclick="App.setJobFilter('new',this)">New</button>
+        <button class="chip" data-filter="scheduled" onclick="App.setJobFilter('scheduled',this)">Scheduled</button>
+        <button class="chip" data-filter="in_progress" onclick="App.setJobFilter('in_progress',this)">Active</button>
+        <button class="chip" data-filter="closed" onclick="App.setJobFilter('closed',this)">Closed</button>
+        <button class="chip" data-filter="paid" onclick="App.setJobFilter('paid',this)">Paid</button>
+      </div>
+
+      <div id="jobs-list-container" class="job-list">
+        <div class="empty-state">
+          <div class="empty-icon">&#128295;</div>
+          <div class="empty-title">No jobs found</div>
+          <div class="empty-sub">Try a different filter or search term</div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ==================== NEW JOB ==================== -->
+    <section id="view-new-job" class="view">
+
+      <!-- Step Indicator -->
+      <div class="step-indicator">
+        <div class="step-dot active" data-step="1">1</div>
+        <div class="step-line"></div>
+        <div class="step-dot" data-step="2">2</div>
+        <div class="step-line"></div>
+        <div class="step-dot" data-step="3">3</div>
+        <div class="step-line"></div>
+        <div class="step-dot" data-step="4">4</div>
+      </div>
+
+      <!-- STEP 1: Paste Lead -->
+      <div id="step-1" class="step-content active">
+        <h2 class="step-title">Paste Lead Text</h2>
+        <p class="step-sub">Paste anything — name, phone, address, date, time. I'll parse it automatically.</p>
+        <textarea id="raw-lead-input" class="lead-textarea"
+          placeholder="Paste raw lead text here...&#10;&#10;Example:&#10;John Smith 5165551234&#10;123 Main St, Great Neck NY 11021&#10;Tomorrow at 2pm&#10;Garage door spring broken"></textarea>
+        <div class="step-actions">
+          <button class="btn btn-primary btn-full" onclick="App.parseLead()">Parse Lead &rarr;</button>
+        </div>
+        <div class="or-divider"><span>or</span></div>
+        <button class="btn btn-secondary btn-full" onclick="App.startBlankJob()">Enter Manually &rarr;</button>
+      </div>
+
+      <!-- STEP 2: Review Parsed Fields -->
+      <div id="step-2" class="step-content">
+        <h2 class="step-title">Review &amp; Confirm</h2>
+
+        <div class="returning-banner hidden" id="returning-banner">
+          &#128260; Returning customer detected
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Customer Name <span id="conf-name" class="conf-badge"></span></label>
+          <input type="text" id="f-name" class="field-input" placeholder="Full name" autocomplete="off">
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Phone <span id="conf-phone" class="conf-badge"></span></label>
+          <input type="tel" id="f-phone" class="field-input" placeholder="(555) 555-5555"
+                 oninput="App.checkReturningCustomer()" autocomplete="off">
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Address <span id="conf-address" class="conf-badge"></span></label>
+          <input type="text" id="f-address" class="field-input" placeholder="Street address">
+        </div>
+
+        <div class="field-row">
+          <div class="field-group" style="flex:2">
+            <label class="field-label">City</label>
+            <input type="text" id="f-city" class="field-input" placeholder="City">
+          </div>
+          <div class="field-group" style="flex:1">
+            <label class="field-label">State</label>
+            <select id="f-state" class="field-input">
+              <option value="NY">NY</option>
+              <option value="NJ">NJ</option>
+              <option value="CT">CT</option>
+              <option value="PA">PA</option>
+              <option value="FL">FL</option>
+              <option value="TX">TX</option>
+            </select>
+          </div>
+          <div class="field-group" style="flex:1">
+            <label class="field-label">ZIP <span id="conf-zip" class="conf-badge"></span></label>
+            <input type="text" id="f-zip" class="field-input" placeholder="ZIP" maxlength="5"
+                   oninput="App.onZipChange()">
+          </div>
+        </div>
+
+        <div class="field-row">
+          <div class="field-group" style="flex:1">
+            <label class="field-label">Date <span id="conf-date" class="conf-badge"></span></label>
+            <input type="date" id="f-date" class="field-input">
+          </div>
+          <div class="field-group" style="flex:1">
+            <label class="field-label">Time <span id="conf-time" class="conf-badge"></span></label>
+            <input type="time" id="f-time" class="field-input">
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Job Description <span id="conf-desc" class="conf-badge"></span></label>
+          <textarea id="f-description" class="field-input field-textarea" rows="3"
+                    placeholder="What needs to be done? (spring, opener, cable, etc.)"></textarea>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Quick Notes</label>
+          <textarea id="f-notes" class="field-input field-textarea" rows="2"
+                    placeholder="Access code, call before, special instructions..."></textarea>
+        </div>
+
+        <div class="step-actions">
+          <button class="btn btn-secondary" onclick="App.goToStep(1)">&larr; Back</button>
+          <button class="btn btn-primary" onclick="App.goToStep(3)">Next &rarr;</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: Assignment -->
+      <div id="step-3" class="step-content">
+        <h2 class="step-title">Assignment</h2>
+
+        <div class="field-group">
+          <label class="field-label">Lead Source</label>
+          <select id="f-source" class="field-input" onchange="App.onSourceChange()">
+            <option value="my_lead">My Lead (Direct)</option>
+          </select>
+        </div>
+
+        <div id="contractor-section" class="hidden">
+          <div class="field-row">
+            <div class="field-group" style="flex:2">
+              <label class="field-label">Contractor Name</label>
+              <input type="text" id="f-contractor" class="field-input" placeholder="Contractor name">
+            </div>
+            <div class="field-group" style="flex:1">
+              <label class="field-label">Contractor %</label>
+              <input type="number" id="f-contractor-pct" class="field-input" placeholder="0" min="0" max="100"
+                     oninput="App.updatePayoutPreview()">
+            </div>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Assign Technician</label>
+          <div id="zip-suggestion" class="zip-suggestion hidden"></div>
+          <div id="tech-selector" class="tech-selector">
+            <div class="empty-state-sm">No technicians — add them in Settings first</div>
+          </div>
+          <input type="hidden" id="f-tech-id" value="">
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Technician Payout %</label>
+          <input type="number" id="f-tech-pct" class="field-input" placeholder="e.g. 60"
+                 min="0" max="100" oninput="App.updatePayoutPreview()">
+        </div>
+
+        <div class="step-actions">
+          <button class="btn btn-secondary" onclick="App.goToStep(2)">&larr; Back</button>
+          <button class="btn btn-primary" onclick="App.goToStep(4)">Next &rarr;</button>
+        </div>
+      </div>
+
+      <!-- STEP 4: Financials & Save -->
+      <div id="step-4" class="step-content">
+        <h2 class="step-title">Financials</h2>
+
+        <div class="field-group">
+          <label class="field-label">Estimated Job Total</label>
+          <div class="currency-input">
+            <span class="currency-symbol">$</span>
+            <input type="number" id="f-total-est" class="field-input currency-field"
+                   placeholder="0.00" step="0.01" min="0" oninput="App.updatePayoutPreview()">
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Parts / Materials Cost</label>
+          <div class="currency-input">
+            <span class="currency-symbol">$</span>
+            <input type="number" id="f-parts-est" class="field-input currency-field"
+                   placeholder="0.00" step="0.01" min="0" value="0" oninput="App.updatePayoutPreview()">
+          </div>
+        </div>
+
+        <div id="payout-preview" class="payout-preview hidden"></div>
+
+        <div class="field-group">
+          <label class="field-label">Expected Payment Method</label>
+          <div class="payment-methods" id="pay-method-picker">
+            <button class="pay-btn active" data-method="cash" onclick="App.selectPayMethod(this)">Cash</button>
+            <button class="pay-btn" data-method="zelle" onclick="App.selectPayMethod(this)">Zelle</button>
+            <button class="pay-btn" data-method="check" onclick="App.selectPayMethod(this)">Check</button>
+            <button class="pay-btn" data-method="card" onclick="App.selectPayMethod(this)">Card</button>
+          </div>
+          <input type="hidden" id="f-pay-method" value="cash">
+        </div>
+
+        <div class="step-actions">
+          <button class="btn btn-secondary" onclick="App.goToStep(3)">&larr; Back</button>
+          <button class="btn btn-success btn-full" onclick="App.saveNewJob()">
+            &#10003; Save Job
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ==================== CALENDAR ==================== -->
+    <section id="view-calendar" class="view">
+
+      <div class="calendar-nav">
+        <button class="btn-icon cal-nav-btn" onclick="App.calendarShift(-1)">&#8249;</button>
+        <button class="calendar-date-label" id="cal-date-label" onclick="App.calendarToday()">
+          Today
+        </button>
+        <button class="btn-icon cal-nav-btn" onclick="App.calendarShift(1)">&#8250;</button>
+      </div>
+
+      <div id="calendar-content" class="calendar-content">
+        <div class="empty-state">
+          <div class="empty-icon">&#128197;</div>
+          <div class="empty-title">No jobs scheduled</div>
+          <div class="empty-sub">This day is clear</div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ==================== JOB DETAIL ==================== -->
+    <section id="view-job-detail" class="view">
+      <div id="job-detail-content">
+        <!-- Dynamically populated -->
+      </div>
+    </section>
+
+    <!-- ==================== SETTINGS ==================== -->
+    <section id="view-settings" class="view">
+
+      <!-- My Info -->
+      <div class="settings-card">
+        <div class="settings-section-title">My Info</div>
+        <div class="field-group">
+          <label class="field-label">My Name</label>
+          <input type="text" id="s-owner-name" class="field-input" placeholder="Your name">
+        </div>
+        <div class="field-group">
+          <label class="field-label">My Phone</label>
+          <input type="tel" id="s-owner-phone" class="field-input" placeholder="Your phone number">
+        </div>
+        <div class="field-group">
+          <label class="field-label">My Zelle Handle</label>
+          <input type="text" id="s-owner-zelle" class="field-input" placeholder="Phone or email for Zelle">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Default State</label>
+          <select id="s-default-state" class="field-input">
+            <option value="NY">New York (NY)</option>
+            <option value="NJ">New Jersey (NJ)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Tax Settings -->
+      <div class="settings-card">
+        <div class="settings-section-title">Tax Rates (Applied only when YOU are the tech)</div>
+        <div class="field-row">
+          <div class="field-group" style="flex:1">
+            <label class="field-label">NY Tax %</label>
+            <input type="number" id="s-tax-ny" class="field-input" placeholder="8.875" step="0.001" min="0" max="20">
+          </div>
+          <div class="field-group" style="flex:1">
+            <label class="field-label">NJ Tax %</label>
+            <input type="number" id="s-tax-nj" class="field-input" placeholder="6.625" step="0.001" min="0" max="20">
+          </div>
+        </div>
+      </div>
+
+      <!-- Technicians -->
+      <div class="settings-card">
+        <div class="settings-section-title-row">
+          <div class="settings-section-title">Technicians</div>
+          <button class="btn-link" onclick="App.showTechModal()">+ Add</button>
+        </div>
+        <div id="tech-list" class="settings-list">
+          <div class="empty-state-sm">No technicians yet</div>
+        </div>
+      </div>
+
+      <!-- Lead Sources -->
+      <div class="settings-card">
+        <div class="settings-section-title-row">
+          <div class="settings-section-title">Lead Sources</div>
+          <button class="btn-link" onclick="App.showSourceModal()">+ Add</button>
+        </div>
+        <div id="source-list" class="settings-list">
+          <div class="empty-state-sm">No custom sources yet</div>
+        </div>
+      </div>
+
+      <!-- Sync -->
+      <div class="settings-card">
+        <div class="settings-section-title">Google Sheets Sync</div>
+        <div class="field-group">
+          <label class="field-label">Apps Script Web App URL</label>
+          <input type="url" id="s-apps-script-url" class="field-input" placeholder="https://script.google.com/macros/s/...">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary" style="flex:1" onclick="App.testSync()">Test</button>
+          <button class="btn btn-primary" style="flex:1" onclick="App.syncAll()">Sync All</button>
+        </div>
+      </div>
+
+      <!-- Data -->
+      <div class="settings-card danger-card">
+        <div class="settings-section-title">Data Management</div>
+        <button class="btn btn-secondary btn-full" onclick="App.exportData()" style="margin-bottom:8px">
+          Export JSON Backup
+        </button>
+        <button class="btn btn-danger btn-full" onclick="App.clearAllData()">
+          Clear All Data
+        </button>
+      </div>
+
+      <div style="padding-bottom:8px">
+        <button class="btn btn-primary btn-full" onclick="App.saveSettings()">Save Settings</button>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- BOTTOM NAVIGATION                          -->
+  <!-- ══════════════════════════════════════════ -->
+  <nav id="bottom-nav">
+    <button class="nav-item active" data-view="dashboard" onclick="App.navigate('dashboard')">
+      <span class="nav-icon">&#9635;</span>
+      <span class="nav-label">Home</span>
+    </button>
+    <button class="nav-item" data-view="jobs" onclick="App.navigate('jobs')">
+      <span class="nav-icon">&#9776;</span>
+      <span class="nav-label">Jobs</span>
+    </button>
+    <button class="nav-item nav-add" data-view="new-job" onclick="App.navigate('new-job')">
+      <span class="nav-icon">+</span>
+    </button>
+    <button class="nav-item" data-view="calendar" onclick="App.navigate('calendar')">
+      <span class="nav-icon">&#9634;</span>
+      <span class="nav-label">Calendar</span>
+    </button>
+    <button class="nav-item" data-view="settings" onclick="App.navigate('settings')">
+      <span class="nav-icon">&#9881;</span>
+      <span class="nav-label">Settings</span>
+    </button>
+  </nav>
+
+  <!-- ══════════════════════════════════════════ -->
+  <!-- MODALS                                     -->
+  <!-- ══════════════════════════════════════════ -->
+
+  <!-- Overlay -->
+  <div id="modal-overlay" class="modal-overlay hidden" onclick="App.closeModal()"></div>
+
+  <!-- Close Job Modal -->
+  <div id="modal-close-job" class="modal hidden">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3 class="modal-title">Close Job</h3>
+      <button class="btn-icon" onclick="App.closeModal()">&#215;</button>
+    </div>
+    <div class="modal-body" id="modal-close-job-body"></div>
+  </div>
+
+  <!-- Zelle Memo Modal -->
+  <div id="modal-zelle" class="modal hidden">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3 class="modal-title">Zelle Payment</h3>
+      <button class="btn-icon" onclick="App.closeModal()">&#215;</button>
+    </div>
+    <div class="modal-body" id="modal-zelle-body"></div>
+  </div>
+
+  <!-- Add / Edit Technician Modal -->
+  <div id="modal-tech" class="modal hidden">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3 class="modal-title" id="tech-modal-title">Add Technician</h3>
+      <button class="btn-icon" onclick="App.closeModal()">&#215;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="m-tech-id">
+      <div class="field-group">
+        <label class="field-label">Name</label>
+        <input type="text" id="m-tech-name" class="field-input" placeholder="Full name">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Phone</label>
+        <input type="tel" id="m-tech-phone" class="field-input" placeholder="Phone number">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Default Payout %</label>
+        <input type="number" id="m-tech-pct" class="field-input" placeholder="e.g. 60" min="0" max="100">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Zelle Handle</label>
+        <input type="text" id="m-tech-zelle" class="field-input" placeholder="Phone or email for Zelle">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Service ZIP Codes (comma separated)</label>
+        <input type="text" id="m-tech-zips" class="field-input" placeholder="11001, 11002, 10001">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Card Color</label>
+        <input type="color" id="m-tech-color" class="field-input field-color" value="#3B82F6">
+      </div>
+      <div class="field-group">
+        <label class="field-label toggle-label">
+          <input type="checkbox" id="m-tech-is-owner" class="toggle-checkbox">
+          <span class="toggle-track"></span>
+          This is me (owner) — tax logic applies
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" style="flex:1" onclick="App.closeModal()">Cancel</button>
+        <button class="btn btn-primary" style="flex:1" onclick="App.saveTech()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add / Edit Lead Source Modal -->
+  <div id="modal-source" class="modal hidden">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3 class="modal-title" id="source-modal-title">Add Lead Source</h3>
+      <button class="btn-icon" onclick="App.closeModal()">&#215;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="m-source-id">
+      <div class="field-group">
+        <label class="field-label">Source Name</label>
+        <input type="text" id="m-source-name" class="field-input" placeholder="e.g. HomeAdvisor, Angi, Google">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Default Contractor %</label>
+        <input type="number" id="m-source-pct" class="field-input" placeholder="0" min="0" max="100">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" style="flex:1" onclick="App.closeModal()">Cancel</button>
+        <button class="btn btn-primary" style="flex:1" onclick="App.saveSource()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Photo Viewer Modal -->
+  <div id="modal-photo" class="modal modal-photo-modal hidden">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3 class="modal-title" id="photo-modal-title">Photo</h3>
+      <button class="btn-icon" onclick="App.closeModal()">&#215;</button>
+    </div>
+    <div class="modal-body modal-photo-body" id="modal-photo-body"></div>
+  </div>
+
+  <!-- Confirm Dialog -->
+  <div id="modal-confirm" class="modal modal-confirm hidden">
+    <div class="modal-handle"></div>
+    <div class="modal-body" style="text-align:center;padding:24px 20px">
+      <div id="confirm-icon" style="font-size:40px;margin-bottom:12px"></div>
+      <div id="confirm-title" class="modal-title" style="margin-bottom:8px"></div>
+      <div id="confirm-msg" style="color:var(--color-text-muted);font-size:14px;margin-bottom:20px"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" style="flex:1" onclick="App.closeModal()">Cancel</button>
+        <button class="btn btn-danger" style="flex:1" id="confirm-ok-btn">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Print Area (hidden, shown on print) -->
+  <div id="print-area" class="print-area"></div>
+
+</div><!-- #app -->
+
+<script src="js/storage.js"></script>
+<script src="js/parser.js"></script>
+<script src="js/payout.js"></script>
+<script src="js/sync.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
