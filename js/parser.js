@@ -143,10 +143,12 @@ const LeadParser = (() => {
                         .replace(/,?\s*(?:NY|NJ|CT|PA|FL|TX)\b/gi, '')
                         .trim();
 
-        // Phone numbers start with 7+ consecutive digits when separators removed
-        // Real house numbers are at most 5–6 digits — never 7+
-        const stripped = addr.replace(/[\s\-\.\(\)]/g, '');
-        if (/^\d{7,}/.test(stripped)) continue;
+        // Reject lines that are phone numbers.
+        // A phone number has 7–11 digits and almost no non-digit, non-separator chars.
+        // Real house numbers have at most 5 digits and are surrounded by street words.
+        const digitsOnly     = addr.replace(/\D/g, '');
+        const nonDigitNonSep = addr.replace(/[\d\s\-\.\(\)\+]/g, '');
+        if (digitsOnly.length >= 7 && digitsOnly.length <= 11 && nonDigitNonSep.length <= 2) continue;
 
         if (addr.length > 5 && /\d/.test(addr)) {
           return { value: _titleCase(addr), confidence: 'medium' };

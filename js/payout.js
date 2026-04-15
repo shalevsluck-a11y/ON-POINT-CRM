@@ -2,7 +2,7 @@
    PAYOUT.JS — Payout Calculation Engine
    Logic: tech % and contractor % both taken from job total.
    Owner gets what remains after tech, contractor, and parts.
-   Tax only applies when isSelfAssigned = true.
+   Tax is chosen explicitly: 'ny' | 'nj' | 'none'
    ============================================================ */
 
 const PayoutEngine = (() => {
@@ -10,20 +10,23 @@ const PayoutEngine = (() => {
   /**
    * Calculate full payout breakdown for a job.
    *
-   * Example: $100 job, tech 40%, contractor 50%, no parts
-   *   techPayout    = $100 * 40% = $40
-   *   contractorFee = $100 * 50% = $50
-   *   ownerPayout   = $100 - $40 - $50 = $10
+   * @param {object} opts
+   * @param {number} opts.jobTotal
+   * @param {number} opts.partsCost
+   * @param {number} opts.techPercent
+   * @param {number} opts.contractorPct
+   * @param {string} opts.taxOption  — 'ny' | 'nj' | 'none'
+   * @param {number} opts.taxRateNY
+   * @param {number} opts.taxRateNJ
    */
   function calculate({
-    jobTotal       = 0,
-    partsCost      = 0,
-    techPercent    = 0,
-    contractorPct  = 0,
-    isSelfAssigned = false,
-    state          = 'NY',
-    taxRateNY      = 8.875,
-    taxRateNJ      = 6.625,
+    jobTotal      = 0,
+    partsCost     = 0,
+    techPercent   = 0,
+    contractorPct = 0,
+    taxOption     = 'none',
+    taxRateNY     = 8.875,
+    taxRateNJ     = 6.625,
   } = {}) {
 
     // ── Input sanitization ──────────────────────────────────
@@ -34,20 +37,15 @@ const PayoutEngine = (() => {
 
     const partsActual = Math.min(parts, total);
 
-    // ── Step 1: Tax (ONLY when owner is the assigned tech) ──
+    // ── Step 1: Tax based on explicit selection ─────────────
     let taxRate   = 0;
-    let taxAmount = 0;
-    let afterTax  = total;
+    if      (taxOption === 'ny') taxRate = taxRateNY / 100;
+    else if (taxOption === 'nj') taxRate = taxRateNJ / 100;
 
-    if (isSelfAssigned) {
-      taxRate   = (state === 'NJ' ? taxRateNJ : taxRateNY) / 100;
-      taxAmount = round2(total * taxRate);
-      afterTax  = round2(total - taxAmount);
-    }
+    const taxAmount = round2(total * taxRate);
+    const afterTax  = round2(total - taxAmount);
 
     // ── Step 2: Parts deducted first, then % applied to net ─
-    // Parts come out first. Everyone's % is calculated on the
-    // net amount (total minus parts), not the gross.
     const netAfterParts = round2(afterTax - partsActual);
     const techPayout    = round2(netAfterParts * (techPct  / 100));
     const contractorFee = round2(netAfterParts * (contrPct / 100));
@@ -76,8 +74,7 @@ const PayoutEngine = (() => {
       partsCost:     partsActual,
       techPercent:   techPct,
       contractorPct: contrPct,
-      isSelfAssigned,
-      state,
+      taxOption,
       taxRatePercent: round4(taxRate * 100),
 
       // Computed
@@ -107,9 +104,10 @@ const PayoutEngine = (() => {
   } = {}) {
     const parts = [
       `On Point Home Services`,
-      customerName ? `Job: ${customerName}` : '',
-      address      ? address : '',
-      jobDate      ? `Date: ${jobDate}` : '',
+      techName     ? `To: ${techName}`        : '',
+      customerName ? `Job: ${customerName}`   : '',
+      address      ? address                  : '',
+      jobDate      ? `Date: ${jobDate}`        : '',
       `Payout: $${techPayout.toFixed(2)}`,
       jobId        ? `Ref: ${jobId.slice(-6).toUpperCase()}` : '',
     ].filter(Boolean);
@@ -131,9 +129,10 @@ const PayoutEngine = (() => {
       <span class="payout-value">$${calc.jobTotal.toFixed(2)}</span>
     </div>`);
 
-    if (calc.isSelfAssigned && calc.taxAmount > 0) {
+    if (calc.taxOption !== 'none' && calc.taxAmount > 0) {
+      const stateLabel = calc.taxOption === 'ny' ? 'NY' : 'NJ';
       rows.push(`<div class="payout-row">
-        <span class="payout-label">Tax (${calc.taxRatePercent}% — ${calc.state})</span>
+        <span class="payout-label">Tax (${calc.taxRatePercent}% — ${stateLabel})</span>
         <span class="payout-value deduct">-$${calc.taxAmount.toFixed(2)}</span>
       </div>`);
       rows.push(`<div class="payout-row" style="opacity:0.6;font-size:12px">

@@ -12,6 +12,11 @@ const SyncManager = (() => {
   // ────────────────────────────────────────────
 
   async function syncJob(job) {
+    // Only sync jobs that have been paid — skip everything else
+    if (!job || job.status !== 'paid') {
+      return { success: true, skipped: true };
+    }
+
     const settings = Storage.getSettings();
     const url = settings.appsScriptUrl;
 

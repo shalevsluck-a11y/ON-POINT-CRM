@@ -132,16 +132,18 @@ const App = (() => {
     const monthStart = _monthStartStr();
 
     // Revenue helpers
-    const toTotal = arr => arr.reduce((s, j) => s + (parseFloat(j.jobTotal) || 0), 0);
-    const paidOrClosed = j => j.status === 'paid' || j.status === 'closed';
+    const toOwnerRev = arr => arr.reduce((s, j) => s + (parseFloat(j.ownerPayout) || 0), 0);
+    const toSales    = arr => arr.reduce((s, j) => s + (parseFloat(j.jobTotal)    || 0), 0);
+    const paidOnly   = j => j.status === 'paid';
 
     const todayJobs  = jobs.filter(j => j.scheduledDate === today);
     const weekJobs   = jobs.filter(j => j.scheduledDate >= weekStart);
     const monthJobs  = jobs.filter(j => j.scheduledDate >= monthStart);
 
-    const todayRev   = toTotal(todayJobs.filter(paidOrClosed));
-    const weekRev    = toTotal(weekJobs.filter(paidOrClosed));
-    const monthRev   = toTotal(monthJobs.filter(paidOrClosed));
+    // Today → owner revenue; Week → owner revenue; Month → total sales
+    const todayRev   = toOwnerRev(todayJobs.filter(paidOnly));
+    const weekRev    = toOwnerRev(weekJobs.filter(paidOnly));
+    const monthRev   = toSales(monthJobs.filter(paidOnly));
 
     _setText('rev-today-amount', _fmt(todayRev));
     _setText('rev-week-amount',  _fmt(weekRev));
@@ -1274,6 +1276,16 @@ const App = (() => {
         </div>
       </div>
 
+      <div class="field-group">
+        <label class="field-label">Tax</label>
+        <div class="payment-methods" id="close-tax-picker">
+          <button class="pay-btn ${!job.taxOption||job.taxOption==='none'?'active':''}" data-tax="none" onclick="App._closeTaxSelect(this)">No Tax</button>
+          <button class="pay-btn ${job.taxOption==='ny'?'active':''}" data-tax="ny" onclick="App._closeTaxSelect(this)">NY Tax</button>
+          <button class="pay-btn ${job.taxOption==='nj'?'active':''}" data-tax="nj" onclick="App._closeTaxSelect(this)">NJ Tax</button>
+        </div>
+        <input type="hidden" id="close-tax-option" value="${job.taxOption||'none'}">
+      </div>
+
       <div id="close-payout-preview" class="payout-preview">
         <div class="empty-state-sm">Enter job total above</div>
       </div>
@@ -1297,7 +1309,7 @@ const App = (() => {
         </button>
       </div>
 
-      ${tech && tech.zelleHandle ? `
+      ${tech ? `
         <div style="margin-top:var(--sp-md)">
           <button class="btn btn-ghost btn-full" onclick="App.showZelleMemo('${jobId}')">
             &#128196; Generate Zelle Memo for ${_esc(tech.name)}
@@ -1317,6 +1329,14 @@ const App = (() => {
     if (h) h.value = btn.dataset.method;
   }
 
+  function _closeTaxSelect(btn) {
+    document.querySelectorAll('#close-tax-picker .pay-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const h = document.getElementById('close-tax-option');
+    if (h) h.value = btn.dataset.tax;
+    _updateClosePreview();
+  }
+
   function _updateClosePreview() {
     const job  = _state.closeJobId ? Storage.getJobById(_state.closeJobId) : null;
     if (!job)  return;
@@ -1332,12 +1352,12 @@ const App = (() => {
     }
 
     const tech = job.assignedTechId ? settings.technicians.find(t => t.id === job.assignedTechId) : null;
+    const taxOption = document.getElementById('close-tax-option')?.value || 'none';
     const calc = PayoutEngine.calculate({
       jobTotal: total, partsCost: parts,
       techPercent: parseFloat(job.techPercent) || 0,
       contractorPct: parseFloat(job.contractorPct) || 0,
-      isSelfAssigned: job.isSelfAssigned,
-      state: job.state || 'NY',
+      taxOption,
       taxRateNY: settings.taxRateNY,
       taxRateNJ: settings.taxRateNJ,
     });
@@ -1353,9 +1373,10 @@ const App = (() => {
     const job = Storage.getJobById(jobId);
     if (!job) return;
 
-    const total  = parseFloat(document.getElementById('close-total')?.value) || 0;
-    const parts  = parseFloat(document.getElementById('close-parts')?.value) || 0;
-    const method = document.getElementById('close-pay-method')?.value || 'cash';
+    const total     = parseFloat(document.getElementById('close-total')?.value) || 0;
+    const parts     = parseFloat(document.getElementById('close-parts')?.value) || 0;
+    const method    = document.getElementById('close-pay-method')?.value || 'cash';
+    const taxOption = document.getElementById('close-tax-option')?.value || 'none';
 
     if (total <= 0) { showToast('Enter the final job total', 'warning'); return; }
 
@@ -1366,8 +1387,7 @@ const App = (() => {
       jobTotal: total, partsCost: parts,
       techPercent: parseFloat(job.techPercent) || 0,
       contractorPct: parseFloat(job.contractorPct) || 0,
-      isSelfAssigned: job.isSelfAssigned,
-      state: job.state || 'NY',
+      taxOption,
       taxRateNY: settings.taxRateNY,
       taxRateNJ: settings.taxRateNJ,
     });
@@ -1386,6 +1406,7 @@ const App = (() => {
       status:        'paid',
       jobTotal:      total,
       partsCost:     parts,
+      taxOption,
       taxAmount:     calc.taxAmount,
       techPayout:    calc.techPayout,
       ownerPayout:   calc.ownerPayout,
@@ -1413,8 +1434,8 @@ const App = (() => {
     const refreshed = Storage.getJobById(jobId);
     if (container && refreshed) container.innerHTML = _buildJobDetailHTML(refreshed);
 
-    // If tech has Zelle handle, show Zelle memo
-    if (tech && tech.zelleHandle && calc.techPayout > 0) {
+    // If job has a tech with a payout, offer Zelle memo
+    if (tech && calc.techPayout > 0) {
       setTimeout(() => showZelleMemo(jobId), 600);
     }
   }
@@ -1429,30 +1450,17 @@ const App = (() => {
 
     const settings = Storage.getSettings();
     const tech = job.assignedTechId ? settings.technicians.find(t => t.id === job.assignedTechId) : null;
-
-    const payout = parseFloat(job.techPayout) || 0;
-    const memo   = job.zelleMemo || '';
-    const handle = tech?.zelleHandle || '';
+    const memo = job.zelleMemo || '';
 
     const body = document.getElementById('modal-zelle-body');
     body.innerHTML = `
-      ${handle ? `
-        <div class="zelle-handle-display">Send to: <span class="zelle-handle-val">${_esc(handle)}</span></div>
-      ` : ''}
-      <div style="font-size:32px;font-weight:900;color:var(--color-success);text-align:center;padding:16px 0">
-        ${_fmt(payout)}
+      <div style="font-size:12px;font-weight:700;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">
+        Memo for ${tech ? _esc(tech.name) : 'Tech'}
       </div>
-      <div style="font-size:13px;font-weight:700;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Memo / Notes</div>
-      <div class="zelle-memo-box">${_esc(memo)}</div>
-      <div style="display:flex;gap:8px;margin-top:16px">
-        <button class="btn btn-secondary" style="flex:1" onclick="App._copyZelleMemo('${jobId}')">
-          &#128203; Copy Memo
-        </button>
-        ${handle ? `
-          <a href="tel:${handle.replace(/\D/g,'')}" class="btn btn-primary" style="flex:1">
-            Open Zelle
-          </a>` : ''}
-      </div>
+      <div class="zelle-memo-box" style="white-space:pre-wrap;user-select:all">${_esc(memo)}</div>
+      <button class="btn btn-primary btn-full" style="margin-top:16px" onclick="App._copyZelleMemo('${jobId}')">
+        &#128203; Copy Memo
+      </button>
     `;
 
     showModal('modal-zelle');
