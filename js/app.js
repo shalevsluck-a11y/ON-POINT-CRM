@@ -2050,16 +2050,20 @@ const App = (() => {
   async function syncAll() {
     if (SyncManager.isSyncing()) { showToast('Sync already in progress', 'info'); return; }
 
+    // Force-mark ALL jobs as pending so they all get pushed regardless of prior sync status
+    const allJobs = Storage.getJobs();
+    allJobs.forEach(j => Storage.saveJob({ ...j, syncStatus: 'pending' }));
+
     const syncBtn = document.getElementById('btn-sync');
     if (syncBtn) syncBtn.classList.add('syncing');
-    showToast('Syncing to Google Sheets...', 'info');
+    showToast(`Syncing ${allJobs.length} jobs to Google Sheets...`, 'info');
 
     const result = await SyncManager.syncAll();
 
     if (syncBtn) syncBtn.classList.remove('syncing');
 
     if (result.success) {
-      showToast(`Synced ${result.synced || 0} jobs`, 'success');
+      showToast(`Synced ${result.synced || 0} jobs to Google Sheets`, 'success');
     } else {
       showToast(result.error || 'Sync failed — check Apps Script URL in Settings', 'error');
     }
