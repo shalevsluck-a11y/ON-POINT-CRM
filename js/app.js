@@ -407,7 +407,7 @@ const App = (() => {
 
     // Reset form fields for new job
     ['f-name','f-phone','f-address','f-city','f-zip','f-description','f-notes',
-     'f-tech-pct','f-total-est','f-parts-est','f-contractor','f-contractor-pct'].forEach(id => {
+     'f-tech-pct','f-parts-est','f-contractor','f-contractor-pct'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
@@ -749,15 +749,15 @@ const App = (() => {
   // ── SAVE JOB ─────────────────────────────────────────
 
   function saveNewJob() {
-    // Final validation
-    const name  = document.getElementById('f-name')?.value?.trim();
-    const phone = document.getElementById('f-phone')?.value?.trim();
+    const name   = document.getElementById('f-name')?.value?.trim();
+    const phone  = document.getElementById('f-phone')?.value?.trim();
     const techId = document.getElementById('f-tech-id')?.value;
-    const total = parseFloat(document.getElementById('f-total-est')?.value) || 0;
 
     if (!name)  { showToast('Enter customer name', 'warning'); goToStep(2); return; }
     if (!phone) { showToast('Enter phone number', 'warning');  goToStep(2); return; }
     if (!techId){ showToast('Select a technician', 'warning'); goToStep(3); return; }
+
+    const total = 0; // Actual total is entered when closing the job
 
     const settings = Storage.getSettings();
     const tech = settings.technicians.find(t => t.id === techId);
@@ -970,93 +970,116 @@ const App = (() => {
       ${statusActions}
 
       <!-- Customer Info -->
-      <div class="detail-section">
-        <div class="detail-section-title">Customer</div>
-        <div class="detail-row">
-          <div class="detail-row-label">Name</div>
-          <div class="detail-row-value">${_esc(job.customerName || '—')}</div>
+      <div class="detail-section" id="ds-customer">
+        <div class="detail-section-title" onclick="App.toggleDetailSection('ds-customer')">
+          Customer <span class="section-chevron">›</span>
         </div>
-        <div class="detail-row">
-          <div class="detail-row-label">Phone</div>
-          <div class="detail-row-value">
-            ${job.phone ? `<a href="tel:${job.phone.replace(/\D/g,'')}">${_esc(job.phone)}</a>` : '—'}
+        <div class="detail-section-body">
+          <div class="detail-row">
+            <div class="detail-row-label">Name</div>
+            <div class="detail-row-value">${_esc(job.customerName || '—')}</div>
           </div>
-        </div>
-        <div class="detail-row">
-          <div class="detail-row-label">Address</div>
-          <div class="detail-row-value">${_esc([job.address, job.city, job.state, job.zip].filter(Boolean).join(', ')) || '—'}</div>
+          <div class="detail-row">
+            <div class="detail-row-label">Phone</div>
+            <div class="detail-row-value">
+              ${job.phone ? `<a href="tel:${job.phone.replace(/\D/g,'')}">${_esc(job.phone)}</a>` : '—'}
+            </div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-row-label">Address</div>
+            <div class="detail-row-value">${_esc([job.address, job.city, job.state, job.zip].filter(Boolean).join(', ')) || '—'}</div>
+          </div>
         </div>
       </div>
 
       <!-- Schedule -->
-      <div class="detail-section">
-        <div class="detail-section-title">Schedule</div>
-        <div class="detail-row">
-          <div class="detail-row-label">Date</div>
-          <div class="detail-row-value">${job.scheduledDate ? _formatDate(job.scheduledDate) : '—'}</div>
+      <div class="detail-section" id="ds-schedule">
+        <div class="detail-section-title" onclick="App.toggleDetailSection('ds-schedule')">
+          Schedule <span class="section-chevron">›</span>
         </div>
-        <div class="detail-row">
-          <div class="detail-row-label">Time</div>
-          <div class="detail-row-value">${job.scheduledTime ? _formatTime(job.scheduledTime) : '—'}</div>
-        </div>
-        <div class="detail-row">
-          <div class="detail-row-label">Description</div>
-          <div class="detail-row-value" style="white-space:pre-wrap">${_esc(job.description || '—')}</div>
+        <div class="detail-section-body">
+          <div class="detail-row">
+            <div class="detail-row-label">Date</div>
+            <div class="detail-row-value">${job.scheduledDate ? _formatDate(job.scheduledDate) : '—'}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-row-label">Time</div>
+            <div class="detail-row-value">${job.scheduledTime ? _formatTime(job.scheduledTime) : '—'}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-row-label">Description</div>
+            <div class="detail-row-value" style="white-space:pre-wrap">${_esc(job.description || '—')}</div>
+          </div>
         </div>
       </div>
 
       <!-- Assignment -->
-      <div class="detail-section">
-        <div class="detail-section-title">Assignment</div>
-        <div class="detail-row">
-          <div class="detail-row-label">Technician</div>
-          <div class="detail-row-value" style="display:flex;align-items:center;gap:6px">
-            ${tech ? `<span class="tech-dot" style="background:${tech.color||'#3B82F6'}"></span>` : ''}
-            ${_esc(job.assignedTechName || '—')}
-            ${job.isSelfAssigned ? ' ★' : ''}
+      <div class="detail-section collapsed" id="ds-assignment">
+        <div class="detail-section-title" onclick="App.toggleDetailSection('ds-assignment')">
+          Assignment <span class="section-chevron">›</span>
+        </div>
+        <div class="detail-section-body">
+          <div class="detail-row">
+            <div class="detail-row-label">Technician</div>
+            <div class="detail-row-value" style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
+              ${tech ? `<span class="tech-dot" style="background:${tech.color||'#60A5FA'}"></span>` : ''}
+              ${_esc(job.assignedTechName || '—')}${job.isSelfAssigned ? ' ★' : ''}
+            </div>
           </div>
-        </div>
-        <div class="detail-row">
-          <div class="detail-row-label">Lead Source</div>
-          <div class="detail-row-value">${job.source === 'my_lead' ? 'My Lead (Direct)' : _esc(job.contractorName || job.source || '—')}</div>
-        </div>
-        ${job.contractorPct > 0 ? `
-        <div class="detail-row">
-          <div class="detail-row-label">Contractor %</div>
-          <div class="detail-row-value">${job.contractorPct}%</div>
-        </div>` : ''}
-        <div class="detail-row">
-          <div class="detail-row-label">Payment</div>
-          <div class="detail-row-value" style="text-transform:capitalize">${job.paymentMethod || '—'}</div>
+          <div class="detail-row">
+            <div class="detail-row-label">Lead Source</div>
+            <div class="detail-row-value">${job.source === 'my_lead' ? 'My Lead (Direct)' : _esc(job.contractorName || job.source || '—')}</div>
+          </div>
+          ${job.contractorPct > 0 ? `
+          <div class="detail-row">
+            <div class="detail-row-label">Contractor %</div>
+            <div class="detail-row-value">${job.contractorPct}%</div>
+          </div>` : ''}
+          <div class="detail-row">
+            <div class="detail-row-label">Payment</div>
+            <div class="detail-row-value" style="text-transform:capitalize">${job.paymentMethod || '—'}</div>
+          </div>
         </div>
       </div>
 
       <!-- Financials -->
-      <div class="detail-section">
-        <div class="detail-section-title">Financials</div>
-        ${total > 0 ? PayoutEngine.renderBreakdownHTML(calc, job.assignedTechName || 'Tech') : `
-          <div class="detail-row">
-            <div class="detail-row-label">Estimated Total</div>
-            <div class="detail-row-value">${job.estimatedTotal ? _fmt(parseFloat(job.estimatedTotal)) : 'Not set'}</div>
-          </div>
-        `}
+      <div class="detail-section collapsed" id="ds-financials">
+        <div class="detail-section-title" onclick="App.toggleDetailSection('ds-financials')">
+          Financials <span class="section-chevron">›</span>
+        </div>
+        <div class="detail-section-body">
+          ${total > 0 ? PayoutEngine.renderBreakdownHTML(calc, job.assignedTechName || 'Tech') : `
+            <div class="detail-row">
+              <div class="detail-row-label">Status</div>
+              <div class="detail-row-value" style="color:var(--color-text-faint)">Enter total when closing job</div>
+            </div>
+          `}
+        </div>
       </div>
 
       <!-- Notes -->
       ${job.notes ? `
-      <div class="detail-section">
-        <div class="detail-section-title">Notes</div>
-        <div style="padding:var(--sp-md);font-size:var(--font-sm);line-height:1.6;white-space:pre-wrap;color:var(--color-text)">
-          ${_esc(job.notes)}
+      <div class="detail-section collapsed" id="ds-notes">
+        <div class="detail-section-title" onclick="App.toggleDetailSection('ds-notes')">
+          Notes <span class="section-chevron">›</span>
+        </div>
+        <div class="detail-section-body">
+          <div style="padding:var(--sp-md);font-size:var(--font-sm);line-height:1.6;white-space:pre-wrap;color:var(--color-text)">
+            ${_esc(job.notes)}
+          </div>
         </div>
       </div>` : ''}
 
       <!-- Photos -->
-      <div class="detail-section">
-        <div class="detail-section-title">Photos (${photos.length})</div>
-        ${photoHTML}
-        <input type="file" id="photo-input-${job.jobId}" accept="image/*" multiple capture="environment"
-               style="display:none" onchange="App.handlePhotoUpload(event, '${job.jobId}')">
+      <div class="detail-section collapsed" id="ds-photos">
+        <div class="detail-section-title" onclick="App.toggleDetailSection('ds-photos')">
+          Photos (${photos.length}) <span class="section-chevron">›</span>
+        </div>
+        <div class="detail-section-body">
+          ${photoHTML}
+          <input type="file" id="photo-input-${job.jobId}" accept="image/*" multiple capture="environment"
+                 style="display:none" onchange="App.handlePhotoUpload(event, '${job.jobId}')">
+        </div>
       </div>
 
       <!-- Danger -->
@@ -1705,6 +1728,11 @@ const App = (() => {
   // PDF EXPORT
   // ══════════════════════════════════════════════════════════
 
+  function toggleDetailSection(sectionId) {
+    const section = document.getElementById(sectionId);
+    if (section) section.classList.toggle('collapsed');
+  }
+
   function navigateToJob(jobId) {
     const job = Storage.getJobById(jobId);
     if (!job) { showToast('Job not found', 'error'); return; }
@@ -2320,6 +2348,7 @@ const App = (() => {
 
     // PDF
     navigateToJob,
+    toggleDetailSection,
     exportJobPDF,
 
     // Settings

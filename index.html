@@ -290,29 +290,19 @@
         </div>
       </div>
 
-      <!-- STEP 4: Financials & Save -->
+      <!-- STEP 4: Payment & Save -->
       <div id="step-4" class="step-content">
-        <h2 class="step-title">Financials</h2>
-
-        <div class="field-group">
-          <label class="field-label">Estimated Job Total</label>
-          <div class="currency-input">
-            <span class="currency-symbol">$</span>
-            <input type="number" id="f-total-est" class="field-input currency-field"
-                   placeholder="0.00" step="0.01" min="0" oninput="App.updatePayoutPreview()">
-          </div>
-        </div>
+        <h2 class="step-title">Payment</h2>
+        <p class="step-sub">The actual total is entered when you close the job.</p>
 
         <div class="field-group">
           <label class="field-label">Parts / Materials Cost</label>
           <div class="currency-input">
             <span class="currency-symbol">$</span>
             <input type="number" id="f-parts-est" class="field-input currency-field"
-                   placeholder="0.00" step="0.01" min="0" value="0" oninput="App.updatePayoutPreview()">
+                   placeholder="0.00" step="0.01" min="0" value="0">
           </div>
         </div>
-
-        <div id="payout-preview" class="payout-preview hidden"></div>
 
         <div class="field-group">
           <label class="field-label">Expected Payment Method</label>
@@ -327,7 +317,7 @@
 
         <div class="step-actions">
           <button class="btn btn-secondary" onclick="App.goToStep(3)">&larr; Back</button>
-          <button class="btn btn-success btn-full" onclick="App.saveNewJob()">
+          <button class="btn btn-primary btn-full" onclick="App.saveNewJob()">
             &#10003; Save Job
           </button>
         </div>
