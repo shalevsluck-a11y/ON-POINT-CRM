@@ -99,8 +99,8 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
   overflow: hidden;
-  height: 100dvh;
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
   position: fixed;
   top: 0; left: 0;
@@ -119,8 +119,8 @@ a { color: var(--color-primary); text-decoration: none; }
 #app {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
   height: 100vh;
+  height: 100dvh;
   width: 100vw;
   overflow: hidden;
   position: relative;
@@ -522,16 +522,16 @@ select.field-input option { background: var(--color-surface-2); color: var(--col
   background: var(--color-surface);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   z-index: 201;
-  max-height: 92dvh;
   max-height: 92vh;
+  max-height: 92dvh;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding-bottom: calc(var(--sp-lg) + var(--safe-bottom));
   animation: modalUp 0.22s cubic-bezier(0.34,1.2,0.64,1);
 }
 
-.modal-photo-modal { max-height: 98dvh; max-height: 98vh; }
-.modal-confirm     { max-height: 60dvh; max-height: 60vh; }
+.modal-photo-modal { max-height: 98vh; max-height: 98dvh; }
+.modal-confirm     { max-height: 60vh; max-height: 60dvh; }
 
 @keyframes modalUp {
   from { transform: translateY(100%); opacity: 0.5; }
