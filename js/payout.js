@@ -52,7 +52,10 @@ const PayoutEngine = (() => {
     const contractorFee = round2(netAfterParts * (contrPct / 100));
 
     // ── Step 3: Owner gets the remainder ───────────────────
-    const ownerPayout = round2(netAfterParts - techPayout - contractorFee);
+    // When tech % + contractor % ≤ 100 %, rounding can produce a tiny negative
+    // (e.g. −$0.01 when both halves of a 50/50 split round up). Clamp to 0.
+    const _rawOwner = netAfterParts - techPayout - contractorFee;
+    const ownerPayout = round2(techPct + contrPct <= 100 ? Math.max(0, _rawOwner) : _rawOwner);
 
     // ── Validation warnings ─────────────────────────────────
     const warnings = [];
@@ -65,7 +68,7 @@ const PayoutEngine = (() => {
     if (total === 0) {
       warnings.push('Job total is $0 — enter an estimated amount');
     }
-    if (ownerPayout < 0) {
+    if (ownerPayout < -0.01) {
       warnings.push('Owner payout is negative — check percentages and parts cost');
     }
 
