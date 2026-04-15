@@ -912,10 +912,14 @@ const App = (() => {
 
     // WhatsApp — format full job details, let user pick contact
     const waMsg = encodeURIComponent(_buildWhatsAppJobText(job));
-    const waLink = `<a href="https://wa.me/?text=${waMsg}" class="btn btn-secondary" style="flex:1" onclick="event.stopPropagation()">&#128172; WhatsApp</a>`;
+    const waLink = `<a href="https://wa.me/?text=${waMsg}" class="detail-action-btn" onclick="event.stopPropagation()">
+      <span class="dab-icon">&#128172;</span><span class="dab-label">WhatsApp</span>
+    </a>`;
 
     const callLink = job.phone
-      ? `<a href="tel:${job.phone.replace(/\D/g,'')}" class="btn btn-success" style="flex:1">&#128222; Call</a>`
+      ? `<a href="tel:${job.phone.replace(/\D/g,'')}" class="detail-action-btn dab-green">
+           <span class="dab-icon">&#128222;</span><span class="dab-label">Call</span>
+         </a>`
       : '';
 
     return `
@@ -933,8 +937,8 @@ const App = (() => {
       <div class="detail-action-bar">
         ${callLink}
         ${waLink}
-        ${job.address ? `<button class="btn btn-secondary" onclick="App.navigateToJob('${job.jobId}')" style="flex:1">&#128205; Navigate</button>` : ''}
-        <button class="btn btn-secondary" onclick="App.showEditJobModal('${job.jobId}')" style="flex:1">&#9998; Edit</button>
+        ${job.address ? `<button class="detail-action-btn" onclick="App.navigateToJob('${job.jobId}')"><span class="dab-icon">&#128205;</span><span class="dab-label">Navigate</span></button>` : ''}
+        <button class="detail-action-btn" onclick="App.showEditJobModal('${job.jobId}')"><span class="dab-icon">&#9998;</span><span class="dab-label">Edit</span></button>
       </div>
 
       <!-- Close Job -->

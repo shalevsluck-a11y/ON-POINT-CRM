@@ -609,6 +609,29 @@
 
 .detail-action-bar { display: flex; gap: 7px; margin-bottom: 10px; }
 
+.detail-action-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 4px;
+  background: var(--color-surface-3);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-decoration: none;
+  transition: opacity 0.15s, transform 0.12s cubic-bezier(0.34,1.4,0.64,1);
+  -webkit-tap-highlight-color: transparent;
+  min-width: 0;
+}
+.detail-action-btn:active { transform: scale(0.91); opacity: 0.75; }
+.dab-icon  { font-size: 20px; line-height: 1; }
+.dab-label { font-size: 10px; font-weight: 700; color: var(--color-text-muted); letter-spacing: 0.2px; white-space: nowrap; }
+.dab-green { background: rgba(52,199,89,0.1); }
+.dab-green .dab-label { color: var(--color-success); }
+
 /* Collapsible sections */
 .detail-section {
   background: var(--color-surface);
