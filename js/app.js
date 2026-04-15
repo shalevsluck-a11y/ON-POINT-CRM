@@ -132,9 +132,15 @@ const App = (() => {
     const monthStart = _monthStartStr();
 
     // Revenue helpers
-    const toOwnerRev = arr => arr.reduce((s, j) => s + (parseFloat(j.ownerPayout) || 0), 0);
-    const toSales    = arr => arr.reduce((s, j) => s + (parseFloat(j.jobTotal)    || 0), 0);
-    const paidOnly   = j => j.status === 'paid';
+    // When owner IS the tech (isSelfAssigned), their total take = ownerPayout + techPayout
+    const toOwnerRev = arr => arr.reduce((s, j) => {
+      const ownerCut  = parseFloat(j.ownerPayout) || 0;
+      const selfBonus = (j.isSelfAssigned === true || j.isSelfAssigned === 'true')
+        ? (parseFloat(j.techPayout) || 0) : 0;
+      return s + ownerCut + selfBonus;
+    }, 0);
+    const toSales  = arr => arr.reduce((s, j) => s + (parseFloat(j.jobTotal) || 0), 0);
+    const paidOnly = j => j.status === 'paid';
 
     const todayJobs  = jobs.filter(j => j.scheduledDate === today);
     const weekJobs   = jobs.filter(j => j.scheduledDate >= weekStart);
@@ -715,7 +721,7 @@ const App = (() => {
 
     const calc = PayoutEngine.calculate({
       jobTotal: total, partsCost: parts, techPercent: techPct,
-      contractorPct: contrPct, isSelfAssigned: isSelf, state,
+      contractorPct: contrPct, taxOption: 'none',
       taxRateNY: settings.taxRateNY, taxRateNJ: settings.taxRateNJ,
     });
 
@@ -748,7 +754,7 @@ const App = (() => {
 
     const calc = PayoutEngine.calculate({
       jobTotal: total, partsCost: parts, techPercent: techPct,
-      contractorPct: contrPct, isSelfAssigned: isSelf, state,
+      contractorPct: contrPct, taxOption: 'none',
       taxRateNY: settings.taxRateNY, taxRateNJ: settings.taxRateNJ,
     });
 
@@ -893,8 +899,7 @@ const App = (() => {
       jobTotal: total, partsCost: parseFloat(job.partsCost) || 0,
       techPercent: parseFloat(job.techPercent) || 0,
       contractorPct: parseFloat(job.contractorPct) || 0,
-      isSelfAssigned: job.isSelfAssigned,
-      state: job.state || 'NY',
+      taxOption: job.taxOption || 'none',
       taxRateNY: settings.taxRateNY,
       taxRateNJ: settings.taxRateNJ,
     });
@@ -915,10 +920,10 @@ const App = (() => {
            &#10003; Paid on ${_formatDate(job.paidAt || '')}
          </div>`;
 
-    // WhatsApp — format full job details, let user pick contact
-    const waMsg = encodeURIComponent(_buildWhatsAppJobText(job));
-    const waLink = `<a href="https://wa.me/?text=${waMsg}" class="detail-action-btn" onclick="event.stopPropagation()">
-      <span class="dab-icon">&#128172;</span><span class="dab-label">WhatsApp</span>
+    // WhatsApp — job details (pre-close) or receipt with financials (post-close)
+    const waMsg  = encodeURIComponent(_buildWhatsAppJobText(job));
+    const waLink = `<a href="https://wa.me/?text=${waMsg}" class="detail-action-btn${job.status === 'paid' ? ' dab-green' : ''}" onclick="event.stopPropagation()">
+      <span class="dab-icon">&#128172;</span><span class="dab-label">${job.status === 'paid' ? 'Receipt' : 'WhatsApp'}</span>
     </a>`;
 
     const callLink = job.phone
@@ -1271,7 +1276,7 @@ const App = (() => {
         <div class="currency-input">
           <span class="currency-symbol">$</span>
           <input type="number" id="close-parts" class="field-input currency-field"
-                 placeholder="0.00" step="0.01" min="0" value="${job.partsCost || 0}"
+                 placeholder="0.00" step="0.01" min="0" value="${job.partsCost || ''}"
                  oninput="App._updateClosePreview()">
         </div>
       </div>
@@ -1377,8 +1382,6 @@ const App = (() => {
     const parts     = parseFloat(document.getElementById('close-parts')?.value) || 0;
     const method    = document.getElementById('close-pay-method')?.value || 'cash';
     const taxOption = document.getElementById('close-tax-option')?.value || 'none';
-
-    if (total <= 0) { showToast('Enter the final job total', 'warning'); return; }
 
     const settings = Storage.getSettings();
     const tech = job.assignedTechId ? settings.technicians.find(t => t.id === job.assignedTechId) : null;
@@ -1748,8 +1751,7 @@ const App = (() => {
       jobTotal: total, partsCost: parseFloat(job.partsCost)||0,
       techPercent: parseFloat(job.techPercent)||0,
       contractorPct: parseFloat(job.contractorPct)||0,
-      isSelfAssigned: job.isSelfAssigned,
-      state: job.state || 'NY',
+      taxOption: job.taxOption || 'none',
       taxRateNY: settings.taxRateNY,
       taxRateNJ: settings.taxRateNJ,
     });
@@ -2245,7 +2247,6 @@ const App = (() => {
     const settings  = Storage.getSettings();
     const tech      = job.assignedTechId ? settings.technicians.find(t => t.id === job.assignedTechId) : null;
     const total     = parseFloat(job.jobTotal) || parseFloat(job.estimatedTotal) || 0;
-    const statusMap = { new:'New', scheduled:'Scheduled', in_progress:'In Progress', closed:'Closed', paid:'Paid' };
     const address   = [job.address, job.city, job.state, job.zip].filter(Boolean).join(', ');
 
     const lines = [
@@ -2259,13 +2260,35 @@ const App = (() => {
       job.scheduledDate ? `*Date:* ${_formatDate(job.scheduledDate)}${job.scheduledTime ? ' @ ' + _formatTime(job.scheduledTime) : ''}` : '',
       job.description   ? `*Job:* ${job.description}` : '',
       job.notes         ? `*Notes:* ${job.notes}` : '',
-      '',
-      total > 0         ? `*Total:* $${total.toFixed(2)}` : '',
-      tech              ? `*Tech:* ${tech.name}` : '',
-      `*Status:* ${statusMap[job.status] || job.status}`,
-    ].filter(line => line !== '');
+    ];
 
-    return lines.join('\n');
+    // For paid jobs add the full financial breakdown
+    if (job.status === 'paid') {
+      const jobTotal     = parseFloat(job.jobTotal)     || 0;
+      const parts        = parseFloat(job.partsCost)    || 0;
+      const taxAmt       = parseFloat(job.taxAmount)    || 0;
+      const techPayout   = parseFloat(job.techPayout)   || 0;
+      const ownerPayout  = parseFloat(job.ownerPayout)  || 0;
+      const contrFee     = parseFloat(job.contractorFee)|| 0;
+      const isSelf       = job.isSelfAssigned === true || job.isSelfAssigned === 'true';
+      const myTotal      = isSelf ? ownerPayout + techPayout : ownerPayout;
+
+      lines.push('');
+      lines.push('*── Financials ──*');
+      lines.push(`*Job Total:* $${jobTotal.toFixed(2)}`);
+      if (taxAmt > 0)    lines.push(`*Tax:* -$${taxAmt.toFixed(2)}`);
+      if (parts > 0)     lines.push(`*Parts:* -$${parts.toFixed(2)}`);
+      if (tech && !isSelf) lines.push(`*Tech (${tech.name}):* $${techPayout.toFixed(2)}`);
+      if (contrFee > 0)  lines.push(`*Contractor Fee:* $${contrFee.toFixed(2)}`);
+      lines.push(`*My Revenue:* $${myTotal.toFixed(2)}`);
+      if (job.paymentMethod) lines.push(`*Payment:* ${job.paymentMethod.charAt(0).toUpperCase() + job.paymentMethod.slice(1)}`);
+    } else {
+      lines.push('');
+      if (total > 0)  lines.push(`*Est. Total:* $${total.toFixed(2)}`);
+      if (tech)       lines.push(`*Tech:* ${tech.name}`);
+    }
+
+    return lines.filter(l => l !== undefined).join('\n');
   }
 
   function _esc(str) {
@@ -2325,6 +2348,7 @@ const App = (() => {
     finalizeJob,
     _updateClosePreview,
     _closeSelectPay,
+    _closeTaxSelect,
     _saveEditedJob,
     confirmDeleteJob,
 

@@ -39,7 +39,7 @@ const LeadParser = (() => {
     // Common patterns: "Name: John Smith", "Customer: ...", or first line of text
     const labelPatterns = [
       /(?:customer|client|name|contact)[:\s]+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i,
-      /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2})\s*(?:[-–]|\n|$)/m,
+      /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s*(?:[-–]|\n|$)/m,
     ];
 
     for (const pat of labelPatterns) {
@@ -50,11 +50,11 @@ const LeadParser = (() => {
       }
     }
 
-    // Try first line if it looks like a name (no numbers, 2-3 words)
+    // Try first line if it looks like a name (no numbers, 1-4 words, blocklist checked)
     for (const line of lines.slice(0, 3)) {
       const clean = line.replace(/[^a-zA-Z\s]/g, '').trim();
       const words = clean.split(/\s+/).filter(Boolean);
-      if (words.length >= 2 && words.length <= 4 && words.every(w => /^[A-Z][a-z]{1,}$/.test(w))) {
+      if (words.length >= 1 && words.length <= 4 && words.every(w => /^[A-Z][a-z]{1,}$/.test(w)) && _isPlausibleName(clean)) {
         return { value: clean, confidence: 'medium' };
       }
     }
@@ -124,10 +124,13 @@ const LeadParser = (() => {
   // ────────────────────────────────────────────
 
   function _parseAddress(text, lines) {
-    // Look for lines containing a house number + street
+    // Look for lines containing a house number + street.
+    // Middle words must start with a letter or be a short ordinal (4th, 21st) —
+    // this prevents phone number digits (555, 1234) from matching as street words.
     const streetTypes = 'St|Street|Ave|Avenue|Blvd|Boulevard|Rd|Road|Dr|Drive|Ln|Lane|Way|Ct|Court|Pl|Place|Terr|Terrace|Pkwy|Parkway|Hwy|Highway|Cir|Circle|Loop|Trail|Trl';
+    const midWord = '(?:[A-Za-z][A-Za-z0-9\\.]*|\\d{1,2}(?:st|nd|rd|th)?)';
     const addrPattern = new RegExp(
-      `\\b(\\d+(?:\\s+[A-Za-z0-9\\.]+){1,4}\\s+(?:${streetTypes}))(?:[,\\s]|$)`,
+      `\\b(\\d{1,6}(?:\\s+${midWord}){1,4}\\s+(?:${streetTypes}))(?:[,\\s]|$)`,
       'i'
     );
 
