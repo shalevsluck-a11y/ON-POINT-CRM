@@ -935,10 +935,9 @@ const App = (() => {
            &#10003; Paid on ${_formatDate(job.paidAt || '')}
          </div>`;
 
-    // WhatsApp link
-    const waPhone = (job.phone || '').replace(/\D/g,'');
-    const waMsg   = encodeURIComponent(`Hi ${job.customerName}, this is On Point Home Services confirming your appointment.`);
-    const waLink  = waPhone ? `<a href="https://wa.me/1${waPhone}?text=${waMsg}" class="btn btn-secondary" style="flex:1" onclick="event.stopPropagation()">&#128172; WhatsApp</a>` : '';
+    // WhatsApp — format full job details, let user pick contact
+    const waMsg = encodeURIComponent(_buildWhatsAppJobText(job));
+    const waLink = `<a href="https://wa.me/?text=${waMsg}" class="btn btn-secondary" style="flex:1" onclick="event.stopPropagation()">&#128172; WhatsApp</a>`;
 
     const callLink = job.phone
       ? `<a href="tel:${job.phone.replace(/\D/g,'')}" class="btn btn-success" style="flex:1">&#128222; Call</a>`
@@ -2216,6 +2215,33 @@ const App = (() => {
   function _initials(name) {
     if (!name) return '?';
     return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
+  }
+
+  function _buildWhatsAppJobText(job) {
+    const settings  = Storage.getSettings();
+    const tech      = job.assignedTechId ? settings.technicians.find(t => t.id === job.assignedTechId) : null;
+    const total     = parseFloat(job.jobTotal) || parseFloat(job.estimatedTotal) || 0;
+    const statusMap = { new:'New', scheduled:'Scheduled', in_progress:'In Progress', closed:'Closed', paid:'Paid' };
+    const address   = [job.address, job.city, job.state, job.zip].filter(Boolean).join(', ');
+
+    const lines = [
+      '*ON POINT HOME SERVICES*',
+      `Ref: #${(job.jobId || '').slice(-6).toUpperCase()}`,
+      '',
+      `*Customer:* ${job.customerName || '—'}`,
+      job.phone   ? `*Phone:* ${job.phone}` : '',
+      address     ? `*Address:* ${address}` : '',
+      '',
+      job.scheduledDate ? `*Date:* ${_formatDate(job.scheduledDate)}${job.scheduledTime ? ' @ ' + _formatTime(job.scheduledTime) : ''}` : '',
+      job.description   ? `*Job:* ${job.description}` : '',
+      job.notes         ? `*Notes:* ${job.notes}` : '',
+      '',
+      total > 0         ? `*Total:* $${total.toFixed(2)}` : '',
+      tech              ? `*Tech:* ${tech.name}` : '',
+      `*Status:* ${statusMap[job.status] || job.status}`,
+    ].filter(line => line !== '');
+
+    return lines.join('\n');
   }
 
   function _esc(str) {
