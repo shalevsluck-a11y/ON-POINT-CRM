@@ -18,8 +18,11 @@ const DB = (() => {
 
   async function _syncJobsDown() {
     try {
+      // Tech/contractor get the DB-level view that masks financial columns at source.
+      // Admin/dispatcher use the full jobs table so revenue figures are correct.
+      const tableName = Auth.isTechOrContractor() ? 'jobs_limited' : 'jobs';
       const { data, error } = await supa
-        .from('jobs')
+        .from(tableName)
         .select('*')
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -31,7 +34,9 @@ const DB = (() => {
         if (zm) zm.forEach(z => { zelleMap[z.job_id] = z.zelle_memo; });
       }
 
-      const jobs = (data || []).map(row => _dbRowToJob(row, zelleMap, Auth.isAdmin(), Auth.isTech()));
+      const isAdmin = Auth.isAdmin();
+      const isTechLike = Auth.isTechOrContractor();
+      const jobs = (data || []).map(row => _dbRowToJob(row, zelleMap, isAdmin, isTechLike));
       Storage.saveJobs(jobs);
     } catch (e) {
       console.warn('DB._syncJobsDown error (using cache):', e.message);
@@ -203,12 +208,12 @@ const DB = (() => {
     return supa
       .channel('jobs-realtime')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'jobs' }, payload => {
-        const job = _dbRowToJob(payload.new, {}, Auth.isAdmin(), Auth.isTech());
+        const job = _dbRowToJob(payload.new, {}, Auth.isAdmin(), Auth.isTechOrContractor());
         Storage.saveJob(job);
         if (onInsert) onInsert(job);
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'jobs' }, payload => {
-        const job = _dbRowToJob(payload.new, {}, Auth.isAdmin(), Auth.isTech());
+        const job = _dbRowToJob(payload.new, {}, Auth.isAdmin(), Auth.isTechOrContractor());
         Storage.saveJob(job);
         if (onUpdate) onUpdate(job);
       })

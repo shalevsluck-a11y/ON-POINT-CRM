@@ -282,6 +282,10 @@ const App = (() => {
     const weekJobs   = jobs.filter(j => j.scheduledDate >= weekStart);
     const monthJobs  = jobs.filter(j => j.scheduledDate >= monthStart);
 
+    // Dispatcher must not see the revenue section at all
+    const revSection = document.getElementById('revenue-section');
+    if (revSection) revSection.classList.toggle('hidden', Auth.isDispatcher());
+
     if (Auth.canSeeFinancials()) {
       // Admin: show owner revenue (ownerPayout + selfBonus for self-assigned)
       const toOwnerRev = arr => arr.reduce((s, j) => {
@@ -294,12 +298,6 @@ const App = (() => {
       _setText('rev-today-amount', _fmt(toOwnerRev(todayJobs.filter(paidOnly))));
       _setText('rev-week-amount',  _fmt(toOwnerRev(weekJobs.filter(paidOnly))));
       _setText('rev-month-amount', _fmt(toSales(monthJobs.filter(paidOnly))));
-    } else {
-      // Dispatcher/tech: show tech payout only (no margins)
-      const toTechPay = arr => arr.reduce((s, j) => s + (parseFloat(j.techPayout) || 0), 0);
-      _setText('rev-today-amount', _fmt(toTechPay(todayJobs.filter(paidOnly))));
-      _setText('rev-week-amount',  _fmt(toTechPay(weekJobs.filter(paidOnly))));
-      _setText('rev-month-amount', _fmt(toTechPay(monthJobs.filter(paidOnly))));
     }
 
     _setText('rev-today-count', `${todayJobs.length} job${todayJobs.length !== 1 ? 's' : ''}`);

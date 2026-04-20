@@ -133,6 +133,8 @@ const Auth = (() => {
   function isAdmin()       { return _currentUser?.role === 'admin'; }
   function isDispatcher()  { return _currentUser?.role === 'dispatcher'; }
   function isTech()        { return _currentUser?.role === 'tech'; }
+  function isContractor()  { return _currentUser?.role === 'contractor'; }
+  function isTechOrContractor() { return isTech() || isContractor(); }
   function isAdminOrDisp() { return isAdmin() || isDispatcher(); }
   function canSeeFinancials()  { return isAdmin(); }
   function canSeeZelleMemo()   { return isAdmin(); }
@@ -266,6 +268,8 @@ const Auth = (() => {
     isAdmin,
     isDispatcher,
     isTech,
+    isContractor,
+    isTechOrContractor,
     isAdminOrDisp,
     canSeeFinancials,
     canSeeZelleMemo,
