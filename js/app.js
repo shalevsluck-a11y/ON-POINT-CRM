@@ -26,11 +26,42 @@ const App = (() => {
     confirmCallback: null,
   };
 
+  let _initialized = false;
+  let _jobsChannel = null;
+
   // ══════════════════════════════════════════════════════════
   // INIT
   // ══════════════════════════════════════════════════════════
 
-  function init() {
+  // Called by boot once Auth confirms a valid session
+  async function _onAuthenticated() {
+    if (_initialized) return;
+    _initialized = true;
+
+    // Pull data from Supabase into local cache
+    try { await DB.init(); } catch(e) { console.warn('DB.init error:', e.message); }
+
+    // Start notification bell + real-time banner toasts
+    await Notifications.init();
+
+    // Start background overdue-job checker (admin/dispatcher only)
+    Reminders.init();
+
+    // Show app, hide login screen
+    LoginScreen.hide();
+
+    // Set header avatar / name / role
+    _updateHeaderUser();
+
+    // Show/hide nav + header items based on role
+    _applyRoleUI();
+
+    // Subscribe to live job changes from other sessions
+    _jobsChannel = DB.subscribeToJobs(
+      () => { renderDashboard(); renderJobList(); },
+      () => { renderDashboard(); renderJobList(); if (_state.currentView === 'job-detail') openJobDetail(_state.currentJobId); },
+    );
+
     // Load settings into form
     _loadSettingsForm();
 
@@ -55,7 +86,67 @@ const App = (() => {
     const dateField = document.getElementById('f-date');
     if (dateField && !dateField.value) dateField.value = dateStr;
 
-    console.log('On Point Home Services initialized');
+    // Auto-sync Google Sheets on load if URL configured
+    const settings = DB.getSettings();
+    if (settings.appsScriptUrl) setTimeout(() => SyncManager.syncAll(), 3000);
+
+    console.log('On Point Pro Doors initialized');
+  }
+
+  function _updateHeaderUser() {
+    const user = Auth.getUser();
+    if (!user) return;
+
+    const initials = _initials(user.name);
+    const avatarSpan = document.getElementById('user-avatar-initials');
+    if (avatarSpan) avatarSpan.textContent = initials;
+    const avatarBtn = document.getElementById('btn-user');
+    if (avatarBtn) avatarBtn.style.background = user.color || 'var(--color-primary)';
+
+    const nameEl = document.getElementById('user-menu-name');
+    if (nameEl) nameEl.textContent = user.name;
+
+    const roleEl = document.getElementById('user-menu-role');
+    if (roleEl) roleEl.textContent = user.role;
+  }
+
+  function closeUserMenu() {
+    const menu = document.getElementById('user-menu');
+    if (menu) menu.classList.add('hidden');
+  }
+
+  function _applyRoleUI() {
+    // Hide "New Job" button from tech users (they don't create jobs)
+    document.querySelectorAll('.nav-add').forEach(el => {
+      el.classList.toggle('hidden', Auth.isTech());
+    });
+  }
+
+  function toggleUserMenu() {
+    const menu = document.getElementById('user-menu');
+    if (!menu) return;
+    const isOpen = !menu.classList.contains('hidden');
+    if (isOpen) {
+      menu.classList.add('hidden');
+    } else {
+      menu.classList.remove('hidden');
+      // Close when clicking outside
+      setTimeout(() => {
+        const close = (e) => {
+          if (!menu.contains(e.target)) { menu.classList.add('hidden'); document.removeEventListener('click', close); }
+        };
+        document.addEventListener('click', close);
+      }, 10);
+    }
+  }
+
+  async function logout() {
+    _initialized = false;
+    Reminders.destroy();
+    Notifications.destroy();
+    if (_jobsChannel) { SupabaseClient.removeChannel(_jobsChannel); _jobsChannel = null; }
+    await Auth.logout();
+    LoginScreen.show();
   }
 
   // ══════════════════════════════════════════════════════════
@@ -126,7 +217,7 @@ const App = (() => {
   // ══════════════════════════════════════════════════════════
 
   function renderDashboard() {
-    const jobs = Storage.getJobs();
+    const jobs = DB.getJobs();
     const today = _todayStr();
     const weekStart = _daysAgoStr(6);
     const monthStart = _monthStartStr();
@@ -187,7 +278,7 @@ const App = (() => {
   }
 
   function _renderTechPerformance(jobs) {
-    const settings  = Storage.getSettings();
+    const settings  = DB.getSettings();
     const techs     = settings.technicians;
     const container = document.getElementById('tech-performance-list');
 
@@ -230,7 +321,7 @@ const App = (() => {
 
   function renderJobList() {
     const container = document.getElementById('jobs-list-container');
-    let jobs = Storage.searchJobs(_state.jobSearch);
+    let jobs = DB.searchJobs(_state.jobSearch);
 
     // Apply status filter
     if (_state.jobFilter && _state.jobFilter !== 'all') {
@@ -277,7 +368,7 @@ const App = (() => {
   // ══════════════════════════════════════════════════════════
 
   function _jobCardHTML(job) {
-    const settings = Storage.getSettings();
+    const settings = DB.getSettings();
     const statusClass = {
       new: 'jc-new', scheduled: 'jc-scheduled',
       in_progress: 'jc-inprogress', closed: 'jc-closed', paid: 'jc-paid',
@@ -522,7 +613,7 @@ const App = (() => {
 
   function checkReturningCustomer() {
     const phone = document.getElementById('f-phone')?.value || '';
-    const result = Storage.detectReturningCustomer(phone);
+    const result = DB.detectReturningCustomer(phone);
     const banner = document.getElementById('returning-banner');
     if (!banner) return;
 
@@ -543,7 +634,7 @@ const App = (() => {
 
   function _suggestTechByZip(zip) {
     if (!zip || zip.length < 5) return;
-    const settings = Storage.getSettings();
+    const settings = DB.getSettings();
     const techs = settings.technicians;
     const suggestion = document.getElementById('zip-suggestion');
     if (!suggestion) return;
@@ -564,7 +655,7 @@ const App = (() => {
   function _renderTechSelector() {
     const container = document.getElementById('tech-selector');
     if (!container) return;
-    const settings = Storage.getSettings();
+    const settings = DB.getSettings();
     const techs = settings.technicians;
 
     if (!techs || techs.length === 0) {
@@ -583,7 +674,7 @@ const App = (() => {
   }
 
   function _selectTech(techId) {
-    const settings = Storage.getSettings();
+    const settings = DB.getSettings();
     const tech = settings.technicians.find(t => t.id === techId);
     if (!tech) return;
 
@@ -614,7 +705,7 @@ const App = (() => {
   function _populateSourceDropdown() {
     const select = document.getElementById('f-source');
     if (!select) return;
-    const settings = Storage.getSettings();
+    const settings = DB.getSettings();
     const sources  = settings.leadSources || [];
 
     // Keep "My Lead" as first option
@@ -639,7 +730,7 @@ const App = (() => {
     } else {
       contractorSection.classList.remove('hidden');
       // Pre-fill contractor % from preset
-      const settings = Storage.getSettings();
+      const settings = DB.getSettings();
       const source = settings.leadSources.find(s => s.id === val);
       if (source) {
         const pctField = document.getElementById('f-contractor-pct');
@@ -667,7 +758,7 @@ const App = (() => {
     const previewEl = document.getElementById('payout-preview');
     if (!previewEl) return;
 
-    const settings = Storage.getSettings();
+    const settings = DB.getSettings();
 
     const total    = parseFloat(document.getElementById('f-total-est')?.value) || 0;
     const parts    = parseFloat(document.getElementById('f-parts-est')?.value) || 0;
@@ -697,7 +788,7 @@ const App = (() => {
 
   // ── SAVE JOB ─────────────────────────────────────────
 
-  function saveNewJob() {
+  async function saveNewJob() {
     const name   = document.getElementById('f-name')?.value?.trim();
     const phone  = document.getElementById('f-phone')?.value?.trim();
     const techId = document.getElementById('f-tech-id')?.value;
@@ -708,7 +799,7 @@ const App = (() => {
 
     const total = 0; // Actual total is entered when closing the job
 
-    const settings = Storage.getSettings();
+    const settings = DB.getSettings();
     const tech = settings.technicians.find(t => t.id === techId);
     const source = document.getElementById('f-source')?.value || 'my_lead';
     const state  = document.getElementById('f-state')?.value  || settings.defaultState || 'NY';
@@ -725,7 +816,7 @@ const App = (() => {
     });
 
     const job = {
-      jobId:           Storage.generateId(),
+      jobId:           DB.generateId(),
       status:          'new',
       customerName:    name,
       phone:           LeadParser.formatPhone(phone),
@@ -761,17 +852,16 @@ const App = (() => {
     // Update status based on whether scheduled
     if (job.scheduledDate) job.status = 'scheduled';
 
-    const saved = Storage.saveJob(job);
-    if (!saved) { showToast('Failed to save job', 'error'); return; }
+    await DB.saveJob(job);
 
     // Push to Google Sheets immediately
     SyncManager.queueJob(job.jobId);
     SyncManager.syncJob(job).then(r => {
-      if (!r.success) showToast('Saved locally — sync pending (check Settings URL)', 'warning');
+      if (!r.success) showToast('Saved — Sheets sync pending (check Settings URL)', 'warning');
     });
 
     // Clear draft
-    Storage.clearDraft();
+    DB.clearDraft();
 
     showToast(`Job saved — ${name}`, 'success');
 
@@ -781,7 +871,7 @@ const App = (() => {
   }
 
   function _autosaveDraft() {
-    Storage.saveDraft({
+    DB.saveDraft({
       rawLead:      document.getElementById('raw-lead-input')?.value,
       name:         document.getElementById('f-name')?.value,
       phone:        document.getElementById('f-phone')?.value,
@@ -803,7 +893,7 @@ const App = (() => {
   }
 
   function _checkDraft() {
-    const draft = Storage.getDraft();
+    const draft = DB.getDraft();
     if (!draft) return;
     // Only show if user is already on step > 1 or has meaningful data
     if (draft.name && draft.step > 1) {
@@ -834,7 +924,7 @@ const App = (() => {
   // ══════════════════════════════════════════════════════════
 
   function openJobDetail(jobId) {
-    const job = Storage.getJobById(jobId);
+    const job = DB.getJobById(jobId);
     if (!job) { showToast('Job not found', 'error'); return; }
 
     _state.currentJobId = jobId;
@@ -845,7 +935,7 @@ const App = (() => {
   }
 
   function _buildJobDetailHTML(job) {
-    const settings  = Storage.getSettings();
+    const settings  = DB.getSettings();
     const tech      = job.assignedTechId ? settings.technicians.find(t => t.id === job.assignedTechId) : null;
     const isPaid    = job.status === 'paid';
 
@@ -878,14 +968,17 @@ const App = (() => {
     // Status actions
     const statusActions = _buildStatusActions(job);
 
-    // Close job button
-    const closeBtn = (job.status !== 'paid')
-      ? `<button class="quick-close-btn" onclick="App.showCloseJobModal('${job.jobId}')">
-           &#10003; Close Job
-         </button>`
-      : `<div class="quick-close-btn" style="background:var(--color-surface-3);color:var(--color-text-faint);cursor:default;box-shadow:none">
-           &#10003; Paid on ${_formatDate(job.paidAt || '')}
-         </div>`;
+    // Close job button (admin/dispatcher only)
+    let closeBtn = '';
+    if (Auth.canEditAllJobs()) {
+      closeBtn = (job.status !== 'paid')
+        ? `<button class="quick-close-btn" onclick="App.showCloseJobModal('${job.jobId}')">
+             &#10003; Close Job
+           </button>`
+        : `<div class="quick-close-btn" style="background:var(--color-surface-3);color:var(--color-text-faint);cursor:default;box-shadow:none">
+             &#10003; Paid on ${_formatDate(job.paidAt || '')}
+           </div>`;
+    }
 
     // WhatsApp — job details (pre-close) or receipt with financials (post-close)
     const waMsg  = encodeURIComponent(_buildWhatsAppJobText(job));
@@ -915,7 +1008,7 @@ const App = (() => {
         ${callLink}
         ${waLink}
         ${job.address ? `<button class="detail-action-btn" onclick="App.navigateToJob('${job.jobId}')"><span class="dab-icon">&#128205;</span><span class="dab-label">Navigate</span></button>` : ''}
-        <button class="detail-action-btn" onclick="App.showEditJobModal('${job.jobId}')"><span class="dab-icon">&#9998;</span><span class="dab-label">Edit</span></button>
+        ${Auth.canEditAllJobs() ? `<button class="detail-action-btn" onclick="App.showEditJobModal('${job.jobId}')"><span class="dab-icon">&#9998;</span><span class="dab-label">Edit</span></button>` : ''}
       </div>
 
       <!-- Close Job -->
@@ -994,7 +1087,8 @@ const App = (() => {
         </div>
       </div>
 
-      <!-- Financials -->
+      <!-- Financials (admin sees full breakdown; tech sees only their payout) -->
+      ${Auth.canSeeFinancials() ? `
       <div class="detail-section collapsed" id="ds-financials">
         <div class="detail-section-title" onclick="App.toggleDetailSection('ds-financials')">
           Financials <span class="section-chevron">›</span>
@@ -1007,7 +1101,22 @@ const App = (() => {
             </div>
           `}
         </div>
-      </div>
+      </div>` : Auth.isTech() && job.techPayout > 0 ? `
+      <div class="detail-section collapsed" id="ds-financials">
+        <div class="detail-section-title" onclick="App.toggleDetailSection('ds-financials')">
+          Your Payout <span class="section-chevron">›</span>
+        </div>
+        <div class="detail-section-body">
+          <div class="detail-row">
+            <div class="detail-row-label">Your Payout</div>
+            <div class="detail-row-value" style="font-weight:800;color:var(--color-success)">${_fmt(parseFloat(job.techPayout)||0)}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-row-label">Payment</div>
+            <div class="detail-row-value" style="text-transform:capitalize">${job.paymentMethod || '—'}</div>
+          </div>
+        </div>
+      </div>` : ''}
 
       <!-- Notes -->
       ${job.notes ? `
@@ -1034,12 +1143,13 @@ const App = (() => {
         </div>
       </div>
 
-      <!-- Danger -->
+      <!-- Danger (admin only) -->
+      ${Auth.isAdmin() ? `
       <div style="margin-top:var(--sp-md)">
         <button class="btn btn-danger btn-full" onclick="App.confirmDeleteJob('${job.jobId}')">
           Delete Job
         </button>
-      </div>
+      </div>` : ''}
     `;
   }
 
@@ -1080,20 +1190,20 @@ const App = (() => {
   }
 
   function setJobStatus(jobId, status) {
-    const job = Storage.getJobById(jobId);
+    const job = DB.getJobById(jobId);
     if (!job) return;
     if (job.status === 'paid' && status !== 'paid') {
       showToast('Cannot change status of a paid job', 'warning');
       return;
     }
 
-    Storage.saveJob({ ...job, status });
+    DB.saveJob({ ...job, status });
     SyncManager.queueJob(jobId);
     showToast(`Status → ${status.replace('_',' ')}`, 'success');
 
     // Re-render detail
     const container = document.getElementById('job-detail-content');
-    const updated = Storage.getJobById(jobId);
+    const updated = DB.getJobById(jobId);
     if (container && updated) container.innerHTML = _buildJobDetailHTML(updated);
   }
 
@@ -1106,7 +1216,7 @@ const App = (() => {
     if (!files.length) return;
 
     let processed = 0;
-    const job = Storage.getJobById(jobId);
+    const job = DB.getJobById(jobId);
     if (!job) return;
 
     const photos = [...(job.photos || [])];
@@ -1125,17 +1235,12 @@ const App = (() => {
           processed++;
 
           if (processed === files.length) {
-            const saved = Storage.saveJob({ ...job, photos });
-            if (saved) {
-              showToast(`${files.length} photo${files.length > 1 ? 's' : ''} added`, 'success');
-              // Re-render detail
-              const updated = Storage.getJobById(jobId);
-              const container = document.getElementById('job-detail-content');
-              if (container && updated) container.innerHTML = _buildJobDetailHTML(updated);
-              SyncManager.queueJob(jobId);
-            } else {
-              showToast('Storage full — some photos not saved', 'error');
-            }
+            DB.saveJob({ ...job, photos });
+            showToast(`${files.length} photo${files.length > 1 ? 's' : ''} added`, 'success');
+            const updated = DB.getJobById(jobId);
+            const container = document.getElementById('job-detail-content');
+            if (container && updated) container.innerHTML = _buildJobDetailHTML(updated);
+            SyncManager.queueJob(jobId);
           }
         });
       };
@@ -1164,7 +1269,7 @@ const App = (() => {
   }
 
   function viewPhoto(jobId, idx) {
-    const job = Storage.getJobById(jobId);
+    const job = DB.getJobById(jobId);
     if (!job || !job.photos || !job.photos[idx]) return;
 
     _state.photoViewerJobId = jobId;
@@ -1193,16 +1298,16 @@ const App = (() => {
   }
 
   function deletePhoto(jobId, idx) {
-    const job = Storage.getJobById(jobId);
+    const job = DB.getJobById(jobId);
     if (!job || !job.photos) return;
     const photos = [...job.photos];
     photos.splice(idx, 1);
-    Storage.saveJob({ ...job, photos });
+    DB.saveJob({ ...job, photos });
     closeModal();
     showToast('Photo deleted', 'success');
     // Refresh detail
     const container = document.getElementById('job-detail-content');
-    const updated = Storage.getJobById(jobId);
+    const updated = DB.getJobById(jobId);
     if (container && updated) container.innerHTML = _buildJobDetailHTML(updated);
   }
 
@@ -1211,13 +1316,13 @@ const App = (() => {
   // ══════════════════════════════════════════════════════════
 
   function showCloseJobModal(jobId) {
-    const job = Storage.getJobById(jobId);
+    const job = DB.getJobById(jobId);
     if (!job) return;
     if (job.status === 'paid') { showToast('Job already paid', 'info'); return; }
 
     _state.closeJobId = jobId;
 
-    const settings = Storage.getSettings();
+    const settings = DB.getSettings();
     const tech = job.assignedTechId ? settings.technicians.find(t => t.id === job.assignedTechId) : null;
     const currentTotal = parseFloat(job.jobTotal) || parseFloat(job.estimatedTotal) || 0;
 
@@ -1304,10 +1409,10 @@ const App = (() => {
   }
 
   function _updateClosePreview() {
-    const job  = _state.closeJobId ? Storage.getJobById(_state.closeJobId) : null;
+    const job  = _state.closeJobId ? DB.getJobById(_state.closeJobId) : null;
     if (!job)  return;
 
-    const settings = Storage.getSettings();
+    const settings = DB.getSettings();
     const total  = parseFloat(document.getElementById('close-total')?.value) || 0;
     const parts  = parseFloat(document.getElementById('close-parts')?.value) || 0;
 
@@ -1337,7 +1442,7 @@ const App = (() => {
   }
 
   function finalizeJob(jobId) {
-    const job = Storage.getJobById(jobId);
+    const job = DB.getJobById(jobId);
     if (!job) return;
 
     const total     = parseFloat(document.getElementById('close-total')?.value) || 0;
@@ -1345,7 +1450,7 @@ const App = (() => {
     const method    = document.getElementById('close-pay-method')?.value || 'cash';
     const taxOption = document.getElementById('close-tax-option')?.value || 'none';
 
-    const settings = Storage.getSettings();
+    const settings = DB.getSettings();
     const tech = job.assignedTechId ? settings.technicians.find(t => t.id === job.assignedTechId) : null;
 
     const calc = PayoutEngine.calculate({
@@ -1382,14 +1487,14 @@ const App = (() => {
       zelleMemo,
     };
 
-    Storage.saveUndo(Storage.getJobById(jobId));
-    Storage.saveJob(updated);
+    DB.saveUndo(DB.getJobById(jobId));
+    DB.saveJob(updated);
     SyncManager.queueJob(jobId);
 
     // Push to Google Sheets immediately, show result
     SyncManager.syncJob(updated).then(r => {
       if (r.success) showToast('Synced to Google Sheets', 'success');
-      else showToast('Saved locally — sync pending (check Settings URL)', 'warning');
+      else showToast('Saved — Sheets sync pending (check Settings URL)', 'warning');
     });
 
     closeModal();
@@ -1403,11 +1508,11 @@ const App = (() => {
 
     // Refresh detail view
     const container = document.getElementById('job-detail-content');
-    const refreshed = Storage.getJobById(jobId);
+    const refreshed = DB.getJobById(jobId);
     if (container && refreshed) container.innerHTML = _buildJobDetailHTML(refreshed);
 
-    // If job has a tech with a payout, offer Zelle memo
-    if (tech && calc.techPayout > 0) {
+    // Offer Zelle memo to admin only
+    if (Auth.canSeeZelleMemo() && tech && calc.techPayout > 0) {
       setTimeout(() => showZelleMemo(jobId), 600);
     }
   }
@@ -1417,10 +1522,11 @@ const App = (() => {
   // ══════════════════════════════════════════════════════════
 
   function showZelleMemo(jobId) {
-    const job = Storage.getJobById(jobId);
+    if (!Auth.canSeeZelleMemo()) return;
+    const job = DB.getJobById(jobId);
     if (!job) return;
 
-    const settings = Storage.getSettings();
+    const settings = DB.getSettings();
     const tech = job.assignedTechId ? settings.technicians.find(t => t.id === job.assignedTechId) : null;
     const memo = job.zelleMemo || '';
 
@@ -1447,7 +1553,7 @@ const App = (() => {
   }
 
   function _copyZelleMemo(jobId) {
-    const job = Storage.getJobById(jobId);
+    const job = DB.getJobById(jobId);
     if (!job || !job.zelleMemo) return;
     if (navigator.clipboard) {
       navigator.clipboard.writeText(job.zelleMemo)
@@ -1463,11 +1569,11 @@ const App = (() => {
   // ══════════════════════════════════════════════════════════
 
   function showEditJobModal(jobId) {
-    const job = Storage.getJobById(jobId);
+    const job = DB.getJobById(jobId);
     if (!job) return;
     if (job.status === 'paid') { showToast('Cannot edit a paid job', 'warning'); return; }
 
-    const settings = Storage.getSettings();
+    const settings = DB.getSettings();
 
     // Build modal using close-job modal slot (reuse)
     const body = document.getElementById('modal-close-job-body');
@@ -1495,7 +1601,7 @@ const App = (() => {
         <div class="field-group" style="flex:1">
           <label class="field-label">State</label>
           <select id="edit-state" class="field-input">
-            ${['NY','NJ','CT','PA','FL','TX'].map(s => `<option value="${s}" ${job.state===s?'selected':''}>${s}</option>`).join('')}
+            ${['ME','NH','VT','MA','RI','CT','NY','NJ','PA','DE','MD','DC','VA','WV','NC','SC','GA','FL','OH','KY','TN','IN','MI'].map(s => `<option value="${s}" ${job.state===s?'selected':''}>${s}</option>`).join('')}
           </select>
         </div>
         <div class="field-group" style="flex:1">
@@ -1535,7 +1641,7 @@ const App = (() => {
   }
 
   function _saveEditedJob(jobId) {
-    const job = Storage.getJobById(jobId);
+    const job = DB.getJobById(jobId);
     if (!job) return;
 
     const updated = {
@@ -1553,14 +1659,14 @@ const App = (() => {
       techPercent:   parseFloat(document.getElementById('edit-tech-pct')?.value) || job.techPercent,
     };
 
-    Storage.saveJob(updated);
+    DB.saveJob(updated);
     SyncManager.queueJob(jobId);
     closeModal();
     showToast('Job updated', 'success');
 
     // Refresh detail
     const container = document.getElementById('job-detail-content');
-    const refreshed = Storage.getJobById(jobId);
+    const refreshed = DB.getJobById(jobId);
     if (container && refreshed) container.innerHTML = _buildJobDetailHTML(refreshed);
   }
 
@@ -1569,7 +1675,7 @@ const App = (() => {
   // ══════════════════════════════════════════════════════════
 
   function confirmDeleteJob(jobId) {
-    const job = Storage.getJobById(jobId);
+    const job = DB.getJobById(jobId);
     if (!job) return;
     showConfirm({
       icon:    '&#128465;',
@@ -1581,9 +1687,9 @@ const App = (() => {
   }
 
   function _deleteJob(jobId) {
-    const job = Storage.getJobById(jobId);
-    Storage.saveUndo(job);
-    Storage.deleteJob(jobId);
+    const job = DB.getJobById(jobId);
+    DB.saveUndo(job);
+    DB.deleteJob(jobId);
     showToast('Job deleted', 'success');
     navigate('jobs');
   }
@@ -1604,8 +1710,8 @@ const App = (() => {
       label.textContent = isToday ? 'Today — ' + _formatDateLong(d) : _formatDateLong(d);
     }
 
-    const jobs = Storage.getJobsByDate(dateStr);
-    const settings = Storage.getSettings();
+    const jobs = DB.getJobsByDate(dateStr);
+    const settings = DB.getSettings();
     const container = document.getElementById('calendar-content');
 
     if (jobs.length === 0) {
@@ -1706,7 +1812,7 @@ const App = (() => {
   }
 
   function navigateToJob(jobId) {
-    const job = Storage.getJobById(jobId);
+    const job = DB.getJobById(jobId);
     if (!job) { showToast('Job not found', 'error'); return; }
 
     const parts = [job.address, job.city, job.state, job.zip].filter(Boolean);
@@ -1717,10 +1823,10 @@ const App = (() => {
   }
 
   function exportJobPDF(jobId) {
-    const job = Storage.getJobById(jobId);
+    const job = DB.getJobById(jobId);
     if (!job) { showToast('Job not found', 'error'); return; }
 
-    const settings = Storage.getSettings();
+    const settings = DB.getSettings();
     const tech = job.assignedTechId ? settings.technicians.find(t => t.id === job.assignedTechId) : null;
     const total = parseFloat(job.jobTotal) || parseFloat(job.estimatedTotal) || 0;
 
@@ -1803,7 +1909,7 @@ const App = (() => {
   // ══════════════════════════════════════════════════════════
 
   function _loadSettingsForm() {
-    const s = Storage.getSettings();
+    const s = DB.getSettings();
     _setVal('s-owner-name',        s.ownerName);
     _setVal('s-owner-phone',       s.ownerPhone);
     _setVal('s-owner-zelle',       s.ownerZelle);
@@ -1835,7 +1941,7 @@ const App = (() => {
       showToast('NJ tax rate must be between 0-20%', 'warning'); return;
     }
 
-    Storage.saveSettings(settings);
+    DB.saveSettings(settings);
     showToast('Settings saved', 'success');
   }
 
@@ -1866,7 +1972,7 @@ const App = (() => {
   }
 
   function showTechModal(techId) {
-    const settings = Storage.getSettings();
+    const settings = DB.getSettings();
     const tech = techId ? settings.technicians.find(t => t.id === techId) : null;
     const title = document.getElementById('tech-modal-title');
     if (title) title.textContent = tech ? 'Edit Technician' : 'Add Technician';
@@ -1890,7 +1996,7 @@ const App = (() => {
     const pct = parseFloat(document.getElementById('m-tech-pct')?.value) || 0;
     if (pct < 0 || pct > 100) { showToast('Payout % must be 0-100', 'warning'); return; }
 
-    const settings = Storage.getSettings();
+    const settings = DB.getSettings();
     const techs = [...(settings.technicians || [])];
     const existingId = document.getElementById('m-tech-id')?.value;
 
@@ -1905,7 +2011,7 @@ const App = (() => {
     const zipCodes = zipsRaw.split(',').map(z => z.trim()).filter(z => /^\d{5}$/.test(z));
 
     const techData = {
-      id:          existingId || Storage.generateId(),
+      id:          existingId || DB.generateId(),
       name,
       phone:       document.getElementById('m-tech-phone')?.value?.trim()  || '',
       percent:     pct,
@@ -1922,7 +2028,7 @@ const App = (() => {
       techs.push(techData);
     }
 
-    Storage.saveSettings({ technicians: techs });
+    DB.saveSettings({ technicians: techs });
     _renderTechList(techs);
     _renderTechSelector();
     closeModal();
@@ -1936,9 +2042,9 @@ const App = (() => {
       message: 'This will remove the technician from all future jobs.',
       okLabel: 'Delete',
       onOk: () => {
-        const settings = Storage.getSettings();
+        const settings = DB.getSettings();
         const techs = (settings.technicians || []).filter(t => t.id !== techId);
-        Storage.saveSettings({ technicians: techs });
+        DB.saveSettings({ technicians: techs });
         _renderTechList(techs);
         _renderTechSelector();
         showToast('Technician deleted', 'success');
@@ -1972,7 +2078,7 @@ const App = (() => {
   }
 
   function showSourceModal(sourceId) {
-    const settings = Storage.getSettings();
+    const settings = DB.getSettings();
     const source = sourceId ? settings.leadSources.find(s => s.id === sourceId) : null;
     const title = document.getElementById('source-modal-title');
     if (title) title.textContent = source ? 'Edit Lead Source' : 'Add Lead Source';
@@ -1989,12 +2095,12 @@ const App = (() => {
     if (!name) { showToast('Enter source name', 'warning'); return; }
 
     const pct = parseFloat(document.getElementById('m-source-pct')?.value) || 0;
-    const settings = Storage.getSettings();
+    const settings = DB.getSettings();
     const sources = [...(settings.leadSources || [])];
     const existingId = document.getElementById('m-source-id')?.value;
 
     const data = {
-      id: existingId || Storage.generateId(),
+      id: existingId || DB.generateId(),
       name,
       contractorPercent: pct,
     };
@@ -2006,7 +2112,7 @@ const App = (() => {
       sources.push(data);
     }
 
-    Storage.saveSettings({ leadSources: sources });
+    DB.saveSettings({ leadSources: sources });
     _renderSourceList(sources);
     _populateSourceDropdown();
     closeModal();
@@ -2020,9 +2126,9 @@ const App = (() => {
       message: 'Remove this lead source?',
       okLabel: 'Delete',
       onOk: () => {
-        const settings = Storage.getSettings();
+        const settings = DB.getSettings();
         const sources = (settings.leadSources || []).filter(s => s.id !== sourceId);
-        Storage.saveSettings({ leadSources: sources });
+        DB.saveSettings({ leadSources: sources });
         _renderSourceList(sources);
         _populateSourceDropdown();
         showToast('Source deleted', 'success');
@@ -2038,8 +2144,8 @@ const App = (() => {
     if (SyncManager.isSyncing()) { showToast('Sync already in progress', 'info'); return; }
 
     // Force-mark ALL jobs as pending so they all get pushed regardless of prior sync status
-    const allJobs = Storage.getJobs();
-    allJobs.forEach(j => Storage.saveJob({ ...j, syncStatus: 'pending' }));
+    const allJobs = DB.getJobs();
+    allJobs.forEach(j => DB.saveJob({ ...j, syncStatus: 'pending' }));
 
     const syncBtn = document.getElementById('btn-sync');
     if (syncBtn) syncBtn.classList.add('syncing');
@@ -2071,7 +2177,7 @@ const App = (() => {
   // ══════════════════════════════════════════════════════════
 
   function exportData() {
-    const data = Storage.exportAll();
+    const data = DB.exportAll();
     const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url  = URL.createObjectURL(blob);
@@ -2090,8 +2196,8 @@ const App = (() => {
       message: 'This will permanently delete all jobs and settings. This cannot be undone.',
       okLabel: 'Clear Everything',
       onOk: () => {
-        Storage.clearAll();
-        showToast('All data cleared', 'warning');
+        Storage.clearAll(); // local cache clear only
+        showToast('Local cache cleared', 'warning');
         _loadSettingsForm();
         renderDashboard();
         renderJobList();
@@ -2221,7 +2327,7 @@ const App = (() => {
   }
 
   function _buildWhatsAppJobText(job) {
-    const settings  = Storage.getSettings();
+    const settings  = DB.getSettings();
     const tech      = job.assignedTechId ? settings.technicians.find(t => t.id === job.assignedTechId) : null;
     const total     = parseFloat(job.jobTotal) || parseFloat(job.estimatedTotal) || 0;
     const address   = [job.address, job.city, job.state, job.zip].filter(Boolean).join(', ');
@@ -2291,8 +2397,29 @@ const App = (() => {
   // PUBLIC API
   // ══════════════════════════════════════════════════════════
 
+  // Public boot entry point — sets up auth and wires session listener
+  async function init() {
+    const currentUser = await Auth.init(async (user) => {
+      if (user) {
+        await _onAuthenticated();
+      } else {
+        _initialized = false;
+        LoginScreen.show();
+      }
+    });
+    // If no session found on initial load, show login
+    if (!currentUser) LoginScreen.show();
+    // If session exists, onAuthStateChange already fired _onAuthenticated
+  }
+
   return {
     init,
+
+    // Auth
+    logout,
+    toggleUserMenu,
+    closeUserMenu,
+
     navigate,
     goBack,
 
@@ -2380,10 +2507,4 @@ const App = (() => {
 
 document.addEventListener('DOMContentLoaded', () => {
   App.init();
-
-  // Auto-sync on load (if URL configured)
-  const settings = Storage.getSettings();
-  if (settings.appsScriptUrl) {
-    setTimeout(() => SyncManager.syncAll(), 3000);
-  }
 });

@@ -7,13 +7,48 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="On Point">
   <meta name="theme-color" content="#0F172A">
-  <title>On Point Home Services</title>
+  <title>On Point Pro Doors CRM</title>
   <link rel="stylesheet" href="css/app.css">
   <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/auth.css">
+  <!-- Supabase JS v2 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 
-<div id="app">
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- LOGIN SCREEN                                          -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div id="login-screen" class="login-screen hidden">
+  <div class="login-card">
+    <div class="login-logo-wrap">
+      <img src="assets/logo.jpg" alt="On Point Pro Doors" class="login-logo">
+    </div>
+    <h1 class="login-title">On Point Pro Doors</h1>
+    <p class="login-sub">Sign in to your account</p>
+
+    <div id="login-error" class="login-error hidden"></div>
+
+    <div class="field-group">
+      <label class="field-label">Email</label>
+      <input type="email" id="login-email" class="field-input" placeholder="you@example.com"
+             autocomplete="username" autocapitalize="none">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Password</label>
+      <input type="password" id="login-password" class="field-input" placeholder="Password"
+             autocomplete="current-password">
+    </div>
+
+    <button class="btn btn-primary btn-full" id="login-btn" onclick="LoginScreen.submit()">
+      Sign In
+    </button>
+
+    <p class="login-footer">OnPoint Pro Doors · (929) 429-2429</p>
+  </div>
+</div>
+
+<div id="app" class="hidden">
 
   <!-- ══════════════════════════════════════════ -->
   <!-- TOP HEADER                                 -->
@@ -29,9 +64,32 @@
       <h1 id="header-title">Dashboard</h1>
     </div>
     <div class="header-right">
+      <!-- Notification Bell -->
+      <div class="notif-bell-wrap" style="position:relative">
+        <button id="notif-bell" class="btn-icon" onclick="Notifications.toggleDropdown()" title="Notifications" aria-label="Notifications">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <span id="notif-badge" class="notif-badge hidden">0</span>
+        </button>
+        <div id="notif-dropdown" class="notif-dropdown hidden"></div>
+      </div>
+      <!-- Sync Button -->
       <button id="btn-sync" class="btn-icon" onclick="App.syncAll()" title="Sync to Sheets">
         <span id="sync-icon">&#8635;</span>
       </button>
+      <!-- User Menu -->
+      <button id="btn-user" class="btn-icon user-avatar-btn" onclick="App.toggleUserMenu()" aria-label="User menu">
+        <span id="user-avatar-initials">?</span>
+      </button>
+      <div id="user-menu" class="user-menu hidden">
+        <div id="user-menu-name" class="user-menu-name"></div>
+        <div id="user-menu-role" class="user-menu-role"></div>
+        <hr class="user-menu-divider">
+        <button class="user-menu-item" onclick="App.navigate('settings');App.closeUserMenu()">Settings</button>
+        <button class="user-menu-item user-menu-danger" onclick="App.logout()">Sign Out</button>
+      </div>
     </div>
   </header>
 
@@ -615,6 +673,12 @@
 <script src="js/parser.js"></script>
 <script src="js/payout.js"></script>
 <script src="js/sync.js"></script>
+<script src="js/supabase-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/db.js"></script>
+<script src="js/notifications.js"></script>
+<script src="js/reminders.js"></script>
+<script src="js/login.js"></script>
 <script src="js/app.js"></script>
 
 </body>
