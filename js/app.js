@@ -2139,7 +2139,7 @@ const App = (() => {
     }
   }
 
-  function saveSettings() {
+  async function saveSettings() {
     if (!Auth.isAdmin()) {
       showToast('Only admins can save settings', 'error');
       return;
@@ -2154,7 +2154,6 @@ const App = (() => {
       defaultState:  document.getElementById('s-default-state')?.value           || 'NY',
     };
 
-    // Validate tax rates
     if (settings.taxRateNY < 0 || settings.taxRateNY > 20) {
       showToast('NY tax rate must be between 0-20%', 'warning'); return;
     }
@@ -2162,8 +2161,12 @@ const App = (() => {
       showToast('NJ tax rate must be between 0-20%', 'warning'); return;
     }
 
-    DB.saveSettings(settings);
-    showToast('Settings saved', 'success');
+    try {
+      await DB.saveSettings(settings);
+      showToast('Settings saved', 'success');
+    } catch (e) {
+      showToast('Failed to save settings: ' + (e.message || 'unknown error'), 'error');
+    }
   }
 
   // ── TECHNICIANS ────────────────────────────────────────
