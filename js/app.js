@@ -39,21 +39,17 @@ const App = (() => {
   // ══════════════════════════════════════════════════════════
 
   // Called by boot once Auth confirms a valid session
+  function _removeAppShell() {
+    document.getElementById('app-shell')?.remove();
+  }
+
   async function _onAuthenticated() {
     if (_initialized) return;
     _initialized = true;
 
-    // Pull data from Supabase into local cache
-    try { await DB.init(); } catch(e) { console.warn('DB.init error:', e.message); }
-
-    // Start notification bell + real-time banner toasts
-    try { await Notifications.init(); } catch(e) { console.warn('Notifications.init error:', e.message); }
-
-    // Start background overdue-job checker (admin/dispatcher only)
-    Reminders.init();
-
-    // Show app, hide login screen
+    // Show app immediately from localStorage cache — do NOT await DB.init() first
     LoginScreen.hide();
+    _removeAppShell();
 
     // Set header avatar / name / role
     _updateHeaderUser();
@@ -66,6 +62,33 @@ const App = (() => {
 
     // Init pull-to-refresh
     _initPullToRefresh();
+
+    // Render immediately from localStorage cache so the app feels instant
+    _loadSettingsForm();
+    renderDashboard();
+    renderJobList();
+    _renderTechSelector();
+    _populateSourceDropdown();
+    _checkDraft();
+
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    const dateField = document.getElementById('f-date');
+    if (dateField && !dateField.value) dateField.value = dateStr;
+
+    // Sync fresh data from Supabase in background, then re-render
+    try { await DB.init(); } catch(e) { console.warn('DB.init error:', e.message); }
+    renderDashboard();
+    renderJobList();
+    _loadSettingsForm();
+    _renderTechSelector();
+    _populateSourceDropdown();
+
+    // Start notification bell + real-time banner toasts
+    try { await Notifications.init(); } catch(e) { console.warn('Notifications.init error:', e.message); }
+
+    // Start background overdue-job checker (admin/dispatcher only)
+    Reminders.init();
 
     // Subscribe to live job changes from other sessions
     _jobsChannel = DB.subscribeToJobs(
@@ -81,7 +104,7 @@ const App = (() => {
       },
     );
 
-    // Subscribe to settings/profile changes from other devices (Part 1 realtime)
+    // Subscribe to settings/profile changes from other devices
     _settingsChannel = DB.subscribeToSettings(() => {
       _renderTechSelector();
       _populateSourceDropdown();
@@ -92,30 +115,6 @@ const App = (() => {
       _populateSourceDropdown();
       if (_state.currentView === 'settings') _loadSettingsForm();
     });
-
-    // Load settings into form
-    _loadSettingsForm();
-
-    // Render dashboard
-    renderDashboard();
-
-    // Render job list
-    renderJobList();
-
-    // Render tech selector in new job
-    _renderTechSelector();
-
-    // Populate lead source dropdown
-    _populateSourceDropdown();
-
-    // Check for saved draft
-    _checkDraft();
-
-    // Set today's date as default on date field
-    const today = new Date();
-    const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-    const dateField = document.getElementById('f-date');
-    if (dateField && !dateField.value) dateField.value = dateStr;
 
     // Auto-sync Google Sheets on load if URL configured
     const settings = DB.getSettings();
@@ -3145,6 +3144,9 @@ const App = (() => {
 
   // Public boot entry point — sets up auth and wires session listener
   async function init() {
+    // Safety net: if something goes wrong during init, remove shell after 4s max
+    setTimeout(_removeAppShell, 4000);
+
     // Detect invite link before Auth.init fires (hash cleared by Supabase after use)
     const isInviteFlow = window.location.hash.includes('type=invite') ||
                          window.location.hash.includes('type=recovery');
@@ -3153,6 +3155,7 @@ const App = (() => {
       if (user) {
         if (_firstSetupInProgress) return; // setup screen handles completion
         if (isInviteFlow) {
+          _removeAppShell();
           SetPasswordScreen.show();
         } else {
           await _onAuthenticated();
@@ -3171,12 +3174,14 @@ const App = (() => {
   async function _checkAndShowFirstSetup() {
     try {
       const needed = await Auth.checkFirstSetupNeeded();
+      _removeAppShell();
       if (needed) {
         SetupScreen.show();
       } else {
         LoginScreen.show();
       }
     } catch (_e) {
+      _removeAppShell();
       LoginScreen.show();
     }
   }

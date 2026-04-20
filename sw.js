@@ -110,11 +110,11 @@ self.addEventListener('fetch', (event) => {
   }
 
   // ── JavaScript and CSS ────────────────────────────────────
-  // Network-first: always serve fresh code after a deploy.
-  // Fall back to cache so the app works offline after first load.
+  // Network-first, cache: 'no-cache' so the HTTP cache is bypassed and
+  // every deploy's new files are picked up immediately.
   if (url.pathname.match(/\.(js|css)$/)) {
     event.respondWith(
-      fetch(request)
+      fetch(new Request(request, { cache: 'no-cache' }))
         .then(response => {
           if (response.ok) {
             const clone = response.clone();

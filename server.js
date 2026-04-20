@@ -35,9 +35,9 @@ app.use(express.static(path.join(__dirname), {
       res.setHeader('Cache-Control', 'public, max-age=300');
       return;
     }
-    // Images and icons: cache for 7 days (they rarely change)
-    if (filePath.match(/\.(png|jpg|jpeg|svg|webp|ico)$/)) {
-      res.setHeader('Cache-Control', 'public, max-age=604800');
+    // Images and icons: cache for 1 year (stable assets)
+    if (filePath.match(/\.(png|jpg|jpeg|svg|webp|ico|woff2?)$/)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
       return;
     }
   },

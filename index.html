@@ -9,16 +9,27 @@
   <meta name="apple-mobile-web-app-title" content="On Point">
   <meta name="theme-color" content="#0F172A">
   <title>On Point Pro Doors CRM</title>
+  <!-- Preconnect so Supabase auth starts immediately -->
+  <link rel="preconnect" href="https://nmmpemjcnncjfpooytpv.supabase.co">
+  <link rel="dns-prefetch" href="https://nmmpemjcnncjfpooytpv.supabase.co">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="stylesheet" href="css/app.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/auth.css">
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/logo.jpg">
-  <!-- Supabase JS v2 CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <!-- Supabase JS v2 CDN — defer so it never blocks the first paint -->
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
+
+<!-- APP SHELL: visible in <300ms, removed once auth resolves -->
+<div id="app-shell" style="position:fixed;inset:0;background:#0f172a;display:flex;align-items:center;justify-content:center;z-index:9999;flex-direction:column;gap:20px;">
+  <img src="/assets/logo.jpg" width="72" height="72" style="border-radius:18px;object-fit:cover;" onerror="this.style.display='none'">
+  <div style="width:28px;height:28px;border:3px solid #334155;border-top-color:#2563eb;border-radius:50%;animation:op-spin .8s linear infinite;"></div>
+</div>
+<style>@keyframes op-spin{to{transform:rotate(360deg)}}</style>
 
 <!-- ══════════════════════════════════════════════════════ -->
 <!-- LOGIN SCREEN                                          -->
@@ -833,17 +844,17 @@
 
 </div><!-- #app -->
 
-<script src="js/storage.js"></script>
-<script src="js/parser.js"></script>
-<script src="js/payout.js"></script>
-<script src="js/sync.js"></script>
-<script src="js/supabase-client.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/db.js"></script>
-<script src="js/notifications.js"></script>
-<script src="js/reminders.js"></script>
-<script src="js/login.js"></script>
-<script src="js/app.js"></script>
+<script defer src="js/storage.js"></script>
+<script defer src="js/parser.js"></script>
+<script defer src="js/payout.js"></script>
+<script defer src="js/sync.js"></script>
+<script defer src="js/supabase-client.js"></script>
+<script defer src="js/auth.js"></script>
+<script defer src="js/db.js"></script>
+<script defer src="js/notifications.js"></script>
+<script defer src="js/reminders.js"></script>
+<script defer src="js/login.js"></script>
+<script defer src="js/app.js"></script>
 
 <!-- PWA: Service Worker + Install Prompt -->
 <script>
