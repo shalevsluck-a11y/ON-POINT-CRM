@@ -476,9 +476,19 @@
         </div>
 
         <div class="field-group">
+          <label class="field-label">Estimated Job Total <span style="color:var(--color-text-faint);font-weight:400;font-size:11px">(optional — enter estimate for payout preview)</span></label>
+          <div class="currency-input">
+            <span class="currency-symbol">$</span>
+            <input type="number" id="f-total-est" class="field-input currency-field"
+                   placeholder="0.00" step="0.01" min="0" value="0"
+                   oninput="App.updatePayoutPreview()">
+          </div>
+        </div>
+
+        <div class="field-group">
           <label class="field-label">Tech Payout %</label>
           <input type="number" id="f-tech-pct" class="field-input" placeholder="e.g. 60"
-                 min="0" max="100">
+                 min="0" max="100" oninput="App.updatePayoutPreview()">
         </div>
 
         <div class="field-group">
@@ -486,9 +496,12 @@
           <div class="currency-input">
             <span class="currency-symbol">$</span>
             <input type="number" id="f-parts-est" class="field-input currency-field"
-                   placeholder="0.00" step="0.01" min="0" value="0">
+                   placeholder="0.00" step="0.01" min="0" value="0"
+                   oninput="App.updatePayoutPreview()">
           </div>
         </div>
+
+        <div id="payout-preview"></div>
 
         <div class="field-group">
           <label class="field-label">Payment Method</label>
@@ -922,7 +935,7 @@
       btn.onclick = () => {
         alert('To install: tap the Share button \uD83D\uDCE4 in Safari, then "Add to Home Screen".');
       };
-      if (!sessionStorage.getItem('pwa-dismissed')) banner.classList.remove('hidden');
+      if (!localStorage.getItem('pwa-dismissed')) banner.classList.remove('hidden');
     }
   }
 
@@ -932,7 +945,7 @@
     e.preventDefault();
     _deferredPrompt = e;
     const banner = document.getElementById('pwa-install-banner');
-    if (banner && !sessionStorage.getItem('pwa-dismissed') && !isInStandaloneMode()) {
+    if (banner && !localStorage.getItem('pwa-dismissed') && !isInStandaloneMode()) {
       banner.classList.remove('hidden');
     }
   });
@@ -957,7 +970,7 @@
 
   window._pwaDismiss = function() {
     document.getElementById('pwa-install-banner')?.classList.add('hidden');
-    sessionStorage.setItem('pwa-dismissed', '1');
+    localStorage.setItem('pwa-dismissed', '1');
   };
 })();
 </script>

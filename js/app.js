@@ -146,9 +146,9 @@ const App = (() => {
   }
 
   function _applyRoleUI() {
-    // Hide "New Job" button from tech users (they don't create jobs)
+    // Hide "New Job" button from tech/contractor users (they don't create jobs)
     document.querySelectorAll('.nav-add').forEach(el => {
-      el.classList.toggle('hidden', Auth.isTech());
+      el.classList.toggle('hidden', Auth.isTechOrContractor());
     });
   }
 
@@ -318,7 +318,7 @@ const App = (() => {
     if (Auth.canSeeFinancials()) _renderTechPerformance(jobs);
 
     // Role-specific dashboard sections
-    if (Auth.isTech()) {
+    if (Auth.isTechOrContractor()) {
       _renderTechTodaySection(jobs);
     } else if (Auth.isAdminOrDisp() && !Auth.canSeeFinancials() /* dispatcher */) {
       _renderDispatcherSection(jobs);
@@ -329,7 +329,7 @@ const App = (() => {
     // Recent jobs (last 8) — hide for tech (they have their own section)
     const recentEl = document.getElementById('recent-jobs-list');
     const recentWrap = document.getElementById('recent-jobs-wrap');
-    if (Auth.isTech()) {
+    if (Auth.isTechOrContractor()) {
       if (recentWrap) recentWrap.classList.add('hidden');
     } else {
       if (recentWrap) recentWrap.classList.remove('hidden');
@@ -1006,7 +1006,7 @@ const App = (() => {
     if (!phone) { showToast('Enter phone number', 'warning');  return; }
     if (!techId){ showToast('Select a technician', 'warning'); return; }
 
-    const total = 0; // Actual total is entered when closing the job
+    const total = parseFloat(document.getElementById('f-total-est')?.value) || 0;
 
     const settings = DB.getSettings();
     const tech = settings.technicians.find(t => t.id === techId);
@@ -1394,7 +1394,7 @@ const App = (() => {
       { val:'closed',     label:'Closed',      cls:'sab-closed' },
     ];
 
-    const statuses = Auth.isTech() ? techStatuses : allStatuses;
+    const statuses = Auth.isTechOrContractor() ? techStatuses : allStatuses;
 
     const btns = statuses.map(s => `
       <button class="status-action-btn ${s.cls} ${job.status === s.val ? 'current' : ''}"
@@ -2683,7 +2683,7 @@ const App = (() => {
         if (job.status === newStatus) return;
         if (job.status === 'paid') { showToast('Cannot change status of a paid job', 'warning'); return; }
         if (newStatus === 'paid')  { showToast('Use "Close Job" to mark as paid', 'info'); return; }
-        if (Auth.isTech()) {
+        if (Auth.isTechOrContractor()) {
           const allowed = ['in_progress', 'closed'];
           if (!allowed.includes(newStatus)) { showToast('Techs can only move to In Progress or Closed', 'warning'); return; }
         }
@@ -2831,9 +2831,9 @@ const App = (() => {
     const ownerPhone = settings.ownerPhone || '(929) 429-2429';
 
     const msg = [
-      `Hello ${job.customerName || 'there'},`,
+      `Hello ${_esc(job.customerName || 'there')},`,
       '',
-      `This is On Point Pro Doors following up about your garage door service${job.description ? ` (${job.description})` : ''}.`,
+      `This is On Point Pro Doors following up about your garage door service${job.description ? ` (${_esc(job.description)})` : ''}.`,
       '',
       job.scheduledDate ? `Your appointment was scheduled for ${_formatDate(job.scheduledDate)}${job.scheduledTime ? ' at ' + _formatTime(job.scheduledTime) : ''}.` : '',
       '',
@@ -3049,13 +3049,13 @@ const App = (() => {
       '*ON POINT HOME SERVICES*',
       `Ref: #${(job.jobId || '').slice(-6).toUpperCase()}`,
       '',
-      `*Customer:* ${job.customerName || '—'}`,
-      job.phone   ? `*Phone:* ${job.phone}` : '',
-      address     ? `*Address:* ${address}` : '',
+      `*Customer:* ${_esc(job.customerName || '—')}`,
+      job.phone   ? `*Phone:* ${_esc(job.phone)}` : '',
+      address     ? `*Address:* ${_esc(address)}` : '',
       '',
       job.scheduledDate ? `*Date:* ${_formatDate(job.scheduledDate)}${job.scheduledTime ? ' @ ' + _formatTime(job.scheduledTime) : ''}` : '',
-      job.description   ? `*Job:* ${job.description}` : '',
-      job.notes         ? `*Notes:* ${job.notes}` : '',
+      job.description   ? `*Job:* ${_esc(job.description)}` : '',
+      job.notes         ? `*Notes:* ${_esc(job.notes)}` : '',
     ];
 
     // For paid jobs add the full financial breakdown
