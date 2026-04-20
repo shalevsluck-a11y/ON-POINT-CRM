@@ -71,15 +71,14 @@ const DB = (() => {
 
       Storage.saveSettings({
         ...current,
-        ownerName:      settings.owner_name     || current.ownerName,
-        ownerPhone:     settings.owner_phone    || current.ownerPhone,
-        // ownerZelle is a sensitive payment handle — only store it for admin
-        ownerZelle:     isAdmin ? (settings.owner_zelle || current.ownerZelle) : '',
-        taxRateNY:      settings.tax_rate_ny    || current.taxRateNY,
-        taxRateNJ:      settings.tax_rate_nj    || current.taxRateNJ,
-        defaultState:   settings.default_state  || current.defaultState,
-        appsScriptUrl:  settings.apps_script_url || current.appsScriptUrl,
-        leadSources:    settings.lead_sources   || current.leadSources,
+        ownerName:      settings.owner_name      ?? current.ownerName     ?? '',
+        ownerPhone:     settings.owner_phone     ?? current.ownerPhone    ?? '',
+        ownerZelle:     isAdmin ? (settings.owner_zelle ?? current.ownerZelle ?? '') : '',
+        taxRateNY:      settings.tax_rate_ny     ?? current.taxRateNY     ?? 8.875,
+        taxRateNJ:      settings.tax_rate_nj     ?? current.taxRateNJ     ?? 6.625,
+        defaultState:   settings.default_state   ?? current.defaultState  ?? 'NY',
+        appsScriptUrl:  settings.apps_script_url ?? current.appsScriptUrl ?? '',
+        leadSources:    settings.lead_sources    ?? current.leadSources   ?? [],
         technicians:    techList,
       });
     } catch (e) {
@@ -140,8 +139,7 @@ const DB = (() => {
     Storage.saveSettings(updates);
     if (!Auth.isAdmin()) return;
 
-    // Build only the fields that are actually being updated (skip undefined)
-    const row = { id: 1 };
+    const row = {};
     if (updates.ownerName      !== undefined) row.owner_name      = updates.ownerName;
     if (updates.ownerPhone     !== undefined) row.owner_phone     = updates.ownerPhone;
     if (updates.ownerZelle     !== undefined) row.owner_zelle     = updates.ownerZelle;
@@ -151,8 +149,24 @@ const DB = (() => {
     if (updates.appsScriptUrl  !== undefined) row.apps_script_url = updates.appsScriptUrl;
     if (updates.leadSources    !== undefined) row.lead_sources    = updates.leadSources;
 
-    // Upsert so it works even if the row doesn't exist yet
-    const { error } = await supa.from('app_settings').upsert(row, { onConflict: 'id' });
+    if (Object.keys(row).length === 0) return; // nothing to persist (e.g. technicians-only update)
+
+    const { error } = await supa.from('app_settings').update(row).eq('id', 1);
+    if (error) throw new Error(error.message);
+  }
+
+  async function updateTechProfile(id, profileData) {
+    if (!Auth.isAdmin()) return;
+    const row = {};
+    if (profileData.name     !== undefined) row.name                 = profileData.name;
+    if (profileData.phone    !== undefined) row.phone                = profileData.phone;
+    if (profileData.color    !== undefined) row.color                = profileData.color;
+    if (profileData.percent  !== undefined) row.default_tech_percent = profileData.percent;
+    if (profileData.zelle    !== undefined) row.zelle_handle         = profileData.zelle;
+    if (profileData.zipCodes !== undefined) row.zip_codes            = profileData.zipCodes;
+    if (profileData.isOwner  !== undefined) row.is_owner             = profileData.isOwner;
+    if (Object.keys(row).length === 0) return;
+    const { error } = await supa.from('profiles').update(row).eq('id', id);
     if (error) throw new Error(error.message);
   }
 
@@ -429,6 +443,7 @@ const DB = (() => {
     // Settings
     getSettings,
     saveSettings,
+    updateTechProfile,
     getOwnerTech,
     getTechById,
     getSourceById,

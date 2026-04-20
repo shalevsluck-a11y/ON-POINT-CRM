@@ -2311,7 +2311,7 @@ const App = (() => {
         `To log in later, use:\n` +
         `📧 ${autoEmail}\n` +
         `(and the password you'll create above)`;
-      const waPhone = phoneDigits;
+      const waPhone = phoneDigits.length === 10 ? '1' + phoneDigits : phoneDigits;
       window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, '_blank');
 
     } catch (e) {
@@ -2416,7 +2416,7 @@ const App = (() => {
     document.getElementById('m-tech-name').value       = tech?.name      || '';
     document.getElementById('m-tech-phone').value      = tech?.phone     || '';
     document.getElementById('m-tech-pct').value        = tech?.percent   || '';
-    document.getElementById('m-tech-zelle').value      = tech?.zelleHandle || '';
+    document.getElementById('m-tech-zelle').value      = tech?.zelle || '';
     document.getElementById('m-tech-zips').value       = tech?.zipCodes?.join(', ') || '';
     document.getElementById('m-tech-color').value      = tech?.color     || '#3B82F6';
     document.getElementById('m-tech-is-owner').checked = tech?.isOwner   || false;
@@ -2435,43 +2435,37 @@ const App = (() => {
     const pct = parseFloat(document.getElementById('m-tech-pct')?.value) || 0;
     if (pct < 0 || pct > 100) { showToast('Payout % must be 0-100', 'warning'); return; }
 
-    const settings = DB.getSettings();
-    const techs = [...(settings.technicians || [])];
     const existingId = document.getElementById('m-tech-id')?.value;
-
-    const isOwner = document.getElementById('m-tech-is-owner')?.checked;
-
-    // Only one tech can be owner
-    if (isOwner) {
-      techs.forEach(t => { if (t.id !== existingId) t.isOwner = false; });
+    if (!existingId) {
+      showToast('To add a technician, use the Invite User button above', 'warning');
+      return;
     }
 
-    const zipsRaw = document.getElementById('m-tech-zips')?.value || '';
+    const zipsRaw  = document.getElementById('m-tech-zips')?.value || '';
     const zipCodes = zipsRaw.split(',').map(z => z.trim()).filter(z => /^\d{5}$/.test(z));
+    const isOwner  = document.getElementById('m-tech-is-owner')?.checked || false;
+    const zelle    = document.getElementById('m-tech-zelle')?.value?.trim()  || '';
+    const phone    = document.getElementById('m-tech-phone')?.value?.trim()  || '';
+    const color    = document.getElementById('m-tech-color')?.value          || '#3B82F6';
 
-    const techData = {
-      id:          existingId || DB.generateId(),
-      name,
-      phone:       document.getElementById('m-tech-phone')?.value?.trim()  || '',
-      percent:     pct,
-      zelleHandle: document.getElementById('m-tech-zelle')?.value?.trim()  || '',
-      zipCodes,
-      color:       document.getElementById('m-tech-color')?.value          || '#3B82F6',
-      isOwner,
-    };
+    try {
+      await DB.updateTechProfile(existingId, { name, phone, color, percent: pct, zelle, zipCodes, isOwner });
 
-    if (existingId) {
+      const settings = DB.getSettings();
+      const techs = [...(settings.technicians || [])];
+      if (isOwner) techs.forEach(t => { if (t.id !== existingId) t.isOwner = false; });
       const idx = techs.findIndex(t => t.id === existingId);
-      if (idx >= 0) techs[idx] = techData; else techs.push(techData);
-    } else {
-      techs.push(techData);
-    }
+      const updated = { id: existingId, name, phone, color, percent: pct, zelle, zipCodes, isOwner };
+      if (idx >= 0) techs[idx] = updated; else techs.push(updated);
+      Storage.saveSettings({ ...settings, technicians: techs });
 
-    await DB.saveSettings({ technicians: techs });
-    _renderTechList(techs);
-    _renderTechSelector();
-    closeModal();
-    showToast(`${name} saved`, 'success');
+      _renderTechList(techs);
+      _renderTechSelector();
+      closeModal();
+      showToast(`${name} saved`, 'success');
+    } catch (e) {
+      showToast('Failed to save technician: ' + (e.message || 'unknown error'), 'error');
+    }
   }
 
   function deleteTech(techId) {
@@ -2481,16 +2475,16 @@ const App = (() => {
     }
     showConfirm({
       icon: '&#128465;',
-      title: 'Delete Technician?',
-      message: 'This will remove the technician from all future jobs.',
-      okLabel: 'Delete',
-      onOk: async () => {
+      title: 'Remove Technician?',
+      message: 'Remove from the technician list? To delete their account, use the Users section.',
+      okLabel: 'Remove',
+      onOk: () => {
         const settings = DB.getSettings();
         const techs = (settings.technicians || []).filter(t => t.id !== techId);
-        await DB.saveSettings({ technicians: techs });
+        Storage.saveSettings({ ...settings, technicians: techs });
         _renderTechList(techs);
         _renderTechSelector();
-        showToast('Technician deleted', 'success');
+        showToast('Technician removed', 'success');
       }
     });
   }
