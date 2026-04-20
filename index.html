@@ -772,13 +772,8 @@
       <div id="invite-error" class="login-error hidden" style="margin-bottom:12px"></div>
       <div class="field-group">
         <label class="field-label">Full Name</label>
-        <input type="text" id="invite-name" class="field-input" placeholder="Jane Smith"
+        <input type="text" id="invite-name" class="field-input" placeholder="Mike Smith"
                autocomplete="off" autocapitalize="words">
-      </div>
-      <div class="field-group">
-        <label class="field-label">Email Address</label>
-        <input type="email" id="invite-email" class="field-input" placeholder="jane@example.com"
-               autocomplete="off" autocapitalize="none">
       </div>
       <div class="field-group">
         <label class="field-label">WhatsApp Number</label>
@@ -797,7 +792,7 @@
         Send via WhatsApp
       </button>
       <p style="font-size:12px;color:var(--color-text-muted);margin-top:10px;text-align:center">
-        Opens WhatsApp with a link for them to set their password.
+        Opens WhatsApp with a link. They tap it, set a password, and they're in.
       </p>
     </div>
   </div>
@@ -825,10 +820,16 @@
 <!-- PWA: Service Worker + Install Prompt -->
 <script>
 (function() {
-  // Register service worker
+  // Register service worker and auto-reload when a new version activates
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+    // SW sends SW_UPDATED after it claims all clients — reload to get fresh files
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data?.type === 'SW_UPDATED') {
+        window.location.reload();
+      }
     });
   }
 

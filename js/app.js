@@ -2059,7 +2059,6 @@ const App = (() => {
     const modal = document.getElementById('invite-modal');
     if (!modal) return;
     document.getElementById('invite-name').value  = '';
-    document.getElementById('invite-email').value = '';
     document.getElementById('invite-phone').value = '';
     document.getElementById('invite-role').value  = 'tech';
     document.getElementById('invite-error').classList.add('hidden');
@@ -2074,7 +2073,6 @@ const App = (() => {
 
   async function submitInvite() {
     const name  = document.getElementById('invite-name')?.value?.trim();
-    const email = document.getElementById('invite-email')?.value?.trim();
     const phone = document.getElementById('invite-phone')?.value?.trim();
     const role  = document.getElementById('invite-role')?.value;
     const errEl = document.getElementById('invite-error');
@@ -2082,25 +2080,40 @@ const App = (() => {
 
     errEl.classList.add('hidden');
 
-    if (!name || !email || !phone) {
-      errEl.textContent = 'Name, email, and WhatsApp number are required.';
+    if (!name || !phone) {
+      errEl.textContent = 'Name and WhatsApp number are required.';
       errEl.classList.remove('hidden');
       return;
     }
+
+    // Auto-generate email from phone digits so admin never has to enter it
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (phoneDigits.length < 7) {
+      errEl.textContent = 'Enter a valid phone number.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    const autoEmail = `${phoneDigits}@crm.onpointprodoors.com`;
 
     btn.disabled    = true;
     btn.textContent = 'Generating link…';
 
     try {
-      const result = await Auth.inviteUser(email, name, role);
+      const result = await Auth.inviteUser(autoEmail, name, role);
 
       closeInviteModal();
       _renderAdminUsersSection();
 
       // Open WhatsApp with the invite link
       const roleLabel = role === 'tech' ? 'Technician' : role === 'dispatcher' ? 'Dispatcher' : 'Admin';
-      const msg = `Hi ${name}! 👋\n\nYou've been invited to join On Point Pro Doors CRM as a ${roleLabel}.\n\nClick this link to set your password and get started:\n${result.inviteLink}\n\nSee you there!`;
-      const waPhone = phone.replace(/\D/g, '');
+      const msg =
+        `Hi ${name}! 👋\n\n` +
+        `You've been invited to On Point Pro Doors CRM as a ${roleLabel}.\n\n` +
+        `Tap the link below to set your password and get started:\n${result.inviteLink}\n\n` +
+        `To log in later, use:\n` +
+        `📧 ${autoEmail}\n` +
+        `(and the password you'll create above)`;
+      const waPhone = phoneDigits;
       window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, '_blank');
 
     } catch (e) {

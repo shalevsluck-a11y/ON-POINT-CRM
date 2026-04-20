@@ -1,5 +1,9 @@
 // On Point Pro Doors CRM — Service Worker
-const CACHE_NAME = 'onpoint-v1';
+// CACHE_VERSION is stamped by the deploy script on every push so all
+// clients always receive fresh files after an update.
+const CACHE_VERSION = 'v1';
+const CACHE_NAME = `onpoint-${CACHE_VERSION}`;
+
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -26,62 +30,88 @@ const APP_SHELL = [
 // ── INSTALL: pre-cache app shell ──────────────────────────
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      // Add individually so one failure doesn't abort the whole install
-      return Promise.allSettled(APP_SHELL.map(url => cache.add(url)));
-    }).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.allSettled(APP_SHELL.map(url => cache.add(url)))
+    ).then(() => self.skipWaiting()) // take over immediately, don't wait for old SW to die
   );
 });
 
-// ── ACTIVATE: clean up old caches ─────────────────────────
+// ── ACTIVATE: wipe all old caches, claim all clients ──────
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
+      .then(() => {
+        // Tell every open tab to reload so they get the fresh version
+        return self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      })
+      .then(clients => {
+        clients.forEach(client => client.postMessage({ type: 'SW_UPDATED' }));
+      })
   );
 });
 
-// ── FETCH: cache-first for app shell, network-first for API ─
+// ── FETCH ─────────────────────────────────────────────────
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Always bypass for Supabase API calls — they must hit the network
-  if (url.hostname.includes('supabase.co') || url.hostname.includes('supabase.io')) {
-    return; // let the browser handle normally
+  // Never intercept Supabase API or Edge Function calls
+  if (url.hostname.includes('supabase.co') || url.hostname.includes('supabase.io')) return;
+  if (request.method !== 'GET') return;
+  if (url.origin !== self.location.origin) return;
+
+  // HTML navigation: network-first so updates are always seen immediately
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(c => c.put(request, clone));
+          return response;
+        })
+        .catch(() => caches.match('/index.html'))
+    );
+    return;
   }
 
-  // Cache-first for same-origin GET requests
-  if (request.method === 'GET' && url.origin === self.location.origin) {
+  // JS and CSS: network-first (must be fresh after every deploy)
+  if (url.pathname.match(/\.(js|css)$/)) {
     event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) return cached;
-        return fetch(request).then((response) => {
+      fetch(request)
+        .then(response => {
           if (response.ok) {
             const clone = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
+            caches.open(CACHE_NAME).then(c => c.put(request, clone));
           }
           return response;
-        }).catch(() => {
-          // Offline fallback for navigation requests
-          if (request.mode === 'navigate') {
-            return caches.match('/index.html');
-          }
-        });
-      })
+        })
+        .catch(() => caches.match(request))
     );
+    return;
   }
+
+  // Everything else (images, manifest, icons): cache-first
+  event.respondWith(
+    caches.match(request).then(cached => {
+      if (cached) return cached;
+      return fetch(request).then(response => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(c => c.put(request, clone));
+        }
+        return response;
+      });
+    })
+  );
 });
 
 // ── PUSH: display notification ────────────────────────────
 self.addEventListener('push', (event) => {
   let data = { title: 'On Point CRM', body: 'You have a new notification.' };
-  try {
-    data = event.data ? event.data.json() : data;
-  } catch (_e) {
-    data.body = event.data ? event.data.text() : data.body;
-  }
+  try { data = event.data ? event.data.json() : data; }
+  catch (_e) { data.body = event.data ? event.data.text() : data.body; }
 
   event.waitUntil(
     self.registration.showNotification(data.title || 'On Point CRM', {
@@ -95,14 +125,14 @@ self.addEventListener('push', (event) => {
   );
 });
 
-// ── NOTIFICATION CLICK: open/focus the app ────────────────
+// ── NOTIFICATION CLICK ────────────────────────────────────
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const jobId = event.notification.data?.jobId;
   const targetUrl = jobId ? `/?job=${jobId}` : '/';
 
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
       for (const client of windowClients) {
         if (client.url.includes(self.location.origin) && 'focus' in client) {
           client.focus();
