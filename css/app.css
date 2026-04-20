@@ -1,40 +1,40 @@
 /* ============================================================
    ON POINT HOME SERVICES — BASE STYLES
-   Clean iOS light theme — white background, black UI
+   Dark Navy Professional — default theme
    ============================================================ */
 
 :root {
-  /* Backgrounds — iOS light system */
-  --color-bg:        #F2F2F7;
-  --color-surface:   #FFFFFF;
-  --color-surface-2: #F2F2F7;
-  --color-surface-3: #E5E5EA;
-  --color-border:    rgba(0,0,0,0.08);
-  --color-border-2:  rgba(0,0,0,0.13);
+  /* Backgrounds — Dark Navy Professional */
+  --color-bg:        #0F172A;
+  --color-surface:   #1E293B;
+  --color-surface-2: #243347;
+  --color-surface-3: #2D4060;
+  --color-border:    rgba(255,255,255,0.07);
+  --color-border-2:  rgba(255,255,255,0.13);
 
-  /* Brand — pure black */
-  --color-primary:      #000000;
-  --color-primary-dark: #1C1C1E;
-  --color-primary-glow: rgba(0,0,0,0.06);
+  /* Brand — sky blue accent */
+  --color-primary:      #3B82F6;
+  --color-primary-dark: #2563EB;
+  --color-primary-glow: rgba(59,130,246,0.15);
 
   /* Semantics */
-  --color-success:      #34C759;
-  --color-success-dark: #28A745;
-  --color-warning:      #FF9500;
-  --color-error:        #FF3B30;
-  --color-error-dark:   #D70015;
+  --color-success:      #22C55E;
+  --color-success-dark: #16A34A;
+  --color-warning:      #F59E0B;
+  --color-error:        #EF4444;
+  --color-error-dark:   #DC2626;
 
-  /* Text — iOS label system */
-  --color-text:       #000000;
-  --color-text-muted: #6E6E73;
-  --color-text-faint: #AEAEB2;
+  /* Text */
+  --color-text:       #F1F5F9;
+  --color-text-muted: #94A3B8;
+  --color-text-faint: #475569;
 
-  /* Status — iOS system colors */
-  --s-new:        #007AFF;
-  --s-scheduled:  #5856D6;
-  --s-inprogress: #FF9500;
-  --s-closed:     #34C759;
-  --s-paid:       #30D158;
+  /* Status — bright on dark */
+  --s-new:        #60A5FA;
+  --s-scheduled:  #A78BFA;
+  --s-inprogress: #FBBF24;
+  --s-closed:     #34D399;
+  --s-paid:       #4ADE80;
 
   /* Spacing */
   --sp-xs: 4px;
@@ -63,23 +63,62 @@
   --font-xl:  21px;
   --font-xxl: 27px;
 
-  /* Shadows — light bg friendly */
-  --shadow-xs:   0 1px 3px rgba(0,0,0,0.07);
-  --shadow-sm:   0 2px 8px rgba(0,0,0,0.08);
-  --shadow-md:   0 4px 20px rgba(0,0,0,0.1);
-  --shadow-lg:   0 8px 40px rgba(0,0,0,0.14);
-  --shadow-card: 0 2px 16px rgba(0,0,0,0.07), 0 0 0 0.5px rgba(0,0,0,0.05);
+  /* Shadows — deep for dark bg */
+  --shadow-xs:   0 1px 3px rgba(0,0,0,0.22);
+  --shadow-sm:   0 2px 8px rgba(0,0,0,0.28);
+  --shadow-md:   0 4px 20px rgba(0,0,0,0.38);
+  --shadow-lg:   0 8px 40px rgba(0,0,0,0.48);
+  --shadow-card: 0 2px 16px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(255,255,255,0.05);
 
   /* Glass */
-  --glass-bg:     rgba(255,255,255,0.88);
+  --glass-bg:     rgba(15,23,42,0.94);
   --glass-blur:   blur(24px) saturate(180%);
-  --glass-border: rgba(0,0,0,0.1);
+  --glass-border: rgba(255,255,255,0.07);
 
   /* Safe areas */
   --safe-top:    env(safe-area-inset-top,    0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left:   env(safe-area-inset-left,   0px);
   --safe-right:  env(safe-area-inset-right,  0px);
+}
+
+/* ── LIGHT THEME OVERRIDE ────────────────────────────────── */
+[data-theme="light"] {
+  --color-bg:        #F2F2F7;
+  --color-surface:   #FFFFFF;
+  --color-surface-2: #F2F2F7;
+  --color-surface-3: #E5E5EA;
+  --color-border:    rgba(0,0,0,0.08);
+  --color-border-2:  rgba(0,0,0,0.13);
+
+  --color-primary:      #000000;
+  --color-primary-dark: #1C1C1E;
+  --color-primary-glow: rgba(0,0,0,0.06);
+
+  --color-success:      #34C759;
+  --color-success-dark: #28A745;
+  --color-warning:      #FF9500;
+  --color-error:        #FF3B30;
+  --color-error-dark:   #D70015;
+
+  --color-text:       #000000;
+  --color-text-muted: #6E6E73;
+  --color-text-faint: #AEAEB2;
+
+  --s-new:        #007AFF;
+  --s-scheduled:  #5856D6;
+  --s-inprogress: #FF9500;
+  --s-closed:     #34C759;
+  --s-paid:       #30D158;
+
+  --glass-bg:     rgba(255,255,255,0.88);
+  --glass-border: rgba(0,0,0,0.1);
+
+  --shadow-xs:   0 1px 3px rgba(0,0,0,0.07);
+  --shadow-sm:   0 2px 8px rgba(0,0,0,0.08);
+  --shadow-md:   0 4px 20px rgba(0,0,0,0.1);
+  --shadow-lg:   0 8px 40px rgba(0,0,0,0.14);
+  --shadow-card: 0 2px 16px rgba(0,0,0,0.07), 0 0 0 0.5px rgba(0,0,0,0.05);
 }
 
 /* ── RESET ───────────────────────────────────────────────── */
@@ -242,14 +281,14 @@ a { color: var(--color-primary); text-decoration: none; }
 }
 
 .nav-item.active { color: var(--color-primary); }
-.nav-item.active::before { background: rgba(0,0,0,0.05); }
+.nav-item.active::before { background: var(--color-primary-glow); }
 .nav-item:active { opacity: 0.5; }
 
 .nav-icon  { font-size: 22px; line-height: 1; position: relative; z-index: 1; }
 .nav-label { font-size: 10px; font-weight: 600; letter-spacing: 0.2px; position: relative; z-index: 1; }
 
 .nav-add {
-  background: #000000 !important;
+  background: var(--color-primary) !important;
   color: #ffffff !important;
   border-radius: 50%;
   width: 54px; height: 54px;
@@ -291,7 +330,7 @@ a { color: var(--color-primary); text-decoration: none; }
 .btn:disabled { opacity: 0.3; pointer-events: none; }
 
 .btn-full      { width: 100%; }
-.btn-primary   { background: #000000; color: #ffffff; }
+.btn-primary   { background: var(--color-primary); color: #ffffff; }
 .btn-secondary { background: var(--color-surface-3); color: var(--color-text); }
 .btn-success   { background: var(--color-success);   color: #fff; box-shadow: 0 2px 12px rgba(52,199,89,0.28); }
 .btn-danger    { background: var(--color-error);     color: #fff; }
@@ -355,18 +394,18 @@ a { color: var(--color-primary); text-decoration: none; }
 }
 .field-input:focus {
   outline: none;
-  border-color: rgba(0,0,0,0.4);
-  box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-glow);
 }
 .field-input::placeholder { color: var(--color-text-faint); }
 
 select.field-input {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236E6E73' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394A3B8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 14px center;
   padding-right: 36px;
 }
-select.field-input option { background: #fff; color: #000; }
+select.field-input option { background: var(--color-surface); color: var(--color-text); }
 
 .field-textarea {
   min-height: 64px;
@@ -401,8 +440,8 @@ select.field-input option { background: #fff; color: #000; }
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .currency-input:focus-within {
-  border-color: rgba(0,0,0,0.4);
-  box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-glow);
 }
 .currency-symbol {
   padding: 0 12px 0 16px;
@@ -566,8 +605,8 @@ select.field-input option { background: #fff; color: #000; }
 /* ── SPINNER ─────────────────────────────────────────────── */
 .spinner {
   width: 20px; height: 20px;
-  border: 2.5px solid rgba(0,0,0,0.15);
-  border-top-color: #000;
+  border: 2.5px solid var(--color-border-2);
+  border-top-color: var(--color-primary);
   border-radius: 50%;
   animation: spin 0.65s linear infinite;
   display: inline-block;
@@ -599,52 +638,35 @@ select.field-input option { background: #fff; color: #000; }
 .hidden { display: none !important; }
 
 /* ══════════════════════════════════════════════════════════
-   DARK MODE — [data-theme="dark"] on <html>
+   EXPLICIT DARK — same as :root, kept for clarity
    ══════════════════════════════════════════════════════════ */
 [data-theme="dark"] {
   --color-bg:        #0F172A;
   --color-surface:   #1E293B;
-  --color-surface-2: #1E293B;
-  --color-surface-3: #334155;
-  --color-border:    rgba(255,255,255,0.08);
-  --color-border-2:  rgba(255,255,255,0.14);
-
-  --color-primary:      #F8FAFC;
-  --color-primary-dark: #E2E8F0;
-  --color-primary-glow: rgba(248,250,252,0.06);
-
+  --color-surface-2: #243347;
+  --color-surface-3: #2D4060;
+  --color-border:    rgba(255,255,255,0.07);
+  --color-border-2:  rgba(255,255,255,0.13);
+  --color-primary:      #3B82F6;
+  --color-primary-dark: #2563EB;
+  --color-primary-glow: rgba(59,130,246,0.15);
   --color-text:       #F1F5F9;
   --color-text-muted: #94A3B8;
   --color-text-faint: #475569;
-
   --glass-bg:     rgba(15,23,42,0.94);
   --glass-border: rgba(255,255,255,0.07);
-
   --shadow-card: 0 2px 16px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(255,255,255,0.05);
-  --shadow-md:   0 4px 20px rgba(0,0,0,0.3);
+  --shadow-md:   0 4px 20px rgba(0,0,0,0.35);
 }
 
-[data-theme="dark"] .btn-primary {
-  background: #F8FAFC;
-  color: #0F172A;
+/* Light theme button / nav overrides */
+[data-theme="light"] .nav-add {
+  background: #000000 !important;
+  color: #ffffff !important;
 }
 
-[data-theme="dark"] .nav-add {
-  background: #F8FAFC !important;
-  color: #0F172A !important;
-}
-
-[data-theme="dark"] select.field-input option {
-  background: #1E293B;
-  color: #F1F5F9;
-}
-
-[data-theme="dark"] .job-card {
-  background: var(--color-surface);
-}
-
-[data-theme="dark"] .settings-card {
-  background: var(--color-surface);
+[data-theme="light"] select.field-input {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236E6E73' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
 }
 
 /* ── PULL-TO-REFRESH ─────────────────────────────────────── */

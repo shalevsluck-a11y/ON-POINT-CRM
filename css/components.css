@@ -194,7 +194,7 @@
   appearance: none;
   transition: border-color 0.15s;
 }
-.search-input:focus { outline: none; border-color: rgba(0,0,0,0.28); }
+.search-input:focus { outline: none; border-color: var(--color-primary); }
 .search-input::placeholder { color: var(--color-text-faint); }
 
 .filter-chips {
@@ -223,8 +223,8 @@
 }
 .chip:active { transform: scale(0.93); }
 .chip.active {
-  border-color: #000000;
-  background: #000000;
+  border-color: var(--color-primary);
+  background: var(--color-primary);
   color: #ffffff;
 }
 
@@ -268,6 +268,9 @@
 .revenue-card-static:active { transform: none; }
 .revenue-card.featured {
   border-color: transparent;
+  background: linear-gradient(135deg, #1E3A5F 0%, #1D4ED8 100%);
+}
+[data-theme="light"] .revenue-card.featured {
   background: linear-gradient(135deg, #1C1C1E 0%, #000000 100%);
 }
 
@@ -445,8 +448,8 @@
 }
 .lead-textarea:focus {
   outline: none;
-  border-color: rgba(0,0,0,0.3);
-  box-shadow: 0 0 0 3px rgba(0,0,0,0.06);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-glow);
 }
 .lead-textarea::placeholder { color: var(--color-text-faint); line-height: 1.6; }
 
@@ -503,7 +506,7 @@
   color: var(--color-text);
 }
 .tech-btn:active { transform: scale(0.95); }
-.tech-btn.selected { border-color: #000000; background: #000000; color: #ffffff; }
+.tech-btn.selected { border-color: var(--color-primary); background: var(--color-primary); color: #ffffff; }
 .tech-btn .tech-btn-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .tech-btn .tech-btn-pct { font-size: var(--font-xs); font-weight: 600; opacity: 0.6; }
 
@@ -525,8 +528,8 @@
 }
 .pay-btn:active { transform: scale(0.95); }
 .pay-btn.active {
-  border-color: #000000;
-  background: #000000;
+  border-color: var(--color-primary);
+  background: var(--color-primary);
   color: #ffffff;
 }
 
@@ -714,7 +717,7 @@
   transition: all 0.15s;
 }
 .status-action-btn:active { transform: scale(0.93); }
-.status-action-btn.current { border-color: currentColor; background: rgba(0,0,0,0.05); }
+.status-action-btn.current { border-color: currentColor; background: rgba(255,255,255,0.06); }
 .sab-new        { color: var(--s-new); }
 .sab-scheduled  { color: var(--s-scheduled); }
 .sab-inprogress { color: var(--s-inprogress); }

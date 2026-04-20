@@ -810,31 +810,66 @@
       <button class="modal-close" onclick="App.closeInviteModal()">&#x2715;</button>
     </div>
     <div class="modal-body" style="padding:0 20px 24px">
-      <div id="invite-error" class="login-error hidden" style="margin-bottom:12px"></div>
-      <div class="field-group">
-        <label class="field-label">Full Name</label>
-        <input type="text" id="invite-name" class="field-input" placeholder="Mike Smith"
-               autocomplete="off" autocapitalize="words">
+
+      <!-- FORM STATE -->
+      <div id="invite-form-body">
+        <div id="invite-error" class="login-error hidden" style="margin-bottom:12px"></div>
+        <div class="field-group">
+          <label class="field-label">Full Name <span style="color:var(--color-error)">*</span></label>
+          <input type="text" id="invite-name" class="field-input" placeholder="Mike Smith"
+                 autocomplete="off" autocapitalize="words">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Email Address <span style="color:var(--color-error)">*</span></label>
+          <input type="email" id="invite-email" class="field-input" placeholder="mike@example.com"
+                 autocomplete="off" autocapitalize="none">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Phone Number <span style="color:var(--color-text-muted);font-weight:400;font-size:12px">(for WhatsApp)</span></label>
+          <input type="tel" id="invite-phone" class="field-input" placeholder="+1 929 555 0123"
+                 autocomplete="off">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Role</label>
+          <select id="invite-role" class="field-input">
+            <option value="tech">Technician</option>
+            <option value="dispatcher">Dispatcher</option>
+          </select>
+        </div>
+        <button class="btn btn-primary btn-full" id="invite-submit-btn" onclick="App.submitInvite()">
+          Send Invite
+        </button>
+        <p style="font-size:12px;color:var(--color-text-muted);margin-top:10px;text-align:center">
+          An invite email is sent to their address so they can set a password.
+        </p>
       </div>
-      <div class="field-group">
-        <label class="field-label">WhatsApp Number</label>
-        <input type="tel" id="invite-phone" class="field-input" placeholder="+1 929 555 0123"
-               autocomplete="off">
+
+      <!-- SUCCESS STATE (shown after invite sent) -->
+      <div id="invite-success-body" class="hidden" style="text-align:center;padding:12px 0 4px">
+        <div style="font-size:44px;margin-bottom:12px">✅</div>
+        <div style="font-size:17px;font-weight:700;color:var(--color-text);margin-bottom:6px">Invite sent!</div>
+        <div id="invite-success-email" style="color:var(--color-text-muted);font-size:13px;margin-bottom:24px"></div>
+
+        <!-- When phone IS available -->
+        <div id="invite-wa-with-phone" class="hidden">
+          <button onclick="App._sendInviteWA()"
+            style="width:100%;padding:16px;background:#25D366;border:none;border-radius:14px;color:#fff;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:10px;-webkit-tap-highlight-color:transparent">
+            📲 Send App Link on WhatsApp
+          </button>
+        </div>
+
+        <!-- When phone NOT entered — show quick input -->
+        <div id="invite-wa-no-phone" class="hidden" style="margin-bottom:10px">
+          <div style="font-size:13px;color:var(--color-text-muted);margin-bottom:8px">Enter their phone to send via WhatsApp</div>
+          <div style="display:flex;gap:8px">
+            <input type="tel" id="invite-wa-phone-input" class="field-input" placeholder="+1 929 555 0123" style="flex:1">
+            <button class="btn btn-primary" onclick="App._sendInviteWAFromInput()" style="white-space:nowrap;padding:0 16px">Send</button>
+          </div>
+        </div>
+
+        <button class="btn btn-secondary btn-full" onclick="App.closeInviteModal()">Done</button>
       </div>
-      <div class="field-group">
-        <label class="field-label">Role</label>
-        <select id="invite-role" class="field-input">
-          <option value="tech">Technician</option>
-          <option value="dispatcher">Dispatcher</option>
-          <option value="admin">Admin</option>
-        </select>
-      </div>
-      <button class="btn btn-primary btn-full" id="invite-submit-btn" onclick="App.submitInvite()" style="background:#25D366;border-color:#25D366">
-        Send via WhatsApp
-      </button>
-      <p style="font-size:12px;color:var(--color-text-muted);margin-top:10px;text-align:center">
-        Opens WhatsApp with a link. They tap it, set a password, and they're in.
-      </p>
+
     </div>
   </div>
 
