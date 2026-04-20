@@ -1,0 +1,16 @@
+{
+  "name": "on-point-crm",
+  "version": "1.0.0",
+  "description": "On Point Pro Doors CRM",
+  "private": true,
+  "scripts": {
+    "generate-icons": "node scripts/generate-icons.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "sharp": "^0.33.0"
+  }
+}

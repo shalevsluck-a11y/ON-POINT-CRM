@@ -11,10 +11,107 @@
   <link rel="stylesheet" href="css/app.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/auth.css">
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
   <!-- Supabase JS v2 CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 </head>
 <body>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- LOGIN SCREEN                                          -->
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- FIRST ADMIN SETUP SCREEN (shown once when no admins)  -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div id="setup-screen" class="login-screen hidden">
+  <div class="login-card">
+    <div class="login-logo-wrap">
+      <img src="assets/logo.jpg" alt="On Point Pro Doors" class="login-logo">
+    </div>
+    <h1 class="login-title">Welcome to On Point</h1>
+    <p class="login-sub">Create your admin account to get started</p>
+
+    <div id="setup-error" class="login-error hidden"></div>
+
+    <div class="field-group">
+      <label class="field-label">Your Name</label>
+      <input type="text" id="setup-name" class="field-input" placeholder="Full name"
+             autocomplete="name" autocapitalize="words">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Email</label>
+      <input type="email" id="setup-email" class="field-input" placeholder="you@example.com"
+             autocomplete="username" autocapitalize="none">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Password</label>
+      <input type="password" id="setup-password" class="field-input" placeholder="Min. 8 characters"
+             autocomplete="new-password">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Confirm Password</label>
+      <input type="password" id="setup-confirm" class="field-input" placeholder="Repeat password"
+             autocomplete="new-password">
+    </div>
+
+    <button class="btn btn-primary btn-full" id="setup-btn" onclick="SetupScreen.submit()">
+      Create Admin Account
+    </button>
+
+    <p class="login-footer">OnPoint Pro Doors · (929) 429-2429</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SET PASSWORD SCREEN (for invited users)               -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div id="set-password-screen" class="login-screen hidden">
+  <div class="login-card">
+    <div class="login-logo-wrap">
+      <img src="assets/logo.jpg" alt="On Point Pro Doors" class="login-logo">
+    </div>
+    <h1 class="login-title">Set Your Password</h1>
+    <p class="login-sub">Choose a password to complete your account setup</p>
+
+    <div id="sp-error" class="login-error hidden"></div>
+
+    <div class="field-group">
+      <label class="field-label">New Password</label>
+      <input type="password" id="sp-password" class="field-input" placeholder="Min. 8 characters"
+             autocomplete="new-password">
+    </div>
+    <div class="field-group">
+      <label class="field-label">Confirm Password</label>
+      <input type="password" id="sp-confirm" class="field-input" placeholder="Repeat password"
+             autocomplete="new-password">
+    </div>
+
+    <button class="btn btn-primary btn-full" id="sp-btn" onclick="SetPasswordScreen.submit()">
+      Set Password &amp; Continue
+    </button>
+
+    <p class="login-footer">OnPoint Pro Doors · (929) 429-2429</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- PWA INSTALL BANNER                                    -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div id="pwa-install-banner" class="pwa-install-banner hidden">
+  <div class="pwa-install-content">
+    <img src="assets/icon-192.png" alt="On Point" class="pwa-install-icon" onerror="this.style.display='none'">
+    <div class="pwa-install-text">
+      <div class="pwa-install-title">Install On Point CRM</div>
+      <div class="pwa-install-sub">Add to home screen for the best experience</div>
+    </div>
+  </div>
+  <div class="pwa-install-actions">
+    <button class="btn btn-primary pwa-install-btn" id="pwa-install-btn" onclick="App.pwaInstall()">Install</button>
+    <button class="btn-icon pwa-install-dismiss" onclick="App.pwaDismiss()" aria-label="Dismiss">&#x2715;</button>
+  </div>
+</div>
 
 <!-- ══════════════════════════════════════════════════════ -->
 <!-- LOGIN SCREEN                                          -->
@@ -664,6 +761,42 @@
     </div>
   </div>
 
+  <!-- Invite User Modal -->
+  <div id="invite-modal" class="modal hidden">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <div class="modal-title">Invite User</div>
+      <button class="modal-close" onclick="App.closeInviteModal()">&#x2715;</button>
+    </div>
+    <div class="modal-body" style="padding:0 20px 24px">
+      <div id="invite-error" class="login-error hidden" style="margin-bottom:12px"></div>
+      <div class="field-group">
+        <label class="field-label">Full Name</label>
+        <input type="text" id="invite-name" class="field-input" placeholder="Jane Smith"
+               autocomplete="off" autocapitalize="words">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Email Address</label>
+        <input type="email" id="invite-email" class="field-input" placeholder="jane@example.com"
+               autocomplete="off" autocapitalize="none">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Role</label>
+        <select id="invite-role" class="field-input">
+          <option value="tech">Technician</option>
+          <option value="dispatcher">Dispatcher</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-full" id="invite-submit-btn" onclick="App.submitInvite()">
+        Send Invite
+      </button>
+      <p style="font-size:12px;color:var(--color-text-muted);margin-top:10px;text-align:center">
+        An email will be sent with a link to set their password.
+      </p>
+    </div>
+  </div>
+
   <!-- Toast Container -->
   <div id="toast-container" class="toast-container"></div>
 
@@ -683,6 +816,73 @@
 <script src="js/reminders.js"></script>
 <script src="js/login.js"></script>
 <script src="js/app.js"></script>
+
+<!-- PWA: Service Worker + Install Prompt -->
+<script>
+(function() {
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+  }
+
+  // iOS install hint — shown when in mobile Safari, not already installed
+  function isIOS() {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent);
+  }
+  function isInStandaloneMode() {
+    return window.navigator.standalone === true ||
+           window.matchMedia('(display-mode: standalone)').matches;
+  }
+
+  if (isIOS() && !isInStandaloneMode()) {
+    const banner = document.getElementById('pwa-install-banner');
+    const btn    = document.getElementById('pwa-install-btn');
+    if (banner && btn) {
+      btn.textContent = 'How to Install';
+      btn.onclick = () => {
+        alert('To install: tap the Share button \uD83D\uDCE4 in Safari, then "Add to Home Screen".');
+      };
+      if (!sessionStorage.getItem('pwa-dismissed')) banner.classList.remove('hidden');
+    }
+  }
+
+  // Android / Chrome install prompt
+  let _deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    _deferredPrompt = e;
+    const banner = document.getElementById('pwa-install-banner');
+    if (banner && !sessionStorage.getItem('pwa-dismissed') && !isInStandaloneMode()) {
+      banner.classList.remove('hidden');
+    }
+  });
+
+  window.addEventListener('appinstalled', () => {
+    const banner = document.getElementById('pwa-install-banner');
+    if (banner) banner.classList.add('hidden');
+    _deferredPrompt = null;
+  });
+
+  // Expose to App namespace
+  window._pwaInstall = async function() {
+    if (_deferredPrompt) {
+      _deferredPrompt.prompt();
+      const { outcome } = await _deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        document.getElementById('pwa-install-banner')?.classList.add('hidden');
+      }
+      _deferredPrompt = null;
+    }
+  };
+
+  window._pwaDismiss = function() {
+    document.getElementById('pwa-install-banner')?.classList.add('hidden');
+    sessionStorage.setItem('pwa-dismissed', '1');
+  };
+})();
+</script>
 
 </body>
 </html>

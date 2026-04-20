@@ -1,5 +1,5 @@
 /* ============================================================
-   LOGIN.JS — Login screen controller
+   LOGIN.JS — Login, first-setup, and set-password controllers
    ============================================================ */
 
 const LoginScreen = (() => {
@@ -26,7 +26,7 @@ const LoginScreen = (() => {
       return;
     }
 
-    btn.disabled   = true;
+    btn.disabled    = true;
     btn.textContent = 'Signing in…';
     errEl.classList.add('hidden');
 
@@ -58,7 +58,6 @@ const LoginScreen = (() => {
     return msg;
   }
 
-  // Allow Enter key on password field
   document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('login-password')?.addEventListener('keydown', e => {
       if (e.key === 'Enter') submit();
@@ -67,6 +66,148 @@ const LoginScreen = (() => {
       if (e.key === 'Enter') document.getElementById('login-password')?.focus();
     });
   });
+
+  return { show, hide, submit };
+
+})();
+
+
+// ──────────────────────────────────────────────────────────
+// SETUP SCREEN — shown once when no admin exists yet
+// ──────────────────────────────────────────────────────────
+
+const SetupScreen = (() => {
+
+  function show() {
+    document.getElementById('setup-screen').classList.remove('hidden');
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('setup-name')?.focus();
+  }
+
+  function hide() {
+    document.getElementById('setup-screen').classList.add('hidden');
+  }
+
+  async function submit() {
+    const name     = document.getElementById('setup-name')?.value?.trim();
+    const email    = document.getElementById('setup-email')?.value?.trim();
+    const password = document.getElementById('setup-password')?.value;
+    const confirm  = document.getElementById('setup-confirm')?.value;
+    const btn      = document.getElementById('setup-btn');
+    const errEl    = document.getElementById('setup-error');
+
+    errEl.classList.add('hidden');
+
+    if (!name || !email || !password) {
+      _showError('All fields are required.');
+      return;
+    }
+    if (password.length < 8) {
+      _showError('Password must be at least 8 characters.');
+      return;
+    }
+    if (password !== confirm) {
+      _showError('Passwords do not match.');
+      return;
+    }
+
+    btn.disabled    = true;
+    btn.textContent = 'Creating account…';
+
+    try {
+      // 1. Sign up
+      const { error: signUpErr } = await SupabaseClient.auth.signUp({
+        email,
+        password,
+        options: { data: { name } },
+      });
+      if (signUpErr) throw signUpErr;
+
+      // 2. Sign in immediately (email confirmation disabled for invite flow)
+      await Auth.login(email, password);
+
+      // 3. Claim admin role (server enforces only-once)
+      await Auth.completeFirstAdminSetup();
+
+      hide();
+    } catch (e) {
+      _showError(e.message || 'Setup failed. Please try again.');
+      btn.disabled    = false;
+      btn.textContent = 'Create Admin Account';
+    }
+  }
+
+  function _showError(msg) {
+    const el = document.getElementById('setup-error');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.remove('hidden');
+  }
+
+  return { show, hide, submit };
+
+})();
+
+
+// ──────────────────────────────────────────────────────────
+// SET PASSWORD SCREEN — for invited users completing onboarding
+// ──────────────────────────────────────────────────────────
+
+const SetPasswordScreen = (() => {
+
+  function show() {
+    document.getElementById('set-password-screen').classList.remove('hidden');
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('app').classList.add('hidden');
+    document.getElementById('sp-password')?.focus();
+  }
+
+  function hide() {
+    document.getElementById('set-password-screen').classList.add('hidden');
+  }
+
+  async function submit() {
+    const password = document.getElementById('sp-password')?.value;
+    const confirm  = document.getElementById('sp-confirm')?.value;
+    const btn      = document.getElementById('sp-btn');
+    const errEl    = document.getElementById('sp-error');
+
+    errEl.classList.add('hidden');
+
+    if (!password) {
+      _showError('Please enter a password.');
+      return;
+    }
+    if (password.length < 8) {
+      _showError('Password must be at least 8 characters.');
+      return;
+    }
+    if (password !== confirm) {
+      _showError('Passwords do not match.');
+      return;
+    }
+
+    btn.disabled    = true;
+    btn.textContent = 'Setting password…';
+
+    try {
+      await Auth.updatePassword(password);
+      hide();
+      // onAuthChange will fire and take user into the app
+    } catch (e) {
+      _showError(e.message || 'Failed to set password. Try again.');
+      btn.disabled    = false;
+      btn.textContent = 'Set Password & Continue';
+    }
+  }
+
+  function _showError(msg) {
+    const el = document.getElementById('sp-error');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.remove('hidden');
+  }
 
   return { show, hide, submit };
 

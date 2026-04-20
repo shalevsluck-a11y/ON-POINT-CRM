@@ -411,6 +411,10 @@ const App = (() => {
       ? `<a class="call-btn" href="${phoneHref}" onclick="event.stopPropagation()" title="Call ${_esc(job.customerName)}">&#128222;</a>`
       : '';
 
+    const waBtn = Auth.isAdminOrDisp() && job.phone
+      ? `<button class="wa-btn" onclick="event.stopPropagation();App.openWhatsApp('${job.jobId}')" title="WhatsApp">&#128172;</button>`
+      : '';
+
     return `<div class="job-card ${statusClass}" onclick="App.openJobDetail('${job.jobId}')">
       <div class="job-card-inner">
         <div class="job-card-top">
@@ -432,6 +436,7 @@ const App = (() => {
           </div>
           <div class="job-card-actions">
             ${callBtn}
+            ${waBtn}
           </div>
         </div>
       </div>
@@ -993,9 +998,15 @@ const App = (() => {
            </div>`;
     }
 
-    // WhatsApp — job details (pre-close) or receipt with financials (post-close)
-    const waMsg  = encodeURIComponent(_buildWhatsAppJobText(job));
-    const waLink = `<a href="https://wa.me/?text=${waMsg}" class="detail-action-btn${job.status === 'paid' ? ' dab-green' : ''}" onclick="event.stopPropagation()">
+    // WhatsApp — confirmation/appointment msg for customer; financial receipt for paid jobs
+    const _waPhone = _cleanPhoneForWA(job.phone);
+    const _waMsgCustomer = encodeURIComponent(_buildWhatsAppConfirmationMsg(job));
+    const _waMsgReceipt  = encodeURIComponent(_buildWhatsAppJobText(job));
+    const _waPhonePart   = _waPhone ? _waPhone : '';
+    const _waHref = job.status === 'paid'
+      ? `https://wa.me/${_waPhonePart}?text=${_waMsgReceipt}`
+      : `https://wa.me/${_waPhonePart}?text=${_waMsgCustomer}`;
+    const waLink = `<a href="${_waHref}" class="detail-action-btn${job.status === 'paid' ? ' dab-green' : ''}" onclick="event.stopPropagation()" target="_blank" rel="noopener noreferrer">
       <span class="dab-icon">&#128172;</span><span class="dab-label">${job.status === 'paid' ? 'Receipt' : 'WhatsApp'}</span>
     </a>`;
 
@@ -1578,8 +1589,9 @@ const App = (() => {
     const tech = job.assignedTechId ? settings.technicians.find(t => t.id === job.assignedTechId) : null;
     const memo = job.zelleMemo || '';
 
+    const _zelleWaPhone = _cleanPhoneForWA(job.phone) || '';
     const waMsg  = encodeURIComponent(_buildWhatsAppJobText(job));
-    const waHref = `https://wa.me/?text=${waMsg}`;
+    const waHref = `https://wa.me/${_zelleWaPhone}?text=${waMsg}`;
 
     const body = document.getElementById('modal-zelle-body');
     body.innerHTML = `
@@ -1995,30 +2007,36 @@ const App = (() => {
     if (!container) return;
 
     container.innerHTML = `<div class="settings-card">
-      <div class="settings-section-title">Users</div>
+      <div class="settings-section-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>Users</span>
+        <button class="btn btn-primary" style="padding:6px 14px;font-size:13px" onclick="App.showInviteModal()">+ Invite User</button>
+      </div>
       <div id="admin-users-list"><div class="empty-state-sm">Loading users...</div></div>
     </div>`;
     container.classList.remove('hidden');
 
     try {
-      const profiles = await Auth.getAllProfiles();
+      const users = await Auth.getUsersForAdmin();
+      const currentUserId = Auth.getUser()?.id;
       const listEl = document.getElementById('admin-users-list');
       if (!listEl) return;
 
-      listEl.innerHTML = profiles.map(p => `
+      listEl.innerHTML = users.map(u => `
         <div class="user-list-item">
-          <div class="user-item-avatar" style="background:${p.color||'#3B82F6'}">${_initials(p.name||p.id)}</div>
+          <div class="user-item-avatar" style="background:${u.color||'#3B82F6'}">${_initials(u.name||u.id)}</div>
           <div class="user-item-info">
-            <div class="user-item-name">${_esc(p.name || 'Unknown')}</div>
-            <div class="user-item-email">${_esc(p.email||'')}</div>
+            <div class="user-item-name">${_esc(u.name || 'Unknown')}</div>
+            <div class="user-item-email">${_esc(u.email||'')}</div>
           </div>
-          <div class="user-item-role">
+          <div class="user-item-role" style="display:flex;align-items:center;gap:6px">
             <select class="field-input" style="font-size:12px;padding:4px 8px;height:32px"
-                    onchange="App._changeUserRole('${p.id}', this.value)">
-              <option value="admin"      ${p.role==='admin'      ?'selected':''}>Admin</option>
-              <option value="dispatcher" ${p.role==='dispatcher' ?'selected':''}>Dispatcher</option>
-              <option value="tech"       ${p.role==='tech'       ?'selected':''}>Tech</option>
+                    onchange="App._changeUserRole('${u.id}', this.value)">
+              <option value="admin"      ${u.role==='admin'      ?'selected':''}>Admin</option>
+              <option value="dispatcher" ${u.role==='dispatcher' ?'selected':''}>Dispatcher</option>
+              <option value="tech"       ${u.role==='tech'       ?'selected':''}>Tech</option>
             </select>
+            ${u.id !== currentUserId ? `<button class="btn-icon" style="color:var(--color-error);font-size:16px"
+              onclick="App._confirmRemoveUser('${u.id}','${_esc(u.name||u.email)}')" title="Remove user">&#128465;</button>` : ''}
           </div>
         </div>
       `).join('') || '<div class="empty-state-sm">No users found</div>';
@@ -2026,6 +2044,73 @@ const App = (() => {
       const listEl = document.getElementById('admin-users-list');
       if (listEl) listEl.innerHTML = `<div class="empty-state-sm" style="color:var(--color-error)">${_esc(e.message)}</div>`;
     }
+  }
+
+  function showInviteModal() {
+    if (!Auth.isAdmin()) return;
+    const modal = document.getElementById('invite-modal');
+    if (!modal) return;
+    document.getElementById('invite-name').value  = '';
+    document.getElementById('invite-email').value = '';
+    document.getElementById('invite-role').value  = 'tech';
+    document.getElementById('invite-error').classList.add('hidden');
+    const btn = document.getElementById('invite-submit-btn');
+    if (btn) { btn.disabled = false; btn.textContent = 'Send Invite'; }
+    modal.classList.remove('hidden');
+  }
+
+  function closeInviteModal() {
+    document.getElementById('invite-modal')?.classList.add('hidden');
+  }
+
+  async function submitInvite() {
+    const name  = document.getElementById('invite-name')?.value?.trim();
+    const email = document.getElementById('invite-email')?.value?.trim();
+    const role  = document.getElementById('invite-role')?.value;
+    const errEl = document.getElementById('invite-error');
+    const btn   = document.getElementById('invite-submit-btn');
+
+    errEl.classList.add('hidden');
+
+    if (!name || !email) {
+      errEl.textContent = 'Name and email are required.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    btn.disabled    = true;
+    btn.textContent = 'Sending…';
+
+    try {
+      await Auth.inviteUser(email, name, role);
+      closeInviteModal();
+      showToast(`Invite sent to ${email}`, 'success');
+      _renderAdminUsersSection();
+    } catch (e) {
+      errEl.textContent = e.message || 'Invite failed.';
+      errEl.classList.remove('hidden');
+      btn.disabled    = false;
+      btn.textContent = 'Send Invite';
+    }
+  }
+
+  async function _confirmRemoveUser(userId, userName) {
+    showConfirm({
+      icon:    '&#128465;',
+      title:   'Remove User',
+      message: `Remove ${userName} from the app? This cannot be undone.`,
+      okLabel: 'Remove',
+      okClass: 'btn-danger',
+      onOk: async () => {
+        try {
+          await Auth.removeUser(userId);
+          showToast(`${userName} removed`, 'success');
+          _renderAdminUsersSection();
+        } catch (e) {
+          showToast(e.message, 'error');
+        }
+      },
+    });
   }
 
   async function _changeUserRole(userId, role) {
@@ -2513,6 +2598,71 @@ const App = (() => {
     return lines.filter(l => l !== undefined).join('\n');
   }
 
+  // Clean a phone number to E.164-style digits for wa.me URLs
+  function _cleanPhoneForWA(phone) {
+    if (!phone) return null;
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length === 10) return '1' + digits;        // US number — prepend country code
+    if (digits.length === 11 && digits[0] === '1') return digits; // already has +1
+    if (digits.length > 7) return digits;                 // international — pass as-is
+    return null;
+  }
+
+  // Customer-facing appointment confirmation (used for wa.me outbound)
+  function _buildWhatsAppConfirmationMsg(job) {
+    const settings = DB.getSettings();
+    const tech = job.assignedTechId
+      ? settings.technicians.find(t => t.id === job.assignedTechId)
+      : null;
+
+    const dateLine = job.scheduledDate
+      ? _formatDate(job.scheduledDate)
+      : 'Date to be confirmed';
+    const timeLine = job.scheduledTime
+      ? _formatTime(job.scheduledTime)
+      : 'Time to be confirmed';
+    const techLine = tech ? tech.name : 'assigned shortly';
+    const ownerPhone = settings.ownerPhone || '(929) 429-2429';
+
+    return [
+      `Hello ${job.customerName || 'there'}!`,
+      '',
+      `This is On Point Pro Doors confirming your appointment:`,
+      '',
+      `Service: ${job.description || 'Garage Door Service'}`,
+      `Date: ${dateLine}`,
+      `Time: ${timeLine}`,
+      `Technician: ${techLine}`,
+      `Address: ${[job.address, job.city, job.state].filter(Boolean).join(', ') || 'on file'}`,
+      '',
+      `If you need to reschedule or have any questions, please call us at ${ownerPhone}.`,
+      '',
+      `Thank you for choosing On Point Pro Doors!`,
+    ].join('\n');
+  }
+
+  // Open WhatsApp with customer appointment confirmation
+  function openWhatsApp(jobId) {
+    if (!Auth.isAdminOrDisp()) return;
+    const job = DB.getJobById(jobId);
+    if (!job) { showToast('Job not found', 'error'); return; }
+
+    if (!job.phone) {
+      showToast('No phone number on file for this job', 'warning');
+      return;
+    }
+
+    const cleanPhone = _cleanPhoneForWA(job.phone);
+    if (!cleanPhone) {
+      showToast('Invalid phone number', 'warning');
+      return;
+    }
+
+    const msg = _buildWhatsAppConfirmationMsg(job);
+    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+
   function _esc(str) {
     if (!str) return '';
     return String(str)
@@ -2538,17 +2688,39 @@ const App = (() => {
 
   // Public boot entry point — sets up auth and wires session listener
   async function init() {
+    // Detect invite link before Auth.init fires (hash cleared by Supabase after use)
+    const isInviteFlow = window.location.hash.includes('type=invite') ||
+                         window.location.hash.includes('type=recovery');
+
     const currentUser = await Auth.init(async (user) => {
       if (user) {
-        await _onAuthenticated();
+        if (isInviteFlow) {
+          SetPasswordScreen.show();
+        } else {
+          await _onAuthenticated();
+        }
       } else {
         _initialized = false;
-        LoginScreen.show();
+        await _checkAndShowFirstSetup();
       }
     });
-    // If no session found on initial load, show login
-    if (!currentUser) LoginScreen.show();
-    // If session exists, onAuthStateChange already fired _onAuthenticated
+
+    if (!currentUser) {
+      await _checkAndShowFirstSetup();
+    }
+  }
+
+  async function _checkAndShowFirstSetup() {
+    try {
+      const needed = await Auth.checkFirstSetupNeeded();
+      if (needed) {
+        SetupScreen.show();
+      } else {
+        LoginScreen.show();
+      }
+    } catch (_e) {
+      LoginScreen.show();
+    }
   }
 
   return {
@@ -2613,8 +2785,17 @@ const App = (() => {
     toggleDetailSection,
     exportJobPDF,
 
-    // Settings
+    // Admin invite
+    showInviteModal,
+    closeInviteModal,
+    submitInvite,
     _changeUserRole,
+    _confirmRemoveUser,
+
+    // WhatsApp
+    openWhatsApp,
+
+    // Settings
     saveSettings,
     showTechModal,
     saveTech,
@@ -2637,6 +2818,10 @@ const App = (() => {
 
     // Toast
     showToast,
+
+    // PWA
+    pwaInstall: () => window._pwaInstall && window._pwaInstall(),
+    pwaDismiss: () => window._pwaDismiss && window._pwaDismiss(),
   };
 
 })();

@@ -96,6 +96,35 @@ const Auth = (() => {
   }
 
   // ──────────────────────────────────────────────────────────
+  // SET PASSWORD (for invited users completing setup)
+  // ──────────────────────────────────────────────────────────
+
+  async function updatePassword(newPassword) {
+    const { error } = await SupabaseClient.auth.updateUser({ password: newPassword });
+    if (error) throw error;
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // FIRST SETUP
+  // ──────────────────────────────────────────────────────────
+
+  async function checkFirstSetupNeeded() {
+    const { data, error } = await SupabaseClient.rpc('is_first_setup_needed');
+    if (error) throw error;
+    return data === true;
+  }
+
+  async function completeFirstAdminSetup() {
+    const { data, error } = await SupabaseClient.rpc('complete_first_admin_setup');
+    if (error) throw error;
+    if (!data) throw new Error('Setup failed — an admin already exists.');
+    // Reload current user profile so role updates to admin
+    const { data: { session } } = await SupabaseClient.auth.getSession();
+    if (session?.user) await _loadProfile(session.user);
+    return true;
+  }
+
+  // ──────────────────────────────────────────────────────────
   // GETTERS
   // ──────────────────────────────────────────────────────────
 
@@ -131,7 +160,7 @@ const Auth = (() => {
   }
 
   // ──────────────────────────────────────────────────────────
-  // ADMIN: Create / manage users
+  // ADMIN: manage users
   // ──────────────────────────────────────────────────────────
 
   async function getAllProfiles() {
@@ -140,6 +169,13 @@ const Auth = (() => {
       .from('profiles')
       .select('*')
       .order('name');
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function getUsersForAdmin() {
+    if (!isAdmin()) throw new Error('Admin only');
+    const { data, error } = await SupabaseClient.rpc('get_users_for_admin');
     if (error) throw error;
     return data || [];
   }
@@ -153,10 +189,68 @@ const Auth = (() => {
     if (error) throw error;
   }
 
+  async function inviteUser(email, name, role) {
+    if (!isAdmin()) throw new Error('Admin only');
+    const { data: { session } } = await SupabaseClient.auth.getSession();
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/invite-user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ email, name, role }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Invite failed');
+    return json;
+  }
+
+  async function removeUser(userId) {
+    if (!isAdmin()) throw new Error('Admin only');
+    const { data: { session } } = await SupabaseClient.auth.getSession();
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/remove-user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ userId }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || 'Remove failed');
+    return json;
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // PUSH NOTIFICATIONS
+  // ──────────────────────────────────────────────────────────
+
+  async function savePushSubscription(sub) {
+    if (!_currentUser) return;
+    const { endpoint, keys } = sub.toJSON ? sub.toJSON() : sub;
+    await SupabaseClient.from('push_subscriptions').upsert({
+      user_id:  _currentUser.id,
+      endpoint,
+      p256dh:   keys.p256dh,
+      auth_key: keys.auth,
+    }, { onConflict: 'user_id,endpoint' });
+  }
+
+  async function deletePushSubscription(endpoint) {
+    if (!_currentUser) return;
+    await SupabaseClient.from('push_subscriptions')
+      .delete()
+      .eq('user_id', _currentUser.id)
+      .eq('endpoint', endpoint);
+  }
+
   return {
     init,
     login,
     logout,
+    updatePassword,
+    checkFirstSetupNeeded,
+    completeFirstAdminSetup,
     getUser,
     getRole,
     isAdmin,
@@ -169,7 +263,12 @@ const Auth = (() => {
     canEditAllJobs,
     updateProfile,
     getAllProfiles,
+    getUsersForAdmin,
     updateUserRole,
+    inviteUser,
+    removeUser,
+    savePushSubscription,
+    deletePushSubscription,
   };
 
 })();
