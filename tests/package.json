@@ -1,0 +1,14 @@
+{
+  "name": "onpoint-crm-tests",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test":       "playwright test",
+    "test:smoke": "playwright test e2e/smoke.spec.js",
+    "test:roles": "playwright test e2e/auth.spec.js",
+    "report":     "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.0"
+  }
+}

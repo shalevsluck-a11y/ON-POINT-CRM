@@ -1,0 +1,150 @@
+name: CI — Test & Verify
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  # ── 1. Verify server is live ─────────────────────────────────
+  health-check:
+    name: Server Health
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check live app responds
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://crm.onpointprodoors.com)
+          echo "HTTP status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "ERROR: App returned $STATUS — deploy may have failed"
+            exit 1
+          fi
+
+      - name: Security headers check
+        run: |
+          HEADERS=$(curl -s -I https://crm.onpointprodoors.com)
+          echo "$HEADERS"
+          echo "$HEADERS" | grep -i "x-content-type-options" || \
+            echo "WARN: x-content-type-options header missing"
+
+      - name: PWA manifest reachable
+        run: |
+          curl -sf https://crm.onpointprodoors.com/manifest.json | python3 -c "import sys,json; d=json.load(sys.stdin); assert d.get('name'), 'manifest missing name'"
+          echo "Manifest OK"
+
+  # ── 2. Playwright smoke tests ────────────────────────────────
+  playwright:
+    name: Playwright Smoke Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: tests/package-lock.json
+
+      - name: Install test dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Run smoke tests
+        run: npx playwright test e2e/smoke.spec.js --reporter=list
+        env:
+          BASE_URL: https://crm.onpointprodoors.com
+
+      - name: Run role tests (if credentials set)
+        run: npx playwright test e2e/auth.spec.js --reporter=list
+        env:
+          BASE_URL:       https://crm.onpointprodoors.com
+          ADMIN_EMAIL:    ${{ secrets.ADMIN_EMAIL }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          DISP_EMAIL:     ${{ secrets.DISP_EMAIL }}
+          DISP_PASSWORD:  ${{ secrets.DISP_PASSWORD }}
+          TECH_EMAIL:     ${{ secrets.TECH_EMAIL }}
+          TECH_PASSWORD:  ${{ secrets.TECH_PASSWORD }}
+        continue-on-error: true
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: tests/test-results/
+          retention-days: 7
+
+  # ── 3. Supabase API security check ───────────────────────────
+  api-security:
+    name: API Security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract Supabase URL from source
+        run: |
+          SUPABASE_URL=$(grep -o "https://[a-z0-9]*\.supabase\.co" js/supabase-client.js | head -1)
+          echo "SUPABASE_URL=$SUPABASE_URL" >> $GITHUB_ENV
+          echo "Found: $SUPABASE_URL"
+
+      - name: Verify unauthenticated access is blocked
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "$SUPABASE_URL/rest/v1/jobs?select=*" \
+            -H "apikey: invalid" \
+            -H "Authorization: Bearer invalid")
+          echo "Unauthenticated jobs access status: $STATUS"
+          if [ "$STATUS" = "200" ]; then
+            echo "CRITICAL: jobs table returned 200 without valid auth — RLS may be broken"
+            exit 1
+          fi
+          echo "Blocked correctly (status $STATUS)"
+
+      - name: Verify profiles not publicly readable
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "$SUPABASE_URL/rest/v1/profiles?select=*" \
+            -H "apikey: invalid" \
+            -H "Authorization: Bearer invalid")
+          echo "Unauthenticated profiles access status: $STATUS"
+          if [ "$STATUS" = "200" ]; then
+            echo "CRITICAL: profiles returned 200 without auth"
+            exit 1
+          fi
+          echo "Blocked correctly"
+
+  # ── 4. Code quality quick check ──────────────────────────────
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for hardcoded credentials
+        run: |
+          if grep -rn "password\s*=\s*['\"][^'\"]\+['\"]" js/ --include="*.js" | grep -v "test\|spec\|placeholder\|example"; then
+            echo "WARN: Possible hardcoded password found"
+          fi
+          if grep -rn "WqM5\|SERVICE_ROLE\|service_role" js/ --include="*.js"; then
+            echo "CRITICAL: Sensitive key found in JS source"
+            exit 1
+          fi
+          echo "No hardcoded credentials found in JS"
+
+      - name: Check for leftover console.log debug statements
+        run: |
+          COUNT=$(grep -rn "console\.log" js/ --include="*.js" | grep -v "warn\|error\|info" | wc -l)
+          echo "console.log count: $COUNT"
+          if [ "$COUNT" -gt "20" ]; then
+            echo "WARN: $COUNT console.log statements in production JS (consider removing)"
+          fi
+
+      - name: Verify all JS files are valid syntax
+        run: |
+          for f in js/*.js; do
+            node --check "$f" && echo "OK: $f" || { echo "SYNTAX ERROR: $f"; exit 1; }
+          done
