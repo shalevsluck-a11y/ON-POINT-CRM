@@ -222,36 +222,37 @@ const App = (() => {
     const weekStart = _daysAgoStr(6);
     const monthStart = _monthStartStr();
 
-    // Revenue helpers
-    // When owner IS the tech (isSelfAssigned), their total take = ownerPayout + techPayout
-    const toOwnerRev = arr => arr.reduce((s, j) => {
-      const ownerCut  = parseFloat(j.ownerPayout) || 0;
-      const selfBonus = (j.isSelfAssigned === true || j.isSelfAssigned === 'true')
-        ? (parseFloat(j.techPayout) || 0) : 0;
-      return s + ownerCut + selfBonus;
-    }, 0);
-    const toSales  = arr => arr.reduce((s, j) => s + (parseFloat(j.jobTotal) || 0), 0);
     const paidOnly = j => j.status === 'paid';
-
     const todayJobs  = jobs.filter(j => j.scheduledDate === today);
     const weekJobs   = jobs.filter(j => j.scheduledDate >= weekStart);
     const monthJobs  = jobs.filter(j => j.scheduledDate >= monthStart);
 
-    // Today → owner revenue; Week → owner revenue; Month → total sales
-    const todayRev   = toOwnerRev(todayJobs.filter(paidOnly));
-    const weekRev    = toOwnerRev(weekJobs.filter(paidOnly));
-    const monthRev   = toSales(monthJobs.filter(paidOnly));
-
-    _setText('rev-today-amount', _fmt(todayRev));
-    _setText('rev-week-amount',  _fmt(weekRev));
-    _setText('rev-month-amount', _fmt(monthRev));
+    if (Auth.canSeeFinancials()) {
+      // Admin: show owner revenue (ownerPayout + selfBonus for self-assigned)
+      const toOwnerRev = arr => arr.reduce((s, j) => {
+        const ownerCut  = parseFloat(j.ownerPayout) || 0;
+        const selfBonus = (j.isSelfAssigned === true || j.isSelfAssigned === 'true')
+          ? (parseFloat(j.techPayout) || 0) : 0;
+        return s + ownerCut + selfBonus;
+      }, 0);
+      const toSales = arr => arr.reduce((s, j) => s + (parseFloat(j.jobTotal) || 0), 0);
+      _setText('rev-today-amount', _fmt(toOwnerRev(todayJobs.filter(paidOnly))));
+      _setText('rev-week-amount',  _fmt(toOwnerRev(weekJobs.filter(paidOnly))));
+      _setText('rev-month-amount', _fmt(toSales(monthJobs.filter(paidOnly))));
+    } else {
+      // Dispatcher/tech: show tech payout only (no margins)
+      const toTechPay = arr => arr.reduce((s, j) => s + (parseFloat(j.techPayout) || 0), 0);
+      _setText('rev-today-amount', _fmt(toTechPay(todayJobs.filter(paidOnly))));
+      _setText('rev-week-amount',  _fmt(toTechPay(weekJobs.filter(paidOnly))));
+      _setText('rev-month-amount', _fmt(toTechPay(monthJobs.filter(paidOnly))));
+    }
 
     _setText('rev-today-count', `${todayJobs.length} job${todayJobs.length !== 1 ? 's' : ''}`);
     _setText('rev-week-count',  `${weekJobs.length} job${weekJobs.length !== 1 ? 's' : ''}`);
     _setText('rev-month-count', `${monthJobs.length} job${monthJobs.length !== 1 ? 's' : ''}`);
 
     // Status counts
-    const counts = { new:0, scheduled:0, in_progress:0, closed:0, paid:0 };
+    const counts = { new:0, scheduled:0, in_progress:0, closed:0, paid:0, follow_up:0 };
     jobs.forEach(j => { if (counts[j.status] !== undefined) counts[j.status]++; });
     _setText('count-new',        counts.new);
     _setText('count-scheduled',  counts.scheduled);
@@ -259,8 +260,8 @@ const App = (() => {
     _setText('count-closed',     counts.closed);
     _setText('count-paid',       counts.paid);
 
-    // Tech performance
-    _renderTechPerformance(jobs);
+    // Tech performance (admin/dispatcher only)
+    if (Auth.canSeeFinancials()) _renderTechPerformance(jobs);
 
     // Recent jobs (last 8)
     const recentEl = document.getElementById('recent-jobs-list');
@@ -372,23 +373,31 @@ const App = (() => {
     const statusClass = {
       new: 'jc-new', scheduled: 'jc-scheduled',
       in_progress: 'jc-inprogress', closed: 'jc-closed', paid: 'jc-paid',
+      follow_up: 'jc-follow_up',
     }[job.status] || 'jc-new';
 
     const badgeClass = {
       new: 'sb-new', scheduled: 'sb-scheduled',
       in_progress: 'sb-inprogress', closed: 'sb-closed', paid: 'sb-paid',
+      follow_up: 'sb-new',
     }[job.status] || 'sb-new';
 
     const statusLabel = {
       new: 'New', scheduled: 'Scheduled',
       in_progress: 'In Progress', closed: 'Closed', paid: 'Paid',
+      follow_up: 'Follow-Up',
     }[job.status] || job.status;
+
+    const followUpBadge = job.status === 'follow_up'
+      ? `<span class="follow-up-badge">&#9888; Follow-Up</span>`
+      : '';
 
     const tech = job.assignedTechId ? settings.technicians.find(t => t.id === job.assignedTechId) : null;
     const techColor = tech?.color || '#64748B';
 
+    // Tech users don't see job total (company margin hidden)
     const total = parseFloat(job.jobTotal) || parseFloat(job.estimatedTotal) || 0;
-    const totalStr = total > 0 ? _fmt(total) : '—';
+    const totalStr = Auth.canSeeFinancials() && total > 0 ? _fmt(total) : '—';
 
     const dateStr = job.scheduledDate ? _formatDate(job.scheduledDate) : '';
     const timeStr = job.scheduledTime ? _formatTime(job.scheduledTime) : '';
@@ -420,6 +429,7 @@ const App = (() => {
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             ${tech ? `<span class="job-card-tech"><span class="tech-dot" style="background:${techColor}"></span>${_esc(tech.name)}</span>` : ''}
             ${returningBadge}
+            ${followUpBadge}
           </div>
           <div class="job-card-actions">
             ${callBtn}
