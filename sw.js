@@ -42,13 +42,6 @@ self.addEventListener('activate', (event) => {
     caches.keys()
       .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
-      .then(() => {
-        // Tell every open tab to reload so they get the fresh version
-        return self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-      })
-      .then(clients => {
-        clients.forEach(client => client.postMessage({ type: 'SW_UPDATED' }));
-      })
   );
 });
 
@@ -87,7 +80,7 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => caches.match(request))
+        .catch(() => caches.match(request).then(cached => cached || fetch(request)))
     );
     return;
   }

@@ -820,16 +820,10 @@
 <!-- PWA: Service Worker + Install Prompt -->
 <script>
 (function() {
-  // Register service worker and auto-reload when a new version activates
+  // Register service worker
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
-    });
-    // SW sends SW_UPDATED after it claims all clients — reload to get fresh files
-    navigator.serviceWorker.addEventListener('message', (event) => {
-      if (event.data?.type === 'SW_UPDATED') {
-        window.location.reload();
-      }
     });
   }
 

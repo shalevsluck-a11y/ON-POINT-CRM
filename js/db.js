@@ -138,18 +138,22 @@ const DB = (() => {
 
   async function saveSettings(updates) {
     Storage.saveSettings(updates);
-    if (Auth.isAdmin()) {
-      await supa.from('app_settings').update({
-        owner_name:      updates.ownerName,
-        owner_phone:     updates.ownerPhone,
-        owner_zelle:     updates.ownerZelle,
-        tax_rate_ny:     updates.taxRateNY,
-        tax_rate_nj:     updates.taxRateNJ,
-        default_state:   updates.defaultState,
-        apps_script_url: updates.appsScriptUrl,
-        lead_sources:    updates.leadSources,
-      }).eq('id', 1).catch(e => console.warn('DB.saveSettings error:', e.message));
-    }
+    if (!Auth.isAdmin()) return;
+
+    // Build only the fields that are actually being updated (skip undefined)
+    const row = { id: 1 };
+    if (updates.ownerName      !== undefined) row.owner_name      = updates.ownerName;
+    if (updates.ownerPhone     !== undefined) row.owner_phone     = updates.ownerPhone;
+    if (updates.ownerZelle     !== undefined) row.owner_zelle     = updates.ownerZelle;
+    if (updates.taxRateNY      !== undefined) row.tax_rate_ny     = updates.taxRateNY;
+    if (updates.taxRateNJ      !== undefined) row.tax_rate_nj     = updates.taxRateNJ;
+    if (updates.defaultState   !== undefined) row.default_state   = updates.defaultState;
+    if (updates.appsScriptUrl  !== undefined) row.apps_script_url = updates.appsScriptUrl;
+    if (updates.leadSources    !== undefined) row.lead_sources    = updates.leadSources;
+
+    // Upsert so it works even if the row doesn't exist yet
+    const { error } = await supa.from('app_settings').upsert(row, { onConflict: 'id' });
+    if (error) throw new Error(error.message);
   }
 
   // Delegate all other Storage methods
