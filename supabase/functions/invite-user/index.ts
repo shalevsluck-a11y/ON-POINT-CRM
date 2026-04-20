@@ -12,7 +12,6 @@ serve(async (req) => {
   }
 
   try {
-    // Verify caller is admin using their JWT
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Missing authorization' }), {
@@ -33,7 +32,6 @@ serve(async (req) => {
       });
     }
 
-    // Check caller is admin
     const { data: profile } = await callerClient
       .from('profiles')
       .select('role')
@@ -49,40 +47,48 @@ serve(async (req) => {
     const { email, name, role } = await req.json();
 
     if (!email || !name || !['admin', 'dispatcher', 'tech'].includes(role)) {
-      return new Response(JSON.stringify({ error: 'Invalid input: email, name, and role (admin/dispatcher/tech) required' }), {
+      return new Response(JSON.stringify({ error: 'Invalid input: email, name, and role required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Use service role key to invite user
     const adminClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    const { data: inviteData, error: inviteErr } = await adminClient.auth.admin.inviteUserByEmail(email, {
-      data: { name },
+    // Generate invite link without sending any email
+    const { data: linkData, error: linkErr } = await adminClient.auth.admin.generateLink({
+      type: 'invite',
+      email,
+      options: {
+        data: { name },
+        redirectTo: 'https://crm.onpointprodoors.com',
+      },
     });
 
-    if (inviteErr) {
-      return new Response(JSON.stringify({ error: inviteErr.message }), {
+    if (linkErr) {
+      return new Response(JSON.stringify({ error: linkErr.message }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Profile is auto-created by trigger with role='tech'.
-    // Update to requested role and name immediately.
+    // Update profile to requested role and name
     const { error: profileErr } = await adminClient
       .from('profiles')
       .update({ name, role })
-      .eq('id', inviteData.user.id);
+      .eq('id', linkData.user.id);
 
     if (profileErr) {
       console.warn('Profile update failed:', profileErr.message);
     }
 
-    return new Response(JSON.stringify({ success: true, userId: inviteData.user.id }), {
+    return new Response(JSON.stringify({
+      success: true,
+      userId: linkData.user.id,
+      inviteLink: linkData.properties.action_link,
+    }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 

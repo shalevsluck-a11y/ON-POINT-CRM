@@ -781,6 +781,11 @@
                autocomplete="off" autocapitalize="none">
       </div>
       <div class="field-group">
+        <label class="field-label">WhatsApp Number</label>
+        <input type="tel" id="invite-phone" class="field-input" placeholder="+1 929 555 0123"
+               autocomplete="off">
+      </div>
+      <div class="field-group">
         <label class="field-label">Role</label>
         <select id="invite-role" class="field-input">
           <option value="tech">Technician</option>
@@ -788,11 +793,11 @@
           <option value="admin">Admin</option>
         </select>
       </div>
-      <button class="btn btn-primary btn-full" id="invite-submit-btn" onclick="App.submitInvite()">
-        Send Invite
+      <button class="btn btn-primary btn-full" id="invite-submit-btn" onclick="App.submitInvite()" style="background:#25D366;border-color:#25D366">
+        Send via WhatsApp
       </button>
       <p style="font-size:12px;color:var(--color-text-muted);margin-top:10px;text-align:center">
-        An email will be sent with a link to set their password.
+        Opens WhatsApp with a link for them to set their password.
       </p>
     </div>
   </div>

@@ -2060,10 +2060,11 @@ const App = (() => {
     if (!modal) return;
     document.getElementById('invite-name').value  = '';
     document.getElementById('invite-email').value = '';
+    document.getElementById('invite-phone').value = '';
     document.getElementById('invite-role').value  = 'tech';
     document.getElementById('invite-error').classList.add('hidden');
     const btn = document.getElementById('invite-submit-btn');
-    if (btn) { btn.disabled = false; btn.textContent = 'Send Invite'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Send via WhatsApp'; }
     modal.classList.remove('hidden');
   }
 
@@ -2074,31 +2075,39 @@ const App = (() => {
   async function submitInvite() {
     const name  = document.getElementById('invite-name')?.value?.trim();
     const email = document.getElementById('invite-email')?.value?.trim();
+    const phone = document.getElementById('invite-phone')?.value?.trim();
     const role  = document.getElementById('invite-role')?.value;
     const errEl = document.getElementById('invite-error');
     const btn   = document.getElementById('invite-submit-btn');
 
     errEl.classList.add('hidden');
 
-    if (!name || !email) {
-      errEl.textContent = 'Name and email are required.';
+    if (!name || !email || !phone) {
+      errEl.textContent = 'Name, email, and WhatsApp number are required.';
       errEl.classList.remove('hidden');
       return;
     }
 
     btn.disabled    = true;
-    btn.textContent = 'Sending…';
+    btn.textContent = 'Generating link…';
 
     try {
-      await Auth.inviteUser(email, name, role);
+      const result = await Auth.inviteUser(email, name, role);
+
       closeInviteModal();
-      showToast(`Invite sent to ${email}`, 'success');
       _renderAdminUsersSection();
+
+      // Open WhatsApp with the invite link
+      const roleLabel = role === 'tech' ? 'Technician' : role === 'dispatcher' ? 'Dispatcher' : 'Admin';
+      const msg = `Hi ${name}! 👋\n\nYou've been invited to join On Point Pro Doors CRM as a ${roleLabel}.\n\nClick this link to set your password and get started:\n${result.inviteLink}\n\nSee you there!`;
+      const waPhone = phone.replace(/\D/g, '');
+      window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+
     } catch (e) {
       errEl.textContent = e.message || 'Invite failed.';
       errEl.classList.remove('hidden');
       btn.disabled    = false;
-      btn.textContent = 'Send Invite';
+      btn.textContent = 'Send via WhatsApp';
     }
   }
 
