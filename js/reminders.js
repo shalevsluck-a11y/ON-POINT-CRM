@@ -14,9 +14,11 @@ const Reminders = (() => {
 
   function init() {
     // Run immediately on startup
-    _check();
+    _check().catch(e => console.warn('Reminders._check error:', e.message));
     // Then every 30 minutes
-    _interval = setInterval(_check, 30 * 60 * 1000);
+    _interval = setInterval(() => {
+      _check().catch(e => console.warn('Reminders._check error:', e.message));
+    }, 30 * 60 * 1000);
   }
 
   function destroy() {
@@ -66,7 +68,6 @@ const Reminders = (() => {
     }
 
     if (newlyOverdue > 0) {
-      console.log(`Reminders: flagged ${newlyOverdue} overdue job(s)`);
       // Refresh the job list view if it's active
       if (typeof App !== 'undefined') {
         App.renderJobList();
@@ -92,7 +93,11 @@ const Reminders = (() => {
 
   // Manual trigger (for admin)
   async function runNow() {
-    await _check();
+    try {
+      await _check();
+    } catch (e) {
+      console.warn('Reminders.runNow error:', e.message);
+    }
   }
 
   return { init, destroy, runNow };

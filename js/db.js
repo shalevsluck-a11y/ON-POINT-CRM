@@ -31,7 +31,7 @@ const DB = (() => {
         if (zm) zm.forEach(z => { zelleMap[z.job_id] = z.zelle_memo; });
       }
 
-      const jobs = (data || []).map(row => _dbRowToJob(row, zelleMap));
+      const jobs = (data || []).map(row => _dbRowToJob(row, zelleMap, Auth.isAdmin()));
       Storage.saveJobs(jobs);
     } catch (e) {
       console.warn('DB._syncJobsDown error (using cache):', e.message);
@@ -53,27 +53,34 @@ const DB = (() => {
         .order('name');
 
       const current = Storage.getSettings();
+      const isAdmin = Auth.isAdmin();
+
+      // Build technician list — only include Zelle handles for admin
+      const techList = (techs || []).map(t => ({
+        id:        t.id,
+        name:      t.name,
+        phone:     t.phone,
+        color:     t.color || '#3B82F6',
+        zipCodes:  t.zip_codes || [],
+        percent:   t.default_tech_percent || 60,
+        // Zelle handle is payment-identity data — only admin should see it in cache
+        zelle:     isAdmin ? (t.zelle_handle || '') : '',
+        isOwner:   t.is_owner || false,
+        role:      t.role,
+      }));
+
       Storage.saveSettings({
         ...current,
         ownerName:      settings.owner_name     || current.ownerName,
         ownerPhone:     settings.owner_phone    || current.ownerPhone,
-        ownerZelle:     settings.owner_zelle    || current.ownerZelle,
+        // ownerZelle is a sensitive payment handle — only store it for admin
+        ownerZelle:     isAdmin ? (settings.owner_zelle || current.ownerZelle) : '',
         taxRateNY:      settings.tax_rate_ny    || current.taxRateNY,
         taxRateNJ:      settings.tax_rate_nj    || current.taxRateNJ,
         defaultState:   settings.default_state  || current.defaultState,
         appsScriptUrl:  settings.apps_script_url || current.appsScriptUrl,
         leadSources:    settings.lead_sources   || current.leadSources,
-        technicians:    (techs || []).map(t => ({
-          id:        t.id,
-          name:      t.name,
-          phone:     t.phone,
-          color:     t.color || '#3B82F6',
-          zipCodes:  t.zip_codes || [],
-          percent:   t.default_tech_percent || 60,
-          zelle:     t.zelle_handle || '',
-          isOwner:   t.is_owner || false,
-          role:      t.role,
-        })),
+        technicians:    techList,
       });
     } catch (e) {
       console.warn('DB._syncSettingsDown error (using cache):', e.message);
@@ -178,12 +185,12 @@ const DB = (() => {
     return supa
       .channel('jobs-realtime')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'jobs' }, payload => {
-        const job = _dbRowToJob(payload.new, {});
+        const job = _dbRowToJob(payload.new, {}, Auth.isAdmin());
         Storage.saveJob(job);
         if (onInsert) onInsert(job);
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'jobs' }, payload => {
-        const job = _dbRowToJob(payload.new, {});
+        const job = _dbRowToJob(payload.new, {}, Auth.isAdmin());
         Storage.saveJob(job);
         if (onUpdate) onUpdate(job);
       })
@@ -219,6 +226,11 @@ const DB = (() => {
   }
 
   async function createNotification({ title, body, jobId }) {
+    // Only admin and dispatcher can broadcast notifications (RLS enforces this too)
+    if (!Auth.isAdminOrDisp()) {
+      console.warn('DB.createNotification: caller is not admin/dispatcher — blocked');
+      return;
+    }
     // Broadcast to all (user_id = null)
     await supa.from('notifications').insert({
       user_id:    null,
@@ -250,8 +262,8 @@ const DB = (() => {
   // MAPPERS — DB row ↔ app job object
   // ──────────────────────────────────────────────────────────
 
-  function _dbRowToJob(row, zelleMap) {
-    return {
+  function _dbRowToJob(row, zelleMap, isAdmin = false) {
+    const job = {
       jobId:               row.job_id,
       status:              row.status,
       customerName:        row.customer_name,
@@ -277,8 +289,6 @@ const DB = (() => {
       taxAmount:           row.tax_amount || 0,
       taxOption:           row.tax_option || 'none',
       techPayout:          row.tech_payout || 0,
-      ownerPayout:         row.owner_payout || 0,
-      contractorFee:       row.contractor_fee || 0,
       paymentMethod:       row.payment_method,
       paidAt:              row.paid_at,
       syncStatus:          row.sync_status,
@@ -290,12 +300,26 @@ const DB = (() => {
       followUpAt:          row.follow_up_at,
       createdAt:           row.created_at,
       updatedAt:           row.updated_at,
-      zelleMemo:           zelleMap?.[row.job_id] || '',
     };
+
+    // Only expose admin-only financial fields to admin users.
+    // ownerPayout and contractorFee reveal business margin — never send to
+    // dispatcher or tech roles, even via localStorage / realtime.
+    if (isAdmin) {
+      job.ownerPayout   = row.owner_payout   || 0;
+      job.contractorFee = row.contractor_fee || 0;
+      job.zelleMemo     = zelleMap?.[row.job_id] || '';
+    } else {
+      job.ownerPayout   = 0;
+      job.contractorFee = 0;
+      job.zelleMemo     = '';
+    }
+
+    return job;
   }
 
   function _jobToDbRow(job) {
-    return {
+    const row = {
       job_id:               job.jobId,
       status:               job.status,
       customer_name:        job.customerName || '',
@@ -321,8 +345,6 @@ const DB = (() => {
       tax_amount:           parseFloat(job.taxAmount)      || 0,
       tax_option:           job.taxOption || 'none',
       tech_payout:          parseFloat(job.techPayout)     || 0,
-      owner_payout:         parseFloat(job.ownerPayout)    || 0,
-      contractor_fee:       parseFloat(job.contractorFee)  || 0,
       payment_method:       job.paymentMethod || 'cash',
       paid_at:              job.paidAt || null,
       sync_status:          job.syncStatus || 'pending',
@@ -334,6 +356,16 @@ const DB = (() => {
       follow_up_at:         job.followUpAt || null,
       updated_at:           new Date().toISOString(),
     };
+
+    // Only include admin-only financial columns when the current user is admin.
+    // Non-admin clients must not write these — doing so would corrupt the DB
+    // (they have zeroed-out copies of ownerPayout/contractorFee locally).
+    if (Auth.isAdmin()) {
+      row.owner_payout   = parseFloat(job.ownerPayout)   || 0;
+      row.contractor_fee = parseFloat(job.contractorFee) || 0;
+    }
+
+    return row;
   }
 
   return {

@@ -42,7 +42,7 @@ const App = (() => {
     try { await DB.init(); } catch(e) { console.warn('DB.init error:', e.message); }
 
     // Start notification bell + real-time banner toasts
-    await Notifications.init();
+    try { await Notifications.init(); } catch(e) { console.warn('Notifications.init error:', e.message); }
 
     // Start background overdue-job checker (admin/dispatcher only)
     Reminders.init();
@@ -90,7 +90,6 @@ const App = (() => {
     const settings = DB.getSettings();
     if (settings.appsScriptUrl) setTimeout(() => SyncManager.syncAll(), 3000);
 
-    console.log('On Point Pro Doors initialized');
   }
 
   function _updateHeaderUser() {
@@ -628,7 +627,7 @@ const App = (() => {
     if (!banner) return;
 
     if (result && result.isReturning) {
-      banner.textContent = `&#128260; Returning customer — ${result.jobCount} previous job${result.jobCount > 1 ? 's' : ''}`;
+      banner.textContent = `🔄 Returning customer — ${result.jobCount} previous job${result.jobCount > 1 ? 's' : ''}`;
       banner.classList.remove('hidden');
       _state.newJobDraft.isRecurringCustomer = true;
     } else {
@@ -799,6 +798,10 @@ const App = (() => {
   // ── SAVE JOB ─────────────────────────────────────────
 
   async function saveNewJob() {
+    if (!Auth.canCreateJobs()) {
+      showToast('Only admins and dispatchers can create jobs', 'error');
+      return;
+    }
     const name   = document.getElementById('f-name')?.value?.trim();
     const phone  = document.getElementById('f-phone')?.value?.trim();
     const techId = document.getElementById('f-tech-id')?.value;
@@ -1164,13 +1167,22 @@ const App = (() => {
   }
 
   function _buildStatusActions(job) {
-    const statuses = [
+    const allStatuses = [
       { val:'new',        label:'New',         cls:'sab-new' },
       { val:'scheduled',  label:'Scheduled',   cls:'sab-scheduled' },
       { val:'in_progress',label:'In Progress', cls:'sab-inprogress' },
+      { val:'follow_up',  label:'Follow-Up',   cls:'sab-new' },
       { val:'closed',     label:'Closed',      cls:'sab-closed' },
       { val:'paid',       label:'Paid',        cls:'sab-paid' },
     ];
+
+    // Techs can only transition to In Progress or Closed
+    const techStatuses = [
+      { val:'in_progress',label:'In Progress', cls:'sab-inprogress' },
+      { val:'closed',     label:'Closed',      cls:'sab-closed' },
+    ];
+
+    const statuses = Auth.isTech() ? techStatuses : allStatuses;
 
     const btns = statuses.map(s => `
       <button class="status-action-btn ${s.cls} ${job.status === s.val ? 'current' : ''}"
@@ -1200,6 +1212,24 @@ const App = (() => {
   }
 
   function setJobStatus(jobId, status) {
+    // Techs can only update status on jobs assigned to them, and only to in_progress or closed
+    if (Auth.isTech()) {
+      const user = Auth.getUser();
+      const j    = DB.getJobById(jobId);
+      if (!j || j.assignedTechId !== user?.id) {
+        showToast('Not authorized to update this job', 'error');
+        return;
+      }
+      const allowedForTech = ['in_progress', 'closed'];
+      if (!allowedForTech.includes(status)) {
+        showToast('Techs can only set status to In Progress or Closed', 'warning');
+        return;
+      }
+    } else if (!Auth.canEditAllJobs()) {
+      showToast('Not authorized to change job status', 'error');
+      return;
+    }
+
     const job = DB.getJobById(jobId);
     if (!job) return;
     if (job.status === 'paid' && status !== 'paid') {
@@ -1326,6 +1356,10 @@ const App = (() => {
   // ══════════════════════════════════════════════════════════
 
   function showCloseJobModal(jobId) {
+    if (!Auth.canEditAllJobs()) {
+      showToast('Not authorized to close jobs', 'error');
+      return;
+    }
     const job = DB.getJobById(jobId);
     if (!job) return;
     if (job.status === 'paid') { showToast('Job already paid', 'info'); return; }
@@ -1452,6 +1486,10 @@ const App = (() => {
   }
 
   function finalizeJob(jobId) {
+    if (!Auth.canEditAllJobs()) {
+      showToast('Not authorized to close jobs', 'error');
+      return;
+    }
     const job = DB.getJobById(jobId);
     if (!job) return;
 
@@ -1579,6 +1617,10 @@ const App = (() => {
   // ══════════════════════════════════════════════════════════
 
   function showEditJobModal(jobId) {
+    if (!Auth.canEditAllJobs()) {
+      showToast('Not authorized to edit jobs', 'error');
+      return;
+    }
     const job = DB.getJobById(jobId);
     if (!job) return;
     if (job.status === 'paid') { showToast('Cannot edit a paid job', 'warning'); return; }
@@ -1651,6 +1693,10 @@ const App = (() => {
   }
 
   function _saveEditedJob(jobId) {
+    if (!Auth.canEditAllJobs()) {
+      showToast('Not authorized to edit jobs', 'error');
+      return;
+    }
     const job = DB.getJobById(jobId);
     if (!job) return;
 
@@ -1685,6 +1731,10 @@ const App = (() => {
   // ══════════════════════════════════════════════════════════
 
   function confirmDeleteJob(jobId) {
+    if (!Auth.isAdmin()) {
+      showToast('Only admins can delete jobs', 'error');
+      return;
+    }
     const job = DB.getJobById(jobId);
     if (!job) return;
     showConfirm({
@@ -1697,6 +1747,7 @@ const App = (() => {
   }
 
   function _deleteJob(jobId) {
+    if (!Auth.isAdmin()) return; // second guard
     const job = DB.getJobById(jobId);
     DB.saveUndo(job);
     DB.deleteJob(jobId);
@@ -1987,6 +2038,10 @@ const App = (() => {
   }
 
   function saveSettings() {
+    if (!Auth.isAdmin()) {
+      showToast('Only admins can save settings', 'error');
+      return;
+    }
     const settings = {
       ownerName:     document.getElementById('s-owner-name')?.value?.trim()      || '',
       ownerPhone:    document.getElementById('s-owner-phone')?.value?.trim()     || '',
@@ -2054,6 +2109,10 @@ const App = (() => {
   }
 
   function saveTech() {
+    if (!Auth.isAdmin()) {
+      showToast('Only admins can manage technicians', 'error');
+      return;
+    }
     const name = document.getElementById('m-tech-name')?.value?.trim();
     if (!name) { showToast('Enter technician name', 'warning'); return; }
 
@@ -2100,6 +2159,10 @@ const App = (() => {
   }
 
   function deleteTech(techId) {
+    if (!Auth.isAdmin()) {
+      showToast('Only admins can manage technicians', 'error');
+      return;
+    }
     showConfirm({
       icon: '&#128465;',
       title: 'Delete Technician?',
@@ -2155,6 +2218,10 @@ const App = (() => {
   }
 
   function saveSource() {
+    if (!Auth.isAdmin()) {
+      showToast('Only admins can manage lead sources', 'error');
+      return;
+    }
     const name = document.getElementById('m-source-name')?.value?.trim();
     if (!name) { showToast('Enter source name', 'warning'); return; }
 
@@ -2184,6 +2251,10 @@ const App = (() => {
   }
 
   function deleteSource(sourceId) {
+    if (!Auth.isAdmin()) {
+      showToast('Only admins can manage lead sources', 'error');
+      return;
+    }
     showConfirm({
       icon: '&#128465;',
       title: 'Delete Source?',
@@ -2215,14 +2286,18 @@ const App = (() => {
     if (syncBtn) syncBtn.classList.add('syncing');
     showToast(`Syncing ${allJobs.length} jobs to Google Sheets...`, 'info');
 
-    const result = await SyncManager.syncAll();
-
-    if (syncBtn) syncBtn.classList.remove('syncing');
-
-    if (result.success) {
-      showToast(`Synced ${result.synced || 0} jobs to Google Sheets`, 'success');
-    } else {
-      showToast(result.error || 'Sync failed — check Apps Script URL in Settings', 'error');
+    try {
+      const result = await SyncManager.syncAll();
+      if (result.success) {
+        showToast(`Synced ${result.synced || 0} jobs to Google Sheets`, 'success');
+      } else {
+        showToast(result.error || 'Sync failed — check Apps Script URL in Settings', 'error');
+      }
+    } catch (e) {
+      showToast('Sync error — check Apps Script URL in Settings', 'error');
+      console.warn('syncAll error:', e.message);
+    } finally {
+      if (syncBtn) syncBtn.classList.remove('syncing');
     }
   }
 

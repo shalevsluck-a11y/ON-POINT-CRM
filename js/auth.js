@@ -51,7 +51,7 @@ const Auth = (() => {
         .upsert({
           id:   authUser.id,
           name: authUser.user_metadata?.name || authUser.email || '',
-          role: authUser.user_metadata?.role || 'tech',
+          role: 'tech',
         })
         .select()
         .single();

@@ -45,7 +45,7 @@ const SyncManager = (() => {
 
       return { success: true };
     } catch (error) {
-      console.error(`Sync failed for job ${job.jobId}:`, error);
+      console.warn(`Sync failed for job ${job.jobId}:`, error.message);
       Storage.saveJob({ ...job, syncStatus: 'error' });
       return { success: false, error: error.message };
     }

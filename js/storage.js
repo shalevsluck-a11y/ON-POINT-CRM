@@ -324,6 +324,7 @@ const Storage = (() => {
   return {
     // Jobs
     getJobs,
+    saveJobs,
     saveJob,
     deleteJob,
     getJobById,

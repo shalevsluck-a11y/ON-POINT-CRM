@@ -218,9 +218,6 @@
   /* The parent needs position:relative — set in header-right */
 }
 
-/* Make header-right relative so menu positions correctly */
-.header-right { position: relative; }
-
 .user-menu-name {
   padding: 12px var(--sp-md) 2px;
   font-size: var(--font-sm);
@@ -325,6 +322,9 @@
     --color-primary-dark: #F2F2F7;
     --glass-bg:     rgba(28,28,30,0.88);
     --glass-border: rgba(255,255,255,0.08);
+    --shadow-xs:    0 1px 3px rgba(0,0,0,0.18);
+    --shadow-sm:    0 2px 8px rgba(0,0,0,0.22);
+    --shadow-md:    0 4px 20px rgba(0,0,0,0.32);
     --shadow-card:  0 2px 16px rgba(0,0,0,0.3), 0 0 0 0.5px rgba(255,255,255,0.05);
     --shadow-lg:    0 8px 40px rgba(0,0,0,0.4);
   }

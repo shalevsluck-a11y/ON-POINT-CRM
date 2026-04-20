@@ -144,7 +144,7 @@ a { color: var(--color-primary); text-decoration: none; }
 }
 
 .header-left  { width: 72px; display: flex; align-items: center; }
-.header-right { min-width: 72px; display: flex; align-items: center; justify-content: flex-end; gap: 2px; }
+.header-right { min-width: 72px; display: flex; align-items: center; justify-content: flex-end; gap: 2px; position: relative; }
 .header-center { flex: 1; text-align: center; }
 
 #app-header h1 {

@@ -99,7 +99,11 @@ const Notifications = (() => {
 
   async function handleClick(notifId, jobId) {
     document.getElementById('notif-dropdown')?.classList.add('hidden');
-    await DB.markNotificationRead(notifId);
+    try {
+      await DB.markNotificationRead(notifId);
+    } catch (e) {
+      console.warn('Notifications.handleClick error:', e.message);
+    }
     _unread = _unread.filter(n => n.id !== notifId);
     _renderBell();
     if (jobId) App.openJobDetail(jobId);
@@ -107,7 +111,11 @@ const Notifications = (() => {
 
   async function markAllRead() {
     document.getElementById('notif-dropdown')?.classList.add('hidden');
-    await DB.markAllNotificationsRead();
+    try {
+      await DB.markAllNotificationsRead();
+    } catch (e) {
+      console.warn('Notifications.markAllRead error:', e.message);
+    }
     _unread = [];
     _renderBell();
   }

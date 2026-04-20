@@ -120,6 +120,8 @@ const PayoutEngine = (() => {
   function renderBreakdownHTML(calc, techName = 'Tech', elemId = '') {
     if (!calc) return '';
     const idAttr = elemId ? ` id="${elemId}"` : '';
+    // Escape techName to prevent XSS when rendering into innerHTML
+    const safeTechName = _escHtml(techName);
 
     const rows = [];
 
@@ -161,7 +163,7 @@ const PayoutEngine = (() => {
       </div>`);
     } else {
       rows.push(`<div class="payout-row">
-        <span class="payout-label">${techName} (${calc.techPercent}%)</span>
+        <span class="payout-label">${safeTechName} (${calc.techPercent}%)</span>
         <span class="payout-value deduct">-$${calc.techPayout.toFixed(2)}</span>
       </div>`);
     }
@@ -199,6 +201,15 @@ const PayoutEngine = (() => {
   // ── Helpers ─────────────────────────────────────────────
   function round2(n) { return Math.round(n * 100) / 100; }
   function round4(n) { return Math.round(n * 10000) / 10000; }
+
+  // HTML-escape a string before inserting into innerHTML
+  function _escHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
 
   return {
     calculate,
