@@ -1069,7 +1069,7 @@ const App = (() => {
     SyncManager.queueJob(job.jobId);
     SyncManager.syncJob(job).then(r => {
       if (!r.success) showToast('Saved — Sheets sync pending (check Settings URL)', 'warning');
-    });
+    }).catch(() => {});
 
     // Clear draft
     DB.clearDraft();
@@ -1410,10 +1410,12 @@ const App = (() => {
   }
 
   function _buildPhotoGrid(jobId, photos) {
-    const thumbs = photos.map((photo, idx) => `
-      <img class="photo-thumb" src="${photo.data}" alt="Photo ${idx+1}"
-           onclick="App.viewPhoto('${jobId}', ${idx})">
-    `).join('');
+    const thumbs = photos.map((photo, idx) => {
+      const safeSrc = typeof photo.data === 'string' && photo.data.startsWith('data:image/')
+        ? photo.data : '';
+      return `<img class="photo-thumb" src="${safeSrc}" alt="Photo ${idx+1}"
+           onclick="App.viewPhoto('${jobId}', ${idx})">`;
+    }).join('');
 
     const addBtn = `
       <div class="photo-add-btn" onclick="document.getElementById('photo-input-${jobId}').click()">
@@ -1757,7 +1759,7 @@ const App = (() => {
     SyncManager.syncJob(updated).then(r => {
       if (r.success) showToast('Synced to Google Sheets', 'success');
       else showToast('Saved — Sheets sync pending (check Settings URL)', 'warning');
-    });
+    }).catch(() => {});
 
     closeModal();
     const _myTake = calc.isSelfAssigned
@@ -2202,7 +2204,7 @@ const App = (() => {
     _renderSourceList(s.leadSources);
 
     // Admin-only: Users Management
-    if (Auth.isAdmin()) _renderAdminUsersSection();
+    if (Auth.isAdmin()) _renderAdminUsersSection().catch(() => {});
   }
 
   async function _renderAdminUsersSection() {

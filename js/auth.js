@@ -192,16 +192,20 @@ const Auth = (() => {
   async function inviteUser(email, name, role) {
     if (!isAdmin()) throw new Error('Admin only');
     const { data: { session } } = await SupabaseClient.auth.getSession();
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/invite-user`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ email, name, role }),
-    });
-    let json;
-    try { json = await res.json(); } catch { json = {}; }
+    let res, json;
+    try {
+      res = await fetch(`${SUPABASE_URL}/functions/v1/invite-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ email, name, role }),
+      });
+      json = await res.json();
+    } catch (e) {
+      throw new Error('Network error — invite could not be sent');
+    }
     if (!res.ok) throw new Error(json.error || 'Invite failed');
     return json;
   }
@@ -209,16 +213,20 @@ const Auth = (() => {
   async function removeUser(userId) {
     if (!isAdmin()) throw new Error('Admin only');
     const { data: { session } } = await SupabaseClient.auth.getSession();
-    const res = await fetch(`${SUPABASE_URL}/functions/v1/remove-user`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ userId }),
-    });
-    let json;
-    try { json = await res.json(); } catch { json = {}; }
+    let res, json;
+    try {
+      res = await fetch(`${SUPABASE_URL}/functions/v1/remove-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ userId }),
+      });
+      json = await res.json();
+    } catch (e) {
+      throw new Error('Network error — user could not be removed');
+    }
     if (!res.ok) throw new Error(json.error || 'Remove failed');
     return json;
   }
