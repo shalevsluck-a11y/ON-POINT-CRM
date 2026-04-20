@@ -4,6 +4,15 @@ const path    = require('path');
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
+app.disable('x-powered-by');
+
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  next();
+});
+
 app.use(express.static(path.join(__dirname), {
   setHeaders(res, filePath) {
     // SW and manifest: always revalidate

@@ -200,7 +200,8 @@ const Auth = (() => {
       },
       body: JSON.stringify({ email, name, role }),
     });
-    const json = await res.json();
+    let json;
+    try { json = await res.json(); } catch { json = {}; }
     if (!res.ok) throw new Error(json.error || 'Invite failed');
     return json;
   }
@@ -216,7 +217,8 @@ const Auth = (() => {
       },
       body: JSON.stringify({ userId }),
     });
-    const json = await res.json();
+    let json;
+    try { json = await res.json(); } catch { json = {}; }
     if (!res.ok) throw new Error(json.error || 'Remove failed');
     return json;
   }

@@ -2264,6 +2264,7 @@ const App = (() => {
   }
 
   async function submitInvite() {
+    if (!Auth.isAdmin()) { showToast('Not authorized', 'error'); return; }
     const name  = document.getElementById('invite-name')?.value?.trim();
     const phone = document.getElementById('invite-phone')?.value?.trim();
     const role  = document.getElementById('invite-role')?.value;
@@ -2294,7 +2295,7 @@ const App = (() => {
       const result = await Auth.inviteUser(autoEmail, name, role);
 
       closeInviteModal();
-      _renderAdminUsersSection();
+      await _renderAdminUsersSection();
 
       // Open WhatsApp with the invite link
       const roleLabel = role === 'tech' ? 'Technician' : role === 'dispatcher' ? 'Dispatcher' : 'Admin';
@@ -2418,7 +2419,7 @@ const App = (() => {
     showModal('modal-tech');
   }
 
-  function saveTech() {
+  async function saveTech() {
     if (!Auth.isAdmin()) {
       showToast('Only admins can manage technicians', 'error');
       return;
@@ -2461,7 +2462,7 @@ const App = (() => {
       techs.push(techData);
     }
 
-    DB.saveSettings({ technicians: techs });
+    await DB.saveSettings({ technicians: techs });
     _renderTechList(techs);
     _renderTechSelector();
     closeModal();
@@ -2478,10 +2479,10 @@ const App = (() => {
       title: 'Delete Technician?',
       message: 'This will remove the technician from all future jobs.',
       okLabel: 'Delete',
-      onOk: () => {
+      onOk: async () => {
         const settings = DB.getSettings();
         const techs = (settings.technicians || []).filter(t => t.id !== techId);
-        DB.saveSettings({ technicians: techs });
+        await DB.saveSettings({ technicians: techs });
         _renderTechList(techs);
         _renderTechSelector();
         showToast('Technician deleted', 'success');
@@ -2527,7 +2528,7 @@ const App = (() => {
     showModal('modal-source');
   }
 
-  function saveSource() {
+  async function saveSource() {
     if (!Auth.isAdmin()) {
       showToast('Only admins can manage lead sources', 'error');
       return;
@@ -2553,7 +2554,7 @@ const App = (() => {
       sources.push(data);
     }
 
-    DB.saveSettings({ leadSources: sources });
+    await DB.saveSettings({ leadSources: sources });
     _renderSourceList(sources);
     _populateSourceDropdown();
     closeModal();
@@ -2570,10 +2571,10 @@ const App = (() => {
       title: 'Delete Source?',
       message: 'Remove this lead source?',
       okLabel: 'Delete',
-      onOk: () => {
+      onOk: async () => {
         const settings = DB.getSettings();
         const sources = (settings.leadSources || []).filter(s => s.id !== sourceId);
-        DB.saveSettings({ leadSources: sources });
+        await DB.saveSettings({ leadSources: sources });
         _renderSourceList(sources);
         _populateSourceDropdown();
         showToast('Source deleted', 'success');
