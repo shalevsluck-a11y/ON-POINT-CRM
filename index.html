@@ -65,7 +65,7 @@
     </div>
     <div class="header-right">
       <!-- Notification Bell -->
-      <div class="notif-bell-wrap" style="position:relative">
+      <div class="notif-bell-wrap">
         <button id="notif-bell" class="btn-icon" onclick="Notifications.toggleDropdown()" title="Notifications" aria-label="Notifications">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -411,7 +411,7 @@
           <label class="field-label">My Phone</label>
           <input type="tel" id="s-owner-phone" class="field-input" placeholder="Your phone number">
         </div>
-        <div class="field-group">
+        <div class="field-group" id="s-zelle-group">
           <label class="field-label">My Zelle Handle</label>
           <input type="text" id="s-owner-zelle" class="field-input" placeholder="Phone or email for Zelle">
         </div>
@@ -494,6 +494,9 @@
           <button class="btn btn-primary" style="flex:1" onclick="App.syncAll()">Sync All</button>
         </div>
       </div>
+
+      <!-- Users (admin only — populated by JS) -->
+      <div id="admin-users-section" class="hidden"></div>
 
       <!-- Data -->
       <div class="settings-card danger-card">

@@ -1928,8 +1928,62 @@ const App = (() => {
     _setVal('s-apps-script-url',   s.appsScriptUrl);
     _setVal('s-default-state',     s.defaultState);
 
+    // Zelle handle visible to admin only
+    const zelleGroup = document.getElementById('s-zelle-group');
+    if (zelleGroup) zelleGroup.classList.toggle('hidden', !Auth.canSeeZelleMemo());
+
     _renderTechList(s.technicians);
     _renderSourceList(s.leadSources);
+
+    // Admin-only: Users Management
+    if (Auth.isAdmin()) _renderAdminUsersSection();
+  }
+
+  async function _renderAdminUsersSection() {
+    const container = document.getElementById('admin-users-section');
+    if (!container) return;
+
+    container.innerHTML = `<div class="settings-card">
+      <div class="settings-section-title">Users</div>
+      <div id="admin-users-list"><div class="empty-state-sm">Loading users...</div></div>
+    </div>`;
+    container.classList.remove('hidden');
+
+    try {
+      const profiles = await Auth.getAllProfiles();
+      const listEl = document.getElementById('admin-users-list');
+      if (!listEl) return;
+
+      listEl.innerHTML = profiles.map(p => `
+        <div class="user-list-item">
+          <div class="user-item-avatar" style="background:${p.color||'#3B82F6'}">${_initials(p.name||p.id)}</div>
+          <div class="user-item-info">
+            <div class="user-item-name">${_esc(p.name || 'Unknown')}</div>
+            <div class="user-item-email">${_esc(p.email||'')}</div>
+          </div>
+          <div class="user-item-role">
+            <select class="field-input" style="font-size:12px;padding:4px 8px;height:32px"
+                    onchange="App._changeUserRole('${p.id}', this.value)">
+              <option value="admin"      ${p.role==='admin'      ?'selected':''}>Admin</option>
+              <option value="dispatcher" ${p.role==='dispatcher' ?'selected':''}>Dispatcher</option>
+              <option value="tech"       ${p.role==='tech'       ?'selected':''}>Tech</option>
+            </select>
+          </div>
+        </div>
+      `).join('') || '<div class="empty-state-sm">No users found</div>';
+    } catch (e) {
+      const listEl = document.getElementById('admin-users-list');
+      if (listEl) listEl.innerHTML = `<div class="empty-state-sm" style="color:var(--color-error)">${_esc(e.message)}</div>`;
+    }
+  }
+
+  async function _changeUserRole(userId, role) {
+    try {
+      await Auth.updateUserRole(userId, role);
+      showToast(`Role updated to ${role}`, 'success');
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
   }
 
   function saveSettings() {
@@ -2485,6 +2539,7 @@ const App = (() => {
     exportJobPDF,
 
     // Settings
+    _changeUserRole,
     saveSettings,
     showTechModal,
     saveTech,

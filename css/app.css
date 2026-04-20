@@ -143,9 +143,8 @@ a { color: var(--color-primary); text-decoration: none; }
   position: relative;
 }
 
-.header-left,
-.header-right { width: 72px; display: flex; align-items: center; }
-.header-right  { justify-content: flex-end; }
+.header-left  { width: 72px; display: flex; align-items: center; }
+.header-right { min-width: 72px; display: flex; align-items: center; justify-content: flex-end; gap: 2px; }
 .header-center { flex: 1; text-align: center; }
 
 #app-header h1 {

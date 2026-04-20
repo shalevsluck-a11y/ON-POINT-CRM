@@ -72,6 +72,9 @@
   margin-top: var(--sp-lg);
 }
 
+/* ── NOTIFICATION BELL WRAP ──────────────────────────────── */
+.notif-bell-wrap { position: relative; }
+
 /* ── NOTIFICATION BELL ───────────────────────────────────── */
 .notif-badge {
   position: absolute;
