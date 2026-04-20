@@ -44,7 +44,7 @@ serve(async (req) => {
       });
     }
 
-    const { email, name, role } = await req.json();
+    const { email, name, role, phone } = await req.json();
 
     if (!email || !name || !['admin', 'dispatcher', 'tech'].includes(role)) {
       return new Response(JSON.stringify({ error: 'Invalid input: email, name, and role required' }), {
@@ -58,37 +58,33 @@ serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Generate invite link without sending any email
-    const { data: linkData, error: linkErr } = await adminClient.auth.admin.generateLink({
-      type: 'invite',
-      email,
-      options: {
-        data: { name },
-        redirectTo: 'https://crm.onpointprodoors.com',
-      },
+    // Send invite email — Supabase emails the set-password link automatically
+    const { data: inviteData, error: inviteErr } = await adminClient.auth.admin.inviteUserByEmail(email, {
+      data: { name },
+      redirectTo: 'https://crm.onpointprodoors.com',
     });
 
-    if (linkErr) {
-      return new Response(JSON.stringify({ error: linkErr.message }), {
+    if (inviteErr) {
+      return new Response(JSON.stringify({ error: inviteErr.message }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Update profile to requested role and name
+    const userId = inviteData.user.id;
+
+    // Upsert profile with name, role, and phone
+    const profileUpdate: Record<string, string> = { name, role };
+    if (phone) profileUpdate.phone = phone;
+
     const { error: profileErr } = await adminClient
       .from('profiles')
-      .update({ name, role })
-      .eq('id', linkData.user.id);
+      .upsert({ id: userId, ...profileUpdate }, { onConflict: 'id' });
 
     if (profileErr) {
-      console.warn('Profile update failed:', profileErr.message);
+      console.warn('Profile upsert failed:', profileErr.message);
     }
 
-    return new Response(JSON.stringify({
-      success: true,
-      userId: linkData.user.id,
-      inviteLink: linkData.properties.action_link,
-    }), {
+    return new Response(JSON.stringify({ success: true, userId }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 

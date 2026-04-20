@@ -189,7 +189,7 @@ const Auth = (() => {
     if (error) throw error;
   }
 
-  async function inviteUser(email, name, role) {
+  async function inviteUser(email, name, role, phone) {
     if (!isAdmin()) throw new Error('Admin only');
     const { data: { session } } = await SupabaseClient.auth.getSession();
     let res, json;
@@ -200,7 +200,7 @@ const Auth = (() => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ email, name, role }),
+        body: JSON.stringify({ email, name, role, phone: phone || '' }),
       });
       json = await res.json();
     } catch (e) {

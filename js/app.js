@@ -31,6 +31,7 @@ const App = (() => {
   let _settingsChannel = null;
   let _profilesChannel = null;
   let _firstSetupInProgress = false;
+  let _lastInvite = { name: '', email: '', phone: '' }; // for WA button after invite
   let _jobsViewMode = localStorage.getItem('op_jobs_view') || 'list'; // 'list' | 'kanban'
   let _ptr = { startY: 0, pulling: false };
 
@@ -2239,6 +2240,8 @@ const App = (() => {
               <option value="dispatcher" ${u.role==='dispatcher' ?'selected':''}>Dispatcher</option>
               <option value="tech"       ${u.role==='tech'       ?'selected':''}>Tech</option>
             </select>
+            ${u.phone ? `<button class="btn-icon" style="color:#25D366;font-size:18px" title="Send app link on WhatsApp"
+              onclick="App._sendUserWALink(${JSON.stringify(u.name||'')},${JSON.stringify(u.email||'')},${JSON.stringify(u.phone||'')})">&#128241;</button>` : ''}
             ${u.id !== currentUserId ? `<button class="btn-icon" style="color:var(--color-error);font-size:16px"
               onclick="App._confirmRemoveUser('${u.id}','${_esc(u.name||u.email)}')" title="Remove user">&#128465;</button>` : ''}
           </div>
@@ -2255,11 +2258,14 @@ const App = (() => {
     const modal = document.getElementById('invite-modal');
     if (!modal) return;
     document.getElementById('invite-name').value  = '';
+    document.getElementById('invite-email').value = '';
     document.getElementById('invite-phone').value = '';
     document.getElementById('invite-role').value  = 'tech';
     document.getElementById('invite-error').classList.add('hidden');
+    document.getElementById('invite-form-body').classList.remove('hidden');
+    document.getElementById('invite-success-body').classList.add('hidden');
     const btn = document.getElementById('invite-submit-btn');
-    if (btn) { btn.disabled = false; btn.textContent = 'Send via WhatsApp'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Send Invite'; }
     modal.classList.remove('hidden');
   }
 
@@ -2267,57 +2273,85 @@ const App = (() => {
     document.getElementById('invite-modal')?.classList.add('hidden');
   }
 
+  function _buildWAAppLinkMsg(name, email) {
+    return `Hi ${name}, welcome to OnPoint Pro Doors CRM!\n\n` +
+      `Download and install the app on your phone:\n\n` +
+      `1. Open this link: https://crm.onpointprodoors.com\n` +
+      `2. Tap the Share button \u2191 at the bottom\n` +
+      `3. Tap Add to Home Screen\n` +
+      `4. The app installs like a real app\n\n` +
+      (email ? `Check your email (${email}) for your invite link to set your password.\n\nOnce you set your password, open the app and log in.\n\n` : '') +
+      `Any questions call (929) 429-2429.\n\n` +
+      `- OnPoint Pro Doors`;
+  }
+
+  function _openWAWithMsg(phone, msg) {
+    const digits = String(phone).replace(/\D/g, '');
+    const waPhone = digits.length === 10 ? '1' + digits : digits;
+    window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+  }
+
+  function _sendInviteWA() {
+    const msg = _buildWAAppLinkMsg(_lastInvite.name, _lastInvite.email);
+    _openWAWithMsg(_lastInvite.phone, msg);
+  }
+
+  function _sendInviteWAFromInput() {
+    const phone = document.getElementById('invite-wa-phone-input')?.value?.trim() || '';
+    if (!phone.replace(/\D/g, '')) { showToast('Enter a phone number', 'warning'); return; }
+    const msg = _buildWAAppLinkMsg(_lastInvite.name, _lastInvite.email);
+    _openWAWithMsg(phone, msg);
+  }
+
+  function _sendUserWALink(name, email, phone) {
+    const msg = _buildWAAppLinkMsg(name || 'there', email || null);
+    _openWAWithMsg(phone, msg);
+  }
+
   async function submitInvite() {
     if (!Auth.isAdmin()) { showToast('Not authorized', 'error'); return; }
     const name  = document.getElementById('invite-name')?.value?.trim();
-    const phone = document.getElementById('invite-phone')?.value?.trim();
+    const email = document.getElementById('invite-email')?.value?.trim();
+    const phone = document.getElementById('invite-phone')?.value?.trim() || '';
     const role  = document.getElementById('invite-role')?.value;
     const errEl = document.getElementById('invite-error');
     const btn   = document.getElementById('invite-submit-btn');
 
     errEl.classList.add('hidden');
 
-    if (!name || !phone) {
-      errEl.textContent = 'Name and WhatsApp number are required.';
+    if (!name) {
+      errEl.textContent = 'Full name is required.';
       errEl.classList.remove('hidden');
       return;
     }
-
-    // Auto-generate email from phone digits so admin never has to enter it
-    const phoneDigits = phone.replace(/\D/g, '');
-    if (phoneDigits.length < 7) {
-      errEl.textContent = 'Enter a valid phone number.';
+    if (!email || !email.includes('@')) {
+      errEl.textContent = 'A valid email address is required.';
       errEl.classList.remove('hidden');
       return;
     }
-    const autoEmail = `${phoneDigits}@crm.onpointprodoors.com`;
 
     btn.disabled    = true;
-    btn.textContent = 'Generating link…';
+    btn.textContent = 'Sending invite\u2026';
 
     try {
-      const result = await Auth.inviteUser(autoEmail, name, role);
+      await Auth.inviteUser(email, name, role, phone);
 
-      closeInviteModal();
-      await _renderAdminUsersSection();
+      _lastInvite = { name, email, phone };
+      _renderAdminUsersSection().catch(() => {});
 
-      // Open WhatsApp with the invite link
-      const roleLabel = role === 'tech' ? 'Technician' : role === 'dispatcher' ? 'Dispatcher' : 'Admin';
-      const msg =
-        `Hi ${name}! 👋\n\n` +
-        `You've been invited to On Point Pro Doors CRM as a ${roleLabel}.\n\n` +
-        `Tap the link below to set your password and get started:\n${result.inviteLink}\n\n` +
-        `To log in later, use:\n` +
-        `📧 ${autoEmail}\n` +
-        `(and the password you'll create above)`;
-      const waPhone = phoneDigits.length === 10 ? '1' + phoneDigits : phoneDigits;
-      window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+      document.getElementById('invite-form-body').classList.add('hidden');
+      document.getElementById('invite-success-body').classList.remove('hidden');
+      document.getElementById('invite-success-email').textContent = email;
+
+      const hasPhone = phone.replace(/\D/g, '').length >= 7;
+      document.getElementById('invite-wa-with-phone').classList.toggle('hidden', !hasPhone);
+      document.getElementById('invite-wa-no-phone').classList.toggle('hidden', hasPhone);
 
     } catch (e) {
       errEl.textContent = e.message || 'Invite failed.';
       errEl.classList.remove('hidden');
       btn.disabled    = false;
-      btn.textContent = 'Send via WhatsApp';
+      btn.textContent = 'Send Invite';
     }
   }
 
@@ -3267,6 +3301,9 @@ const App = (() => {
     submitInvite,
     _changeUserRole,
     _confirmRemoveUser,
+    _sendInviteWA,
+    _sendInviteWAFromInput,
+    _sendUserWALink,
 
     // WhatsApp
     openWhatsApp,
