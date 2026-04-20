@@ -28,7 +28,11 @@ const App = (() => {
 
   let _initialized = false;
   let _jobsChannel = null;
+  let _settingsChannel = null;
+  let _profilesChannel = null;
   let _firstSetupInProgress = false;
+  let _jobsViewMode = localStorage.getItem('op_jobs_view') || 'list'; // 'list' | 'kanban'
+  let _ptr = { startY: 0, pulling: false };
 
   // ══════════════════════════════════════════════════════════
   // INIT
@@ -57,18 +61,37 @@ const App = (() => {
     // Show/hide nav + header items based on role
     _applyRoleUI();
 
+    // Init dark mode from saved preference
+    _initDarkMode();
+
+    // Init pull-to-refresh
+    _initPullToRefresh();
+
     // Subscribe to live job changes from other sessions
     _jobsChannel = DB.subscribeToJobs(
-      () => { renderDashboard(); renderJobList(); },
-      () => { renderDashboard(); renderJobList(); if (_state.currentView === 'job-detail') openJobDetail(_state.currentJobId); },
+      () => { renderDashboard(); renderJobList(); if (_jobsViewMode === 'kanban' && _state.currentView === 'jobs') renderKanban(); },
+      () => { renderDashboard(); renderJobList(); if (_jobsViewMode === 'kanban' && _state.currentView === 'jobs') renderKanban(); if (_state.currentView === 'job-detail') openJobDetail(_state.currentJobId); },
       (deletedJobId) => {
         renderDashboard();
         renderJobList();
+        if (_jobsViewMode === 'kanban' && _state.currentView === 'jobs') renderKanban();
         if (_state.currentView === 'job-detail' && _state.currentJobId === deletedJobId) {
           navigate('jobs');
         }
       },
     );
+
+    // Subscribe to settings/profile changes from other devices (Part 1 realtime)
+    _settingsChannel = DB.subscribeToSettings(() => {
+      _renderTechSelector();
+      _populateSourceDropdown();
+      if (_state.currentView === 'settings') _loadSettingsForm();
+    });
+    _profilesChannel = DB.subscribeToProfiles(() => {
+      _renderTechSelector();
+      _populateSourceDropdown();
+      if (_state.currentView === 'settings') _loadSettingsForm();
+    });
 
     // Load settings into form
     _loadSettingsForm();
@@ -151,7 +174,9 @@ const App = (() => {
     _initialized = false;
     Reminders.destroy();
     Notifications.destroy();
-    if (_jobsChannel) { SupabaseClient.removeChannel(_jobsChannel); _jobsChannel = null; }
+    if (_jobsChannel)     { SupabaseClient.removeChannel(_jobsChannel);     _jobsChannel = null; }
+    if (_settingsChannel) { SupabaseClient.removeChannel(_settingsChannel); _settingsChannel = null; }
+    if (_profilesChannel) { SupabaseClient.removeChannel(_profilesChannel); _profilesChannel = null; }
     await Auth.logout();
     LoginScreen.show();
   }
@@ -203,9 +228,32 @@ const App = (() => {
       n.classList.toggle('active', n.dataset.view === viewName);
     });
 
+    // Sync view toggle button state when entering jobs view
+    if (viewName === 'jobs') {
+      const toggleEl = document.getElementById('btn-toggle-view');
+      if (toggleEl) {
+        toggleEl.innerHTML = _jobsViewMode === 'kanban'
+          ? '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="5" height="14" rx="1"/><rect x="10" y="1" width="5" height="14" rx="1"/></svg>'
+          : '&#9776;';
+      }
+    }
+
     // On-enter actions per view
     if (viewName === 'dashboard')  renderDashboard();
-    if (viewName === 'jobs')       renderJobList();
+    if (viewName === 'jobs') {
+      // Restore saved view mode
+      const listEl  = document.getElementById('jobs-list-container');
+      const boardEl = document.getElementById('jobs-kanban-board');
+      if (_jobsViewMode === 'kanban') {
+        if (listEl)  listEl.classList.add('hidden');
+        if (boardEl) boardEl.classList.remove('hidden');
+        renderKanban();
+      } else {
+        if (listEl)  listEl.classList.remove('hidden');
+        if (boardEl) boardEl.classList.add('hidden');
+        renderJobList();
+      }
+    }
     if (viewName === 'calendar')   renderCalendar();
     if (viewName === 'settings')   _loadSettingsForm();
     if (viewName === 'new-job')    _initNewJobView();
@@ -266,23 +314,157 @@ const App = (() => {
     _setText('count-inprogress', counts.in_progress);
     _setText('count-closed',     counts.closed);
     _setText('count-paid',       counts.paid);
+    _setText('count-followup',   counts.follow_up);
 
     // Tech performance (admin/dispatcher only)
     if (Auth.canSeeFinancials()) _renderTechPerformance(jobs);
 
-    // Recent jobs (last 8)
-    const recentEl = document.getElementById('recent-jobs-list');
-    const recent = jobs.slice(0, 8);
-    if (recent.length === 0) {
-      recentEl.innerHTML = `<div class="empty-state">
-        <div class="empty-icon">&#128295;</div>
-        <div class="empty-title">No jobs yet</div>
-        <div class="empty-sub">Tap + to add your first job</div>
-      </div>`;
-    } else {
-      recentEl.innerHTML = recent.map(j => _jobCardHTML(j)).join('');
+    // Role-specific dashboard sections
+    if (Auth.isTech()) {
+      _renderTechTodaySection(jobs);
+    } else if (Auth.isAdminOrDisp() && !Auth.canSeeFinancials() /* dispatcher */) {
+      _renderDispatcherSection(jobs);
+    } else if (Auth.isAdmin()) {
+      _renderDispatcherSection(jobs); // admins also see urgent queue
     }
 
+    // Recent jobs (last 8) — hide for tech (they have their own section)
+    const recentEl = document.getElementById('recent-jobs-list');
+    const recentWrap = document.getElementById('recent-jobs-wrap');
+    if (Auth.isTech()) {
+      if (recentWrap) recentWrap.classList.add('hidden');
+    } else {
+      if (recentWrap) recentWrap.classList.remove('hidden');
+      const recent = jobs.slice(0, 8);
+      if (recent.length === 0) {
+        recentEl.innerHTML = `<div class="empty-state">
+          <div class="empty-icon">&#128295;</div>
+          <div class="empty-title">No jobs yet</div>
+          <div class="empty-sub">Tap + to add your first job</div>
+        </div>`;
+      } else {
+        recentEl.innerHTML = recent.map(j => _jobCardHTML(j)).join('');
+      }
+    }
+  }
+
+  function _renderTechTodaySection(allJobs) {
+    const container = document.getElementById('tech-today-section');
+    if (!container) return;
+    const user = Auth.getUser();
+    const today = _todayStr();
+    const myJobs = allJobs.filter(j => j.assignedTechId === user?.id);
+    const todayJobs = myJobs.filter(j =>
+      j.scheduledDate === today && !['paid', 'closed'].includes(j.status)
+    );
+    const thisWeekPaid = myJobs.filter(j =>
+      j.status === 'paid' && j.scheduledDate >= _daysAgoStr(6)
+    );
+    const weekEarnings = thisWeekPaid.reduce((s, j) => s + (parseFloat(j.techPayout) || 0), 0);
+
+    const jobCards = todayJobs.length > 0
+      ? todayJobs.map(j => {
+          const statusLbl = { new:'New', scheduled:'Sched', in_progress:'Active', follow_up:'Follow-Up' }[j.status] || j.status;
+          const statusCls = { new:'sb-new', scheduled:'sb-scheduled', in_progress:'sb-inprogress', follow_up:'sb-new' }[j.status] || 'sb-new';
+          return `<div class="tech-today-card" onclick="App.openJobDetail('${j.jobId}')">
+            <div class="ttc-left">
+              <div class="ttc-time">${j.scheduledTime ? _formatTime(j.scheduledTime) : 'TBD'}</div>
+              <div class="ttc-name">${_esc(j.customerName || 'Unknown')}</div>
+              <div class="ttc-addr">${_esc(j.address || '')}${j.city ? ', ' + _esc(j.city) : ''}</div>
+            </div>
+            <div class="ttc-right">
+              <span class="status-badge ${statusCls}">${statusLbl}</span>
+              ${j.status !== 'in_progress'
+                ? `<button class="btn btn-sm btn-primary ttc-btn" onclick="event.stopPropagation();App.setJobStatus('${j.jobId}','in_progress')">Start</button>`
+                : `<button class="btn btn-sm btn-success ttc-btn" onclick="event.stopPropagation();App.openJobDetail('${j.jobId}')">Close</button>`}
+            </div>
+          </div>`;
+        }).join('')
+      : '<div class="empty-state-sm">No jobs scheduled for today ✓</div>';
+
+    container.innerHTML = `
+      <div class="dash-role-card">
+        <div class="dash-role-header">Today's Jobs
+          <span class="dash-role-badge">${todayJobs.length}</span>
+        </div>
+        <div class="tech-today-list">${jobCards}</div>
+      </div>
+      <div class="revenue-grid" style="margin-top:12px">
+        <div class="revenue-card">
+          <div class="rev-label">This Week Earnings</div>
+          <div class="rev-amount" style="color:var(--color-success)">${_fmt(weekEarnings)}</div>
+          <div class="rev-count">${thisWeekPaid.length} paid job${thisWeekPaid.length !== 1 ? 's' : ''}</div>
+        </div>
+        <div class="revenue-card">
+          <div class="rev-label">My Total Jobs</div>
+          <div class="rev-amount">${myJobs.length}</div>
+          <div class="rev-count">all time</div>
+        </div>
+      </div>`;
+    container.classList.remove('hidden');
+  }
+
+  function _renderDispatcherSection(allJobs) {
+    const container = document.getElementById('dispatcher-section');
+    if (!container) return;
+
+    const urgent = allJobs.filter(j => j.status === 'follow_up');
+    const unassigned = allJobs.filter(j =>
+      ['new', 'scheduled'].includes(j.status) && !j.assignedTechId
+    );
+    const today = _todayStr();
+    const todayJobs = allJobs.filter(j =>
+      j.scheduledDate === today && ['scheduled', 'in_progress', 'new'].includes(j.status)
+    );
+
+    const urgentHTML = urgent.length > 0
+      ? urgent.slice(0, 5).map(j => `
+          <div class="urgent-job-row" onclick="App.openJobDetail('${j.jobId}')">
+            <div class="urgent-dot"></div>
+            <div class="urgent-info">
+              <div class="urgent-name">${_esc(j.customerName || 'Unknown')}</div>
+              <div class="urgent-addr">${_esc(j.address || '')} · ${j.scheduledDate ? _formatDate(j.scheduledDate) : 'No date'}</div>
+            </div>
+            <button class="btn btn-sm btn-secondary urgent-wa" onclick="event.stopPropagation();App.sendFollowUpWhatsApp('${j.jobId}')" title="Send follow-up WhatsApp">
+              &#128172;
+            </button>
+          </div>`).join('')
+      : '<div class="empty-state-sm" style="color:var(--color-success)">✓ No follow-ups needed</div>';
+
+    const unassignedHTML = unassigned.length > 0
+      ? `<div class="dash-alert-badge">&#9888; ${unassigned.length} unassigned job${unassigned.length > 1 ? 's' : ''}</div>`
+      : '';
+
+    container.innerHTML = `
+      ${unassignedHTML}
+      <div class="dash-role-card" style="${urgent.length > 0 ? 'border-color:rgba(239,68,68,0.3)' : ''}">
+        <div class="dash-role-header">
+          Needs Attention
+          ${urgent.length > 0 ? `<span class="dash-role-badge" style="background:rgba(239,68,68,0.15);color:var(--color-error)">${urgent.length}</span>` : ''}
+        </div>
+        ${urgentHTML}
+      </div>
+      <div class="dash-role-card" style="margin-top:12px">
+        <div class="dash-role-header">
+          Today's Schedule
+          <span class="dash-role-badge">${todayJobs.length}</span>
+        </div>
+        ${todayJobs.length > 0
+          ? todayJobs.slice(0, 5).map(j => {
+              const tech = j.assignedTechId ? DB.getSettings().technicians.find(t => t.id === j.assignedTechId) : null;
+              return `<div class="urgent-job-row" onclick="App.openJobDetail('${j.jobId}')">
+                ${tech ? `<div class="urgent-dot" style="background:${tech.color||'#64748B'}"></div>` : '<div class="urgent-dot"></div>'}
+                <div class="urgent-info">
+                  <div class="urgent-name">${_esc(j.customerName || 'Unknown')}</div>
+                  <div class="urgent-addr">${j.scheduledTime ? _formatTime(j.scheduledTime) + ' · ' : ''}${_esc(j.address || '')}${j.city ? ', ' + _esc(j.city) : ''}</div>
+                </div>
+                <span class="status-badge ${{ new:'sb-new', scheduled:'sb-scheduled', in_progress:'sb-inprogress' }[j.status]||'sb-new'}" style="font-size:10px">${{ new:'New', scheduled:'Sched', in_progress:'Active' }[j.status]||j.status}</span>
+              </div>`;
+            }).join('')
+          : '<div class="empty-state-sm">No jobs today</div>'}
+        ${todayJobs.length > 5 ? `<button class="btn-link" style="width:100%;text-align:center" onclick="App.navigate('calendar')">View all ${todayJobs.length} →</button>` : ''}
+      </div>`;
+    container.classList.remove('hidden');
   }
 
   function _renderTechPerformance(jobs) {
@@ -353,6 +535,9 @@ const App = (() => {
     });
 
     container.innerHTML = jobs.map(j => _jobCardHTML(j)).join('');
+
+    // If kanban view is also open, keep it in sync
+    if (_jobsViewMode === 'kanban' && _state.currentView === 'jobs') renderKanban();
   }
 
   function setJobFilter(filter, btn) {
@@ -1024,6 +1209,12 @@ const App = (() => {
          </a>`
       : '';
 
+    const followUpBtn = job.status === 'follow_up' && Auth.isAdminOrDisp()
+      ? `<button class="detail-action-btn dab-warn" onclick="App.sendFollowUpWhatsApp('${job.jobId}')">
+           <span class="dab-icon">&#128172;</span><span class="dab-label">Remind</span>
+         </button>`
+      : '';
+
     return `
       <!-- Hero -->
       <div class="detail-hero">
@@ -1039,6 +1230,7 @@ const App = (() => {
       <div class="detail-action-bar">
         ${callLink}
         ${waLink}
+        ${followUpBtn}
         ${job.address ? `<button class="detail-action-btn" onclick="App.navigateToJob('${job.jobId}')"><span class="dab-icon">&#128205;</span><span class="dab-label">Navigate</span></button>` : ''}
         ${Auth.canEditAllJobs() ? `<button class="detail-action-btn" onclick="App.showEditJobModal('${job.jobId}')"><span class="dab-icon">&#9998;</span><span class="dab-label">Edit</span></button>` : ''}
       </div>
@@ -2390,6 +2582,238 @@ const App = (() => {
   }
 
   // ══════════════════════════════════════════════════════════
+  // KANBAN PIPELINE VIEW
+  // ══════════════════════════════════════════════════════════
+
+  function toggleJobsView() {
+    _jobsViewMode = _jobsViewMode === 'list' ? 'kanban' : 'list';
+    localStorage.setItem('op_jobs_view', _jobsViewMode);
+    const listEl   = document.getElementById('jobs-list-container');
+    const boardEl  = document.getElementById('jobs-kanban-board');
+    const toggleEl = document.getElementById('btn-toggle-view');
+    if (_jobsViewMode === 'kanban') {
+      if (listEl)   listEl.classList.add('hidden');
+      if (boardEl)  boardEl.classList.remove('hidden');
+      if (toggleEl) toggleEl.innerHTML = '<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="5" height="14" rx="1"/><rect x="10" y="1" width="5" height="14" rx="1"/></svg>';
+      renderKanban();
+    } else {
+      if (listEl)   listEl.classList.remove('hidden');
+      if (boardEl)  boardEl.classList.add('hidden');
+      if (toggleEl) toggleEl.innerHTML = '&#9776;';
+      renderJobList();
+    }
+  }
+
+  function renderKanban() {
+    const board = document.getElementById('jobs-kanban-board');
+    if (!board) return;
+
+    let jobs = DB.searchJobs(_state.jobSearch);
+
+    const statuses = [
+      { val: 'new',         label: 'New',         cls: 'kc-new' },
+      { val: 'scheduled',   label: 'Scheduled',   cls: 'kc-scheduled' },
+      { val: 'in_progress', label: 'In Progress', cls: 'kc-inprogress' },
+      { val: 'follow_up',   label: 'Follow-Up',   cls: 'kc-followup' },
+      { val: 'closed',      label: 'Closed',      cls: 'kc-closed' },
+      { val: 'paid',        label: 'Paid',         cls: 'kc-paid' },
+    ];
+
+    board.innerHTML = statuses.map(s => {
+      const colJobs = jobs.filter(j => j.status === s.val);
+      return _kanbanColumn(s.val, s.label, s.cls, colJobs);
+    }).join('');
+
+    // Wire drag-and-drop
+    board.querySelectorAll('.kanban-card').forEach(card => {
+      card.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('text/plain', card.dataset.jobId);
+        card.classList.add('dragging');
+      });
+      card.addEventListener('dragend', () => card.classList.remove('dragging'));
+    });
+
+    board.querySelectorAll('.kanban-column').forEach(col => {
+      col.addEventListener('dragover', e => {
+        e.preventDefault();
+        col.classList.add('drag-over');
+      });
+      col.addEventListener('dragleave', e => {
+        if (!col.contains(e.relatedTarget)) col.classList.remove('drag-over');
+      });
+      col.addEventListener('drop', e => {
+        e.preventDefault();
+        col.classList.remove('drag-over');
+        const jobId    = e.dataTransfer.getData('text/plain');
+        const newStatus = col.dataset.status;
+        if (!jobId || !newStatus) return;
+        const job = DB.getJobById(jobId);
+        if (!job) return;
+        if (job.status === newStatus) return;
+        if (job.status === 'paid') { showToast('Cannot change status of a paid job', 'warning'); return; }
+        if (newStatus === 'paid')  { showToast('Use "Close Job" to mark as paid', 'info'); return; }
+        if (Auth.isTech()) {
+          const allowed = ['in_progress', 'closed'];
+          if (!allowed.includes(newStatus)) { showToast('Techs can only move to In Progress or Closed', 'warning'); return; }
+        }
+        DB.saveJob({ ...job, status: newStatus });
+        SyncManager.queueJob(jobId);
+        showToast(`${_esc(job.customerName || 'Job')} → ${newStatus.replace('_', ' ')}`, 'success');
+        renderKanban();
+      });
+
+      // Touch drag support (simplified: tap to open, long-press not needed for touch)
+      col.addEventListener('touchend', () => col.classList.remove('drag-over'));
+    });
+  }
+
+  function _kanbanColumn(status, label, cls, jobs) {
+    const cards = jobs.map(j => _kanbanCard(j)).join('');
+    return `<div class="kanban-column ${cls}" data-status="${status}">
+      <div class="kanban-col-header">
+        <span class="kanban-col-title">${label}</span>
+        <span class="kanban-col-count">${jobs.length}</span>
+      </div>
+      <div class="kanban-col-body">
+        ${jobs.length === 0 ? '<div class="kanban-empty">Empty</div>' : cards}
+      </div>
+    </div>`;
+  }
+
+  function _kanbanCard(job) {
+    const settings = DB.getSettings();
+    const tech = job.assignedTechId ? settings.technicians.find(t => t.id === job.assignedTechId) : null;
+    const total = parseFloat(job.jobTotal) || parseFloat(job.estimatedTotal) || 0;
+    const totalStr = Auth.canSeeFinancials() && total > 0 ? _fmt(total) : '';
+    const timeStr = job.scheduledTime ? _formatTime(job.scheduledTime) : '';
+    const dateStr = job.scheduledDate ? _formatDate(job.scheduledDate) : '';
+    const isFollowUp = job.status === 'follow_up';
+    return `<div class="kanban-card${isFollowUp ? ' kanban-card-urgent' : ''}" draggable="true" data-job-id="${job.jobId}"
+         onclick="App.openJobDetail('${job.jobId}')">
+      <div class="kanban-card-name">${_esc(job.customerName || 'Unknown')}</div>
+      ${job.address ? `<div class="kanban-card-addr">${_esc(job.address)}${job.city ? ', ' + _esc(job.city) : ''}</div>` : ''}
+      ${dateStr ? `<div class="kanban-card-date">${dateStr}${timeStr ? ' · ' + timeStr : ''}</div>` : ''}
+      <div class="kanban-card-footer">
+        ${tech ? `<span class="kanban-card-tech" style="color:${tech.color || '#64748B'}">● ${_esc(tech.name)}</span>` : '<span></span>'}
+        ${totalStr ? `<span class="kanban-card-total">${totalStr}</span>` : ''}
+      </div>
+    </div>`;
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // DARK MODE
+  // ══════════════════════════════════════════════════════════
+
+  function _initDarkMode() {
+    const dark = localStorage.getItem('op_dark_mode') === '1';
+    if (dark) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+    _updateDarkModeBtn();
+  }
+
+  function _updateDarkModeBtn() {
+    const btn = document.getElementById('btn-dark-mode');
+    if (!btn) return;
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    btn.innerHTML = isDark
+      ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>'
+      : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+  }
+
+  function toggleDarkMode() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (isDark) {
+      document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('op_dark_mode', '0');
+    } else {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      localStorage.setItem('op_dark_mode', '1');
+    }
+    _updateDarkModeBtn();
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // PULL TO REFRESH
+  // ══════════════════════════════════════════════════════════
+
+  function _initPullToRefresh() {
+    const mainContent = document.getElementById('main-content');
+    const indicator   = document.getElementById('ptr-indicator');
+    if (!mainContent || !indicator) return;
+
+    const THRESHOLD = 70;
+
+    mainContent.addEventListener('touchstart', e => {
+      const active = document.querySelector('.view.active');
+      if (active && active.scrollTop === 0) {
+        _ptr.startY  = e.touches[0].clientY;
+        _ptr.pulling = true;
+        indicator.classList.remove('ptr-loading', 'ptr-ready');
+      }
+    }, { passive: true });
+
+    mainContent.addEventListener('touchmove', e => {
+      if (!_ptr.pulling) return;
+      const delta = e.touches[0].clientY - _ptr.startY;
+      if (delta > THRESHOLD) {
+        indicator.classList.add('ptr-ready');
+      } else {
+        indicator.classList.remove('ptr-ready');
+      }
+    }, { passive: true });
+
+    mainContent.addEventListener('touchend', async () => {
+      if (!_ptr.pulling) return;
+      _ptr.pulling = false;
+      if (!indicator.classList.contains('ptr-ready')) return;
+      indicator.classList.remove('ptr-ready');
+      indicator.classList.add('ptr-loading');
+      try {
+        await DB._syncJobsDown();
+        renderDashboard();
+        renderJobList();
+        if (_jobsViewMode === 'kanban') renderKanban();
+        showToast('Refreshed', 'success', 1500);
+      } finally {
+        setTimeout(() => indicator.classList.remove('ptr-loading'), 600);
+      }
+    }, { passive: true });
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // FOLLOW-UP WHATSAPP REMIND
+  // ══════════════════════════════════════════════════════════
+
+  function sendFollowUpWhatsApp(jobId) {
+    const job = DB.getJobById(jobId);
+    if (!job) return;
+    if (!job.phone) { showToast('No phone number on file', 'warning'); return; }
+
+    const cleanPhone = _cleanPhoneForWA(job.phone);
+    if (!cleanPhone) { showToast('Invalid phone number', 'warning'); return; }
+
+    const settings = DB.getSettings();
+    const ownerPhone = settings.ownerPhone || '(929) 429-2429';
+
+    const msg = [
+      `Hello ${job.customerName || 'there'},`,
+      '',
+      `This is On Point Pro Doors following up about your garage door service${job.description ? ` (${job.description})` : ''}.`,
+      '',
+      job.scheduledDate ? `Your appointment was scheduled for ${_formatDate(job.scheduledDate)}${job.scheduledTime ? ' at ' + _formatTime(job.scheduledTime) : ''}.` : '',
+      '',
+      `Please give us a call or reply here to reschedule: ${ownerPhone}`,
+      '',
+      `Thank you!`,
+    ].filter(l => l !== undefined).join('\n');
+
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+  }
+
+  // ══════════════════════════════════════════════════════════
   // SYNC
   // ══════════════════════════════════════════════════════════
 
@@ -2855,6 +3279,16 @@ const App = (() => {
     // Data
     exportData,
     clearAllData,
+
+    // Kanban / view toggle
+    toggleJobsView,
+    renderKanban,
+
+    // Dark mode
+    toggleDarkMode,
+
+    // Follow-up
+    sendFollowUpWhatsApp,
 
     // Modals
     showModal,

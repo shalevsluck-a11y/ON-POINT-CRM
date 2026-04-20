@@ -270,6 +270,32 @@ const DB = (() => {
   }
 
   // ──────────────────────────────────────────────────────────
+  // REAL-TIME — subscribe to settings / profile changes
+  // When admin changes app_settings or a profile, all clients
+  // pick up the new data without requiring a page refresh.
+  // ──────────────────────────────────────────────────────────
+
+  function subscribeToSettings(onUpdate) {
+    return supa
+      .channel('settings-realtime')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'app_settings' }, async () => {
+        await _syncSettingsDown();
+        if (onUpdate) onUpdate();
+      })
+      .subscribe();
+  }
+
+  function subscribeToProfiles(onUpdate) {
+    return supa
+      .channel('profiles-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, async () => {
+        await _syncSettingsDown();
+        if (onUpdate) onUpdate();
+      })
+      .subscribe();
+  }
+
+  // ──────────────────────────────────────────────────────────
   // MAPPERS — DB row ↔ app job object
   // ──────────────────────────────────────────────────────────
 
@@ -418,6 +444,9 @@ const DB = (() => {
     markAllNotificationsRead,
     createNotification,
     subscribeToNotifications,
+    // Settings / profiles realtime
+    subscribeToSettings,
+    subscribeToProfiles,
     // Internal (for sync.js compatibility)
     _syncJobsDown,
   };

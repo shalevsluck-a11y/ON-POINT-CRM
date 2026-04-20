@@ -161,6 +161,10 @@
       <h1 id="header-title">Dashboard</h1>
     </div>
     <div class="header-right">
+      <!-- Dark Mode Toggle -->
+      <button id="btn-dark-mode" class="btn-icon" onclick="App.toggleDarkMode()" title="Toggle dark mode" aria-label="Toggle dark mode">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
       <!-- Notification Bell -->
       <div class="notif-bell-wrap">
         <button id="notif-bell" class="btn-icon" onclick="Notifications.toggleDropdown()" title="Notifications" aria-label="Notifications">
@@ -190,6 +194,11 @@
     </div>
   </header>
 
+  <!-- Pull-to-refresh indicator -->
+  <div id="ptr-indicator" class="ptr-indicator" aria-hidden="true">
+    <div class="ptr-spinner"></div>
+  </div>
+
   <!-- ══════════════════════════════════════════ -->
   <!-- MAIN CONTENT                               -->
   <!-- ══════════════════════════════════════════ -->
@@ -197,6 +206,12 @@
 
     <!-- ==================== DASHBOARD ==================== -->
     <section id="view-dashboard" class="view active">
+
+      <!-- Tech today section (visible for tech role only) -->
+      <div id="tech-today-section" class="hidden"></div>
+
+      <!-- Dispatcher urgent queue (visible for admin/dispatcher) -->
+      <div id="dispatcher-section" class="hidden"></div>
 
       <div class="section-title">Revenue</div>
       <div class="revenue-grid">
@@ -239,6 +254,10 @@
           <span class="pill-count" id="count-paid">0</span>
           <span class="pill-label">Paid</span>
         </div>
+        <div class="status-pill s-followup" onclick="App.navigate('jobs',{filter:'follow_up'})">
+          <span class="pill-count" id="count-followup">0</span>
+          <span class="pill-label">Follow</span>
+        </div>
       </div>
 
       <div class="section-title">Technician Performance</div>
@@ -246,29 +265,33 @@
         <div class="empty-state-sm">No technicians configured yet</div>
       </div>
 
-      <div class="section-title-row">
-        <div class="section-title" style="margin:0">Recent Jobs</div>
-        <button class="btn-link" onclick="App.navigate('jobs')">See All</button>
-      </div>
-      <div id="recent-jobs-list" class="job-list">
-        <div class="empty-state">
-          <div class="empty-icon">&#128295;</div>
-          <div class="empty-title">No jobs yet</div>
-          <div class="empty-sub">Tap + to add your first job</div>
+      <div id="recent-jobs-wrap">
+        <div class="section-title-row">
+          <div class="section-title" style="margin:0">Recent Jobs</div>
+          <button class="btn-link" onclick="App.navigate('jobs')">See All</button>
+        </div>
+        <div id="recent-jobs-list" class="job-list">
+          <div class="empty-state">
+            <div class="empty-icon">&#128295;</div>
+            <div class="empty-title">No jobs yet</div>
+            <div class="empty-sub">Tap + to add your first job</div>
+          </div>
         </div>
       </div>
-
 
     </section>
 
     <!-- ==================== JOB LIST ==================== -->
     <section id="view-jobs" class="view">
 
-      <div class="search-container">
-        <span class="search-icon">&#128269;</span>
-        <input type="search" id="job-search" class="search-input"
-               placeholder="Name, phone, address, zip..."
-               oninput="App.filterJobs()">
+      <div class="jobs-top-bar">
+        <div class="search-container" style="flex:1;margin-bottom:0">
+          <span class="search-icon">&#128269;</span>
+          <input type="search" id="job-search" class="search-input"
+                 placeholder="Name, phone, address, zip..."
+                 oninput="App.filterJobs()">
+        </div>
+        <button id="btn-toggle-view" class="btn-icon view-toggle-btn" onclick="App.toggleJobsView()" title="Toggle Kanban/List view">&#9776;</button>
       </div>
 
       <div class="filter-chips" id="filter-chips">
@@ -276,6 +299,7 @@
         <button class="chip" data-filter="new" onclick="App.setJobFilter('new',this)">New</button>
         <button class="chip" data-filter="scheduled" onclick="App.setJobFilter('scheduled',this)">Scheduled</button>
         <button class="chip" data-filter="in_progress" onclick="App.setJobFilter('in_progress',this)">Active</button>
+        <button class="chip" data-filter="follow_up" onclick="App.setJobFilter('follow_up',this)">Follow-Up</button>
         <button class="chip" data-filter="closed" onclick="App.setJobFilter('closed',this)">Closed</button>
         <button class="chip" data-filter="paid" onclick="App.setJobFilter('paid',this)">Paid</button>
       </div>
@@ -287,6 +311,9 @@
           <div class="empty-sub">Try a different filter or search term</div>
         </div>
       </div>
+
+      <!-- Kanban board (hidden by default, shown when toggled) -->
+      <div id="jobs-kanban-board" class="kanban-board hidden"></div>
 
     </section>
 
