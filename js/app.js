@@ -184,8 +184,6 @@ const App = (() => {
       recentEl.innerHTML = recent.map(j => _jobCardHTML(j)).join('');
     }
 
-    // Next job strip
-    _renderNextJobStrip(jobs);
   }
 
   function _renderTechPerformance(jobs) {
@@ -224,38 +222,6 @@ const App = (() => {
         </div>
       </div>
     `).join('');
-  }
-
-  function _renderNextJobStrip(jobs) {
-    const strip = document.getElementById('next-job-strip');
-    const now = new Date();
-    const todayStr = _todayStr();
-
-    // Find the next upcoming scheduled job
-    const upcoming = jobs
-      .filter(j => j.status === 'scheduled' || j.status === 'new')
-      .filter(j => j.scheduledDate >= todayStr)
-      .sort((a, b) => {
-        const da = (a.scheduledDate || '9999') + (a.scheduledTime || '99:99');
-        const db = (b.scheduledDate || '9999') + (b.scheduledTime || '99:99');
-        return da.localeCompare(db);
-      });
-
-    if (upcoming.length === 0) { strip.classList.add('hidden'); return; }
-    strip.classList.remove('hidden');
-
-    const next = upcoming[0];
-    const infoEl = document.getElementById('next-job-info');
-    const timeStr = next.scheduledTime ? _formatTime(next.scheduledTime) : '';
-    const dateStr = next.scheduledDate === todayStr ? 'Today' : _formatDate(next.scheduledDate);
-    infoEl.textContent = `${next.customerName || 'Unknown'} · ${dateStr}${timeStr ? ' at '+timeStr : ''} · ${next.address || ''}`;
-    strip.dataset.jobId = next.jobId;
-  }
-
-  function openNextJob() {
-    const strip = document.getElementById('next-job-strip');
-    const jobId = strip.dataset.jobId;
-    if (jobId) openJobDetail(jobId);
   }
 
   // ══════════════════════════════════════════════════════════
@@ -2332,7 +2298,6 @@ const App = (() => {
 
     // Dashboard
     renderDashboard,
-    openNextJob,
 
     // Job List
     renderJobList,

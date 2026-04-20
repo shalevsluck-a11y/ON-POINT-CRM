@@ -346,22 +346,6 @@
 .tech-perf-payout { font-size: var(--font-md); font-weight: 800; color: var(--color-text); letter-spacing: -0.3px; }
 .tech-perf-jobs   { font-size: var(--font-xs); color: var(--color-text-muted); font-weight: 600; }
 
-/* ── NEXT JOB STRIP ────────────────────────────────────────── */
-.next-job-strip {
-  position: sticky;
-  bottom: 0;
-  margin: 0 calc(-1 * var(--sp-md));
-  padding: 13px var(--sp-md);
-  background: rgba(241,245,249,0.96);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  gap: var(--sp-sm);
-}
-.next-job-label { font-size: var(--font-xs); font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: rgba(8,13,26,0.55); flex-shrink: 0; }
-.next-job-info  { flex: 1; font-size: var(--font-sm); font-weight: 700; color: #080D1A; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.next-job-btn   { background: #080D1A; border: none; color: #F1F5F9; padding: 7px 16px; border-radius: var(--radius-full); font-size: var(--font-sm); font-weight: 700; cursor: pointer; flex-shrink: 0; }
 
 /* ── STEP FLOW ─────────────────────────────────────────────── */
 .step-indicator {

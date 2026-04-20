@@ -174,7 +174,7 @@ const LeadParser = (() => {
 
   function _parseCity(text) {
     // Pattern: "City, ST ZIP" or "City, ST" or common city names
-    const m = text.match(/([A-Za-z\s]{2,25}),?\s*(?:NY|NJ|CT|PA|FL|TX|CA|MA)\b/i);
+    const m = text.match(/([A-Za-z\s]{2,25}),?\s*(?:ME|NH|VT|MA|RI|CT|NY|NJ|PA|DE|MD|DC|VA|WV|NC|SC|GA|FL|OH|KY|TN|IN|MI|CA|TX)\b/i);
     if (m) {
       // Isolate city part — take last word group before state
       const cityRaw = m[1].replace(/\d+\s+/g, '').trim();
@@ -195,12 +195,29 @@ const LeadParser = (() => {
 
   function _parseState(text) {
     const stateMap = {
+      'ME': ['Maine', 'ME'],
+      'NH': ['New Hampshire', 'NH'],
+      'VT': ['Vermont', 'VT'],
+      'MA': ['Massachusetts', 'MA'],
+      'RI': ['Rhode Island', 'RI'],
+      'CT': ['Connecticut', 'CT'],
       'NY': ['New York', 'NY'],
       'NJ': ['New Jersey', 'NJ'],
-      'CT': ['Connecticut', 'CT'],
       'PA': ['Pennsylvania', 'PA'],
+      'DE': ['Delaware', 'DE'],
+      'MD': ['Maryland', 'MD'],
+      'DC': ['Washington DC', 'DC'],
+      'VA': ['Virginia', 'VA'],
+      'WV': ['West Virginia', 'WV'],
+      'NC': ['North Carolina', 'NC'],
+      'SC': ['South Carolina', 'SC'],
+      'GA': ['Georgia', 'GA'],
       'FL': ['Florida', 'FL'],
-      'TX': ['Texas', 'TX'],
+      'OH': ['Ohio', 'OH'],
+      'KY': ['Kentucky', 'KY'],
+      'TN': ['Tennessee', 'TN'],
+      'IN': ['Indiana', 'IN'],
+      'MI': ['Michigan', 'MI'],
     };
 
     for (const [abbr, names] of Object.entries(stateMap)) {
@@ -324,21 +341,24 @@ const LeadParser = (() => {
   // ────────────────────────────────────────────
 
   function _parseTime(text) {
-    // 12-hour formats: 2pm, 2:30pm, 2:30 PM, 14:00
     const patterns = [
-      // "at 2pm", "@ 2:30 AM"
+      // Explicit AM/PM — highest confidence, check these first
       { re: /\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i, handler: m => _to24(+m[1], +(m[2]||0), m[3]) },
-      // "2:30pm" or "2pm"
-      { re: /\b(\d{1,2}):(\d{2})\s*(am|pm)\b/i, handler: m => _to24(+m[1], +m[2], m[3]) },
-      { re: /\b(\d{1,2})\s*(am|pm)\b/i, handler: m => _to24(+m[1], 0, m[2]) },
+      { re: /\b(\d{1,2}):(\d{2})\s*(am|pm)\b/i,           handler: m => _to24(+m[1], +m[2], m[3]) },
+      { re: /\b(\d{1,2})\s*(am|pm)\b/i,                   handler: m => _to24(+m[1], 0, m[2]) },
       // 24-hour "14:00" or "08:30"
-      { re: /\b([0-1]?\d|2[0-3]):([0-5]\d)\b/, handler: m => `${String(+m[1]).padStart(2,'0')}:${m[2]}` },
-      // Time-like "between 8 and 10", "8-10" → use start
-      { re: /\bbetween\s+(\d{1,2})(?:\s*(?:am|pm))?\s+and\b/i, handler: m => _to24(+m[1], 0, 'am') },
-      // Morning/afternoon/evening
-      { re: /\bmorning\b/i, handler: () => '09:00' },
+      { re: /\b([0-1]?\d|2[0-3]):([0-5]\d)\b/,            handler: m => `${String(+m[1]).padStart(2,'0')}:${m[2]}` },
+      // Ambiguous hour with minutes: "at 2:30" — no AM/PM
+      { re: /\bat\s+(\d{1,2}):(\d{2})\b/i,                handler: m => _to24Ambiguous(+m[1], +m[2]) },
+      // Ambiguous bare hour: "at 2" or "around 3" — no AM/PM
+      { re: /\b(?:at|around|@)\s+(\d{1,2})\b/i,           handler: m => _to24Ambiguous(+m[1], 0) },
+      // "between 8 and 10" → use start (8 AM for typical morning window)
+      { re: /\bbetween\s+(\d{1,2})(?:\s*(?:am|pm))?\s+and\b/i, handler: m => _to24Ambiguous(+m[1], 0) },
+      // Time of day keywords
+      { re: /\bmorning\b/i,   handler: () => '09:00' },
       { re: /\bafternoon\b/i, handler: () => '13:00' },
-      { re: /\bevening\b/i, handler: () => '17:00' },
+      { re: /\bevening\b/i,   handler: () => '17:00' },
+      { re: /\bnoon\b/i,      handler: () => '12:00' },
     ];
 
     for (const { re, handler } of patterns) {
@@ -362,6 +382,26 @@ const LeadParser = (() => {
     if (isPM && h !== 12) h += 12;
     if (isAM && h === 12) h = 0;
     if (h > 23 || h < 0) return null;
+    return `${String(h).padStart(2,'0')}:${String(minutes).padStart(2,'0')}`;
+  }
+
+  // Business rule: no AM/PM context — home service window is 6am–8pm
+  // Hours 1–5  → assume PM (1pm–5pm is prime service time)
+  // Hours 6–9  → assume AM (morning window)
+  // All others → assume PM
+  function _to24Ambiguous(hours, minutes) {
+    if (hours < 1 || hours > 12) return null;
+    let h = hours;
+    if (hours >= 1 && hours <= 5) {
+      h = hours + 12; // PM
+    } else if (hours >= 6 && hours <= 9) {
+      h = hours;      // AM — already correct
+    } else {
+      // 10, 11, 12 — assume PM context unless clearly AM
+      h = hours < 12 ? hours + 12 : hours; // 10→22, 11→23, 12→12
+      // 22/23 would be 10pm/11pm — clamp to reasonable business hours
+      if (h > 20) h = hours; // fall back to AM (10am, 11am)
+    }
     return `${String(h).padStart(2,'0')}:${String(minutes).padStart(2,'0')}`;
   }
 
