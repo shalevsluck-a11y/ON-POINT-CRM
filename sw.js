@@ -22,8 +22,7 @@ const APP_SHELL = [
   '/js/login.js',
   '/js/app.js',
   '/assets/logo.jpg',
-  '/assets/icon-192.png',
-  '/assets/icon-512.png',
+  '/assets/icon.svg',
   '/manifest.json',
 ];
 
@@ -109,8 +108,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title || 'On Point CRM', {
       body:    data.body || '',
-      icon:    '/assets/icon-192.png',
-      badge:   '/assets/icon-192.png',
+      icon:    '/assets/icon.svg',
+      badge:   '/assets/icon.svg',
       tag:     data.jobId ? `job-${data.jobId}` : 'onpoint-notif',
       data:    { jobId: data.jobId || null },
       vibrate: [100, 50, 100],

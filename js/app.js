@@ -1193,15 +1193,18 @@ const App = (() => {
 
     // WhatsApp — confirmation/appointment msg for customer; financial receipt for paid jobs
     const _waPhone = _cleanPhoneForWA(job.phone);
-    const _waMsgCustomer = encodeURIComponent(_buildWhatsAppConfirmationMsg(job));
-    const _waMsgReceipt  = encodeURIComponent(_buildWhatsAppJobText(job));
-    const _waPhonePart   = _waPhone ? _waPhone : '';
-    const _waHref = job.status === 'paid'
-      ? `https://wa.me/${_waPhonePart}?text=${_waMsgReceipt}`
-      : `https://wa.me/${_waPhonePart}?text=${_waMsgCustomer}`;
-    const waLink = `<a href="${_waHref}" class="detail-action-btn${job.status === 'paid' ? ' dab-green' : ''}" onclick="event.stopPropagation()" target="_blank" rel="noopener noreferrer">
+    const _waMsgCustomer = _waPhone ? encodeURIComponent(_buildWhatsAppConfirmationMsg(job)) : '';
+    const _waMsgReceipt  = _waPhone ? encodeURIComponent(_buildWhatsAppJobText(job)) : '';
+    const _waHref = _waPhone && job.status === 'paid'
+      ? `https://wa.me/${_waPhone}?text=${_waMsgReceipt}`
+      : _waPhone
+        ? `https://wa.me/${_waPhone}?text=${_waMsgCustomer}`
+        : '';
+    const waLink = _waPhone
+      ? `<a href="${_waHref}" class="detail-action-btn${job.status === 'paid' ? ' dab-green' : ''}" onclick="event.stopPropagation()" target="_blank" rel="noopener noreferrer">
       <span class="dab-icon">&#128172;</span><span class="dab-label">${job.status === 'paid' ? 'Receipt' : 'WhatsApp'}</span>
-    </a>`;
+    </a>`
+      : '';
 
     const callLink = job.phone
       ? `<a href="tel:${job.phone.replace(/\D/g,'')}" class="detail-action-btn dab-green">

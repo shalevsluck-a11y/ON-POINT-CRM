@@ -1,8 +1,7 @@
 name: CI — Test & Verify
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   # ── 1. Verify server is live ─────────────────────────────────
