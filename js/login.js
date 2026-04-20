@@ -115,23 +115,29 @@ const SetupScreen = (() => {
     btn.disabled    = true;
     btn.textContent = 'Creating account…';
 
+    // Block onAuthStateChange from routing to app before admin role is set
+    App.setFirstSetupInProgress(true);
+
     try {
-      // 1. Sign up
-      const { error: signUpErr } = await SupabaseClient.auth.signUp({
+      // 1. Sign up (also signs in automatically when email confirmation is off)
+      const { data: signUpData, error: signUpErr } = await SupabaseClient.auth.signUp({
         email,
         password,
         options: { data: { name } },
       });
       if (signUpErr) throw signUpErr;
 
-      // 2. Sign in immediately (email confirmation disabled for invite flow)
-      await Auth.login(email, password);
+      if (!signUpData.session) {
+        throw new Error('Email confirmation is enabled — please disable it in Supabase → Authentication → Settings, then try again.');
+      }
 
-      // 3. Claim admin role (server enforces only-once)
+      // 2. Claim admin role (server enforces only-once; profile created by trigger with role=tech)
       await Auth.completeFirstAdminSetup();
 
-      hide();
+      // 3. Load app as admin
+      await App.completeFirstSetup();
     } catch (e) {
+      App.setFirstSetupInProgress(false);
       _showError(e.message || 'Setup failed. Please try again.');
       btn.disabled    = false;
       btn.textContent = 'Create Admin Account';

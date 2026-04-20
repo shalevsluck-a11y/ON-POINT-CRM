@@ -31,7 +31,7 @@ const DB = (() => {
         if (zm) zm.forEach(z => { zelleMap[z.job_id] = z.zelle_memo; });
       }
 
-      const jobs = (data || []).map(row => _dbRowToJob(row, zelleMap, Auth.isAdmin()));
+      const jobs = (data || []).map(row => _dbRowToJob(row, zelleMap, Auth.isAdmin(), Auth.isTech()));
       Storage.saveJobs(jobs);
     } catch (e) {
       console.warn('DB._syncJobsDown error (using cache):', e.message);
@@ -181,18 +181,25 @@ const DB = (() => {
   // REAL-TIME — subscribe to live job changes
   // ──────────────────────────────────────────────────────────
 
-  function subscribeToJobs(onInsert, onUpdate) {
+  function subscribeToJobs(onInsert, onUpdate, onDelete) {
     return supa
       .channel('jobs-realtime')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'jobs' }, payload => {
-        const job = _dbRowToJob(payload.new, {}, Auth.isAdmin());
+        const job = _dbRowToJob(payload.new, {}, Auth.isAdmin(), Auth.isTech());
         Storage.saveJob(job);
         if (onInsert) onInsert(job);
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'jobs' }, payload => {
-        const job = _dbRowToJob(payload.new, {}, Auth.isAdmin());
+        const job = _dbRowToJob(payload.new, {}, Auth.isAdmin(), Auth.isTech());
         Storage.saveJob(job);
         if (onUpdate) onUpdate(job);
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'jobs' }, payload => {
+        const jobId = payload.old?.job_id;
+        if (jobId) {
+          Storage.deleteJob(jobId);
+          if (onDelete) onDelete(jobId);
+        }
       })
       .subscribe();
   }
@@ -262,7 +269,7 @@ const DB = (() => {
   // MAPPERS — DB row ↔ app job object
   // ──────────────────────────────────────────────────────────
 
-  function _dbRowToJob(row, zelleMap, isAdmin = false) {
+  function _dbRowToJob(row, zelleMap, isAdmin = false, isTech = false) {
     const job = {
       jobId:               row.job_id,
       status:              row.status,
@@ -313,6 +320,15 @@ const DB = (() => {
       job.ownerPayout   = 0;
       job.contractorFee = 0;
       job.zelleMemo     = '';
+    }
+
+    // Tech users must not see revenue figures — zero them out.
+    if (isTech) {
+      job.estimatedTotal = 0;
+      job.jobTotal       = 0;
+      job.partsCost      = 0;
+      job.taxAmount      = 0;
+      job.techPayout     = 0;
     }
 
     return job;

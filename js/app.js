@@ -28,6 +28,7 @@ const App = (() => {
 
   let _initialized = false;
   let _jobsChannel = null;
+  let _firstSetupInProgress = false;
 
   // ══════════════════════════════════════════════════════════
   // INIT
@@ -60,6 +61,13 @@ const App = (() => {
     _jobsChannel = DB.subscribeToJobs(
       () => { renderDashboard(); renderJobList(); },
       () => { renderDashboard(); renderJobList(); if (_state.currentView === 'job-detail') openJobDetail(_state.currentJobId); },
+      (deletedJobId) => {
+        renderDashboard();
+        renderJobList();
+        if (_state.currentView === 'job-detail' && _state.currentJobId === deletedJobId) {
+          navigate('jobs');
+        }
+      },
     );
 
     // Load settings into form
@@ -2694,6 +2702,7 @@ const App = (() => {
 
     const currentUser = await Auth.init(async (user) => {
       if (user) {
+        if (_firstSetupInProgress) return; // setup screen handles completion
         if (isInviteFlow) {
           SetPasswordScreen.show();
         } else {
@@ -2721,6 +2730,16 @@ const App = (() => {
     } catch (_e) {
       LoginScreen.show();
     }
+  }
+
+  function setFirstSetupInProgress(v) {
+    _firstSetupInProgress = v;
+  }
+
+  async function completeFirstSetup() {
+    _firstSetupInProgress = false;
+    SetupScreen.hide();
+    await _onAuthenticated();
   }
 
   return {
@@ -2822,6 +2841,10 @@ const App = (() => {
     // PWA
     pwaInstall: () => window._pwaInstall && window._pwaInstall(),
     pwaDismiss: () => window._pwaDismiss && window._pwaDismiss(),
+
+    // First-admin setup
+    setFirstSetupInProgress,
+    completeFirstSetup,
   };
 
 })();
