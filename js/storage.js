@@ -124,6 +124,7 @@ const Storage = (() => {
       case 'in_progress':
       case 'closed':
       case 'paid':
+      case 'follow_up':
         return jobs.filter(j => j.status === filter);
       default:
         return jobs;

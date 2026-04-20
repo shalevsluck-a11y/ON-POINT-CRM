@@ -266,9 +266,10 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
-.role-admin      { background: rgba(0,0,0,0.08); color: var(--color-text); }
-.role-dispatcher { background: rgba(88,86,214,0.10); color: var(--s-scheduled); }
-.role-tech       { background: rgba(52,199,89,0.10); color: var(--color-success); }
+.role-admin       { background: rgba(59,130,246,0.12); color: var(--color-primary); }
+.role-dispatcher  { background: rgba(167,139,250,0.12); color: var(--s-scheduled); }
+.role-tech        { background: rgba(52,211,153,0.12); color: var(--s-closed); }
+.role-contractor  { background: rgba(251,191,36,0.12); color: var(--s-inprogress); }
 
 /* ── OVERDUE / FOLLOW-UP JOB HIGHLIGHT ──────────────────── */
 .job-card.jc-follow_up::before    { background: var(--color-warning); }
