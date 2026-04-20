@@ -3171,7 +3171,10 @@ const App = (() => {
     }
   }
 
+  let _setupCheckInProgress = false;
   async function _checkAndShowFirstSetup() {
+    if (_setupCheckInProgress) return; // prevent duplicate call from auth callback + init()
+    _setupCheckInProgress = true;
     try {
       const needed = await Auth.checkFirstSetupNeeded();
       _removeAppShell();
