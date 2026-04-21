@@ -2900,17 +2900,20 @@ const App = (() => {
     const settings = DB.getSettings();
     const ownerPhone = settings.ownerPhone || '(929) 429-2429';
 
+    const firstName = (job.customerName || 'there').split(' ')[0];
+    const serviceNote = job.description ? ` regarding your ${_esc(job.description)}` : '';
     const msg = [
-      `Hello ${_esc(job.customerName || 'there')},`,
+      `Hi ${_esc(firstName)}! 👋`,
       '',
-      `This is On Point Pro Doors following up about your garage door service${job.description ? ` (${_esc(job.description)})` : ''}.`,
+      `This is On Point Pro Doors checking in${serviceNote}.`,
       '',
-      job.scheduledDate ? `Your appointment was scheduled for ${_formatDate(job.scheduledDate)}${job.scheduledTime ? ' at ' + _formatTime(job.scheduledTime) : ''}.` : '',
+      `We want to make sure your garage door issue is fully resolved. Is everything working properly, or would you like to schedule a follow-up visit?`,
       '',
-      `Please give us a call or reply here to reschedule: ${ownerPhone}`,
+      `We're available 7 days a week — just reply here or give us a call:`,
+      `📞 ${ownerPhone}`,
       '',
-      `Thank you!`,
-    ].filter(l => l !== undefined).join('\n');
+      `Thank you for choosing On Point Pro Doors! 🏠`,
+    ].join('\n');
 
     window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
   }
