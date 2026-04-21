@@ -1853,11 +1853,56 @@ const App = (() => {
     if (!job) return;
     const amount = parseFloat(job.jobTotal) || parseFloat(job.estimatedTotal) || 0;
     if (!amount) { showToast('No amount set on this job', 'warning'); return; }
-    const dateStr = job.scheduledDate ? new Date(job.scheduledDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-    const service = job.description ? job.description.substring(0, 40) : 'Service';
+
+    const settings = DB.getSettings();
+    const ownerZelle = settings.ownerZelle || '';
+    const dateStr = job.scheduledDate
+      ? new Date(job.scheduledDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : '';
+    const service = (job.description || 'Service').substring(0, 40);
     const memo = `On Point Pro Doors${dateStr ? ' · ' + dateStr : ''} · ${service}`;
     const zelleUrl = `zelle://send?amount=${amount.toFixed(2)}&memo=${encodeURIComponent(memo)}`;
-    window.location.href = zelleUrl;
+    const amtStr = `$${amount.toFixed(2)}`;
+
+    const body = document.getElementById('modal-zelle-body');
+    if (!body) return;
+
+    body.innerHTML = `
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:32px;font-weight:800;color:var(--color-text)">${amtStr}</div>
+        <div style="font-size:13px;color:var(--color-text-muted);margin-top:2px">${_esc(memo)}</div>
+      </div>
+      <a href="${zelleUrl}" class="btn btn-primary btn-full" style="background:#6D1ED4;border-color:#6D1ED4;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none"
+         onclick="setTimeout(()=>App._checkZelleFallback('${jobId}'),2500)">
+        &#128178; Open Zelle App
+      </a>
+      <div id="zelle-fallback-${jobId}" class="hidden" style="background:var(--color-surface-raised);border-radius:12px;padding:14px;margin-top:4px">
+        <div style="font-size:13px;font-weight:600;color:var(--color-text);margin-bottom:10px">Zelle app didn&#39;t open? Send manually:</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <div style="flex:1">
+            <div style="font-size:11px;color:var(--color-text-muted);margin-bottom:2px">Zelle Handle</div>
+            <div style="font-size:14px;font-weight:600;color:var(--color-text);font-family:monospace">${_esc(ownerZelle || 'Not set — add in Settings')}</div>
+          </div>
+          ${ownerZelle ? `<button class="btn btn-secondary" style="padding:0 12px;align-self:flex-end"
+            onclick="navigator.clipboard.writeText(${JSON.stringify(ownerZelle)}).then(()=>showToast('Handle copied','success'))">Copy</button>` : ''}
+        </div>
+        <div style="display:flex;gap:8px">
+          <div style="flex:1">
+            <div style="font-size:11px;color:var(--color-text-muted);margin-bottom:2px">Amount</div>
+            <div style="font-size:18px;font-weight:700;color:var(--color-text)">${amtStr}</div>
+          </div>
+          <button class="btn btn-secondary" style="padding:0 12px;align-self:flex-end"
+            onclick="navigator.clipboard.writeText(${JSON.stringify(amount.toFixed(2))}).then(()=>showToast('Amount copied','success'))">Copy</button>
+        </div>
+      </div>
+    `;
+
+    showModal('modal-zelle');
+  }
+
+  function _checkZelleFallback(jobId) {
+    const el = document.getElementById(`zelle-fallback-${jobId}`);
+    if (el) el.classList.remove('hidden');
   }
 
   // ZELLE MEMO
@@ -3425,6 +3470,8 @@ const App = (() => {
     // Zelle
     showZelleMemo,
     _copyZelleMemo,
+    openZelleRequest,
+    _checkZelleFallback,
 
     // Photos
     handlePhotoUpload,
@@ -3481,9 +3528,6 @@ const App = (() => {
 
     // Follow-up
     sendFollowUpWhatsApp,
-
-    // Zelle
-    openZelleRequest,
 
     // Modals
     showModal,
