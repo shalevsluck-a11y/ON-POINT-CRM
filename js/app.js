@@ -2342,7 +2342,7 @@ const App = (() => {
               <option value="contractor" ${u.role==='contractor' ?'selected':''}>Contractor</option>
             </select>
             ${u.phone ? `<button class="btn-icon" style="color:#25D366;font-size:18px" title="Send app link on WhatsApp"
-              onclick="App._sendUserWALink(${JSON.stringify(u.name||'')},${JSON.stringify(u.email||'')},${JSON.stringify(u.phone||'')})">&#128241;</button>` : ''}
+              onclick="App._sendUserWALink(${JSON.stringify(u.name||'')},${JSON.stringify(u.phone||'')})">&#128241;</button>` : ''}
             ${u.id !== currentUserId ? `<button class="btn-icon" style="color:var(--color-error);font-size:16px"
               onclick="App._confirmRemoveUser('${u.id}','${_esc(u.name||u.email)}')" title="Remove user">&#128465;</button>` : ''}
           </div>
@@ -2350,7 +2350,8 @@ const App = (() => {
       `).join('') || '<div class="empty-state-sm">No users found</div>';
     } catch (e) {
       const listEl = document.getElementById('admin-users-list');
-      if (listEl) listEl.innerHTML = `<div class="empty-state-sm" style="color:var(--color-error)">${_esc(e.message)}</div>`;
+      const msg = e?.message || String(e) || 'Failed to load users';
+      if (listEl) listEl.innerHTML = `<div class="empty-state-sm" style="color:var(--color-error)">${_esc(msg)}<br><button class="btn-link" style="margin-top:8px" onclick="App._renderAdminUsersSection()">Retry</button></div>`;
     }
   }
 
@@ -3449,6 +3450,7 @@ const App = (() => {
     _sendInviteWA,
     _sendInviteWAFromInput,
     _sendUserWALink,
+    _renderAdminUsersSection,
 
     // WhatsApp
     openWhatsApp,

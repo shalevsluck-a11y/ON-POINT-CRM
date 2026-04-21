@@ -177,9 +177,14 @@ const Auth = (() => {
 
   async function getUsersForAdmin() {
     if (!isAdmin()) throw new Error('Admin only');
-    const { data, error } = await SupabaseClient.rpc('get_users_for_admin');
-    if (error) throw error;
-    return data || [];
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Users list timed out — check connection')), 10000)
+    );
+    const query = SupabaseClient.rpc('get_users_for_admin').then(({ data, error }) => {
+      if (error) throw new Error(error.message || error.details || 'RPC error');
+      return data || [];
+    });
+    return Promise.race([query, timeout]);
   }
 
   async function updateUserRole(userId, role) {
