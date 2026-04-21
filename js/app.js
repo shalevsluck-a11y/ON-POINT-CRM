@@ -370,7 +370,7 @@ const App = (() => {
     const jobCards = todayJobs.length > 0
       ? todayJobs.map(j => {
           const statusLbl = { new:'New', scheduled:'Sched', in_progress:'Active', follow_up:'Follow-Up' }[j.status] || j.status;
-          const statusCls = { new:'sb-new', scheduled:'sb-scheduled', in_progress:'sb-inprogress', follow_up:'sb-new' }[j.status] || 'sb-new';
+          const statusCls = { new:'sb-new', scheduled:'sb-scheduled', in_progress:'sb-inprogress', follow_up:'sb-follow_up' }[j.status] || 'sb-new';
           return `<div class="tech-today-card" onclick="App.openJobDetail('${j.jobId}')">
             <div class="ttc-left">
               <div class="ttc-time">${j.scheduledTime ? _formatTime(j.scheduledTime) : 'TBD'}</div>
@@ -582,7 +582,7 @@ const App = (() => {
     const badgeClass = {
       new: 'sb-new', scheduled: 'sb-scheduled',
       in_progress: 'sb-inprogress', closed: 'sb-closed', paid: 'sb-paid',
-      follow_up: 'sb-new',
+      follow_up: 'sb-follow_up',
     }[job.status] || 'sb-new';
 
     const statusLabel = {
@@ -1418,7 +1418,7 @@ const App = (() => {
       { val:'new',        label:'New',         cls:'sab-new' },
       { val:'scheduled',  label:'Scheduled',   cls:'sab-scheduled' },
       { val:'in_progress',label:'In Progress', cls:'sab-inprogress' },
-      { val:'follow_up',  label:'Follow-Up',   cls:'sab-new' },
+      { val:'follow_up',  label:'Follow-Up',   cls:'sab-follow_up' },
       { val:'closed',     label:'Closed',      cls:'sab-closed' },
       { val:'paid',       label:'Paid',        cls:'sab-paid' },
     ];

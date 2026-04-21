@@ -28,6 +28,7 @@
 .sb-inprogress { background: rgba(251,191,36,0.13);   color: var(--s-inprogress); }
 .sb-closed     { background: rgba(52,211,153,0.13);   color: var(--s-closed); }
 .sb-paid       { background: rgba(74,222,128,0.13);   color: var(--s-paid); }
+.sb-follow_up  { background: rgba(251,146,60,0.13);   color: var(--s-follow-up); }
 
 /* ── JOB CARDS ─────────────────────────────────────────────── */
 .job-card {
@@ -54,6 +55,7 @@
 .job-card.jc-inprogress::before { background: var(--s-inprogress); }
 .job-card.jc-closed::before     { background: var(--s-closed); }
 .job-card.jc-paid::before       { background: var(--s-paid); }
+.job-card.jc-follow_up::before  { background: var(--s-follow-up); }
 
 .job-card-inner { padding: 14px 14px 13px 18px; }
 
@@ -314,6 +316,7 @@
 .s-inprogress { background: rgba(251,191,36,0.11);   color: var(--s-inprogress); border-color: rgba(251,191,36,0.18); }
 .s-closed     { background: rgba(52,211,153,0.11);   color: var(--s-closed);     border-color: rgba(52,211,153,0.18); }
 .s-paid       { background: rgba(74,222,128,0.11);   color: var(--s-paid);       border-color: rgba(74,222,128,0.18); }
+.s-follow_up  { background: rgba(251,146,60,0.11);   color: var(--s-follow-up);  border-color: rgba(251,146,60,0.18); }
 
 /* ── TECH PERFORMANCE ──────────────────────────────────────── */
 .tech-perf-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: var(--sp-md); }
@@ -723,6 +726,7 @@
 .sab-inprogress { color: var(--s-inprogress); }
 .sab-closed     { color: var(--s-closed); }
 .sab-paid       { color: var(--s-paid); }
+.sab-follow_up  { color: var(--s-follow-up); }
 
 /* ── PHOTOS ─────────────────────────────────────────────────── */
 .photo-grid {
