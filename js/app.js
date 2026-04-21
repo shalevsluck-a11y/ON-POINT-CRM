@@ -2706,11 +2706,15 @@ const App = (() => {
       sources.push(data);
     }
 
-    await DB.saveSettings({ leadSources: sources });
-    _renderSourceList(sources);
-    _populateSourceDropdown();
-    closeModal();
-    showToast(`${name} saved`, 'success');
+    try {
+      await DB.saveSettings({ leadSources: sources });
+      _renderSourceList(sources);
+      _populateSourceDropdown();
+      closeModal();
+      showToast(`${name} saved`, 'success');
+    } catch (e) {
+      showToast('Failed to save: ' + (e.message || 'unknown error'), 'error');
+    }
   }
 
   function deleteSource(sourceId) {
@@ -2724,12 +2728,16 @@ const App = (() => {
       message: 'Remove this lead source?',
       okLabel: 'Delete',
       onOk: async () => {
-        const settings = DB.getSettings();
-        const sources = (settings.leadSources || []).filter(s => s.id !== sourceId);
-        await DB.saveSettings({ leadSources: sources });
-        _renderSourceList(sources);
-        _populateSourceDropdown();
-        showToast('Source deleted', 'success');
+        try {
+          const settings = DB.getSettings();
+          const sources = (settings.leadSources || []).filter(s => s.id !== sourceId);
+          await DB.saveSettings({ leadSources: sources });
+          _renderSourceList(sources);
+          _populateSourceDropdown();
+          showToast('Source deleted', 'success');
+        } catch (e) {
+          showToast('Failed to delete: ' + (e.message || 'unknown error'), 'error');
+        }
       }
     });
   }
