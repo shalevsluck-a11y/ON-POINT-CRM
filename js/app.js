@@ -2847,7 +2847,7 @@ const App = (() => {
 
   // ── LEAD SOURCES ─────────────────────────────────────
 
-  function _renderSourceList(sources = []) {
+  async function _renderSourceList(sources = []) {
     const list = document.getElementById('source-list');
     if (!list) return;
 
@@ -2856,10 +2856,17 @@ const App = (() => {
       return;
     }
 
-    list.innerHTML = sources.map(s => `
+    // Get all contractors to show which one is assigned
+    const allUsers = await Auth.getUsersForAdmin().catch(() => []);
+    const contractors = allUsers.filter(u => u.role === 'contractor');
+
+    list.innerHTML = sources.map(s => {
+      const assignedContractor = contractors.find(c => c.assignedLeadSource === s.name);
+      const contractorText = assignedContractor ? assignedContractor.name : 'No contractor assigned';
+      return `
       <div class="settings-list-item">
         <div class="settings-item-info">
-          <div class="settings-item-name">${_esc(s.name)}</div>
+          <div class="settings-item-name">${_esc(s.name)} — ${_esc(contractorText)}</div>
           <div class="settings-item-sub">Contractor: ${s.contractorPercent||0}%</div>
         </div>
         <div class="settings-item-actions">
@@ -2867,10 +2874,11 @@ const App = (() => {
           <button class="btn-icon" onclick="App.deleteSource('${s.id}')" title="Delete" style="color:var(--color-error)">&#128465;</button>
         </div>
       </div>
-    `).join('');
+      `;
+    }).join('');
   }
 
-  function showSourceModal(sourceId) {
+  async function showSourceModal(sourceId) {
     const settings = DB.getSettings();
     const source = sourceId ? settings.leadSources.find(s => s.id === sourceId) : null;
     const title = document.getElementById('source-modal-title');
@@ -2879,6 +2887,23 @@ const App = (() => {
     document.getElementById('m-source-id').value   = source?.id   || '';
     document.getElementById('m-source-name').value = source?.name || '';
     document.getElementById('m-source-pct').value  = source?.contractorPercent || '';
+
+    // Populate contractor dropdown
+    const allUsers = await Auth.getUsersForAdmin().catch(() => []);
+    const contractors = allUsers.filter(u => u.role === 'contractor');
+    const contractorSelect = document.getElementById('m-source-contractor');
+    if (contractorSelect) {
+      contractorSelect.innerHTML = '<option value="">No contractor assigned</option>' +
+        contractors.map(c => `<option value="${c.id}">${_esc(c.name)}</option>`).join('');
+
+      // Select the contractor currently assigned to this source
+      if (source) {
+        const assignedContractor = contractors.find(c => c.assignedLeadSource === source.name);
+        if (assignedContractor) {
+          contractorSelect.value = assignedContractor.id;
+        }
+      }
+    }
 
     showModal('modal-source');
   }
@@ -2920,6 +2945,23 @@ const App = (() => {
 
     try {
       await DB.saveSettings({ leadSources: sources });
+
+      // Update contractor assignment
+      const selectedContractorId = document.getElementById('m-source-contractor')?.value;
+      const allUsers = await Auth.getUsersForAdmin().catch(() => []);
+
+      // Clear this lead source from any contractor that previously had it
+      for (const user of allUsers) {
+        if (user.role === 'contractor' && user.assignedLeadSource === name && user.id !== selectedContractorId) {
+          await Auth.updateUserRole(user.id, 'contractor', { assigned_lead_source: null });
+        }
+      }
+
+      // Assign lead source to selected contractor
+      if (selectedContractorId) {
+        await Auth.updateUserRole(selectedContractorId, 'contractor', { assigned_lead_source: name });
+      }
+
       _renderSourceList(sources);
       _populateSourceDropdown();
       closeModal();

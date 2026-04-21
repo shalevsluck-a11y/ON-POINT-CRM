@@ -202,11 +202,12 @@ const Auth = (() => {
     return Promise.race([query, timeout]);
   }
 
-  async function updateUserRole(userId, role) {
+  async function updateUserRole(userId, role, additionalFields = {}) {
     if (!isAdmin()) throw new Error('Admin only');
+    const updateData = { role, ...additionalFields };
     const { error } = await SupabaseClient
       .from('profiles')
-      .update({ role })
+      .update(updateData)
       .eq('id', userId);
     if (error) throw error;
   }
