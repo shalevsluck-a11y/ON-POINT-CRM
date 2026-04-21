@@ -243,6 +243,11 @@ const App = (() => {
     _state.previousView = _state.currentView;
     _state.currentView  = viewName;
 
+    // Reset users list fetch flag when leaving settings
+    if (_state.previousView === 'settings' && viewName !== 'settings') {
+      _usersListFetchInProgress = false;
+    }
+
     // Hide all views
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
 
@@ -2411,13 +2416,21 @@ const App = (() => {
     if (isAdmin) {
       _renderTechList(s.technicians);
       _renderSourceList(s.leadSources);
-      _renderAdminUsersSection().catch(() => {});
+      _renderAdminUsersSection();
     }
   }
+
+  let _usersListFetchInProgress = false;
 
   async function _renderAdminUsersSection(isRetry = false) {
     const container = document.getElementById('admin-users-section');
     if (!container) return;
+
+    // If already fetching, don't start another fetch
+    if (_usersListFetchInProgress && !isRetry) {
+      console.log('Users list fetch already in progress, skipping');
+      return;
+    }
 
     container.innerHTML = `<div class="settings-card">
       <div class="settings-section-title" style="display:flex;justify-content:space-between;align-items:center">
@@ -2427,6 +2440,8 @@ const App = (() => {
       <div id="admin-users-list"><div class="empty-state-sm">Loading users...</div></div>
     </div>`;
     container.classList.remove('hidden');
+
+    _usersListFetchInProgress = true;
 
     try {
       const users = await Auth.getUsersForAdmin();
@@ -2457,14 +2472,17 @@ const App = (() => {
           </div>
         </div>
       `).join('') || '<div class="empty-state-sm">No users found</div>';
+      _usersListFetchInProgress = false;
     } catch (e) {
       if (!isRetry) {
+        _usersListFetchInProgress = false;
         await new Promise(resolve => setTimeout(resolve, 2000));
         return _renderAdminUsersSection(true);
       }
       const listEl = document.getElementById('admin-users-list');
       const msg = e?.message || String(e) || 'Failed to load users';
       if (listEl) listEl.innerHTML = `<div class="empty-state-sm" style="color:var(--color-error)">${_esc(msg)}<br><button class="btn-link" style="margin-top:8px" onclick="App._renderAdminUsersSection()">Retry</button></div>`;
+      _usersListFetchInProgress = false;
     }
   }
 
