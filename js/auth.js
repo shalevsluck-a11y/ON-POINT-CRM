@@ -90,9 +90,14 @@ const Auth = (() => {
   // ──────────────────────────────────────────────────────────
 
   async function login(email, password) {
-    const { data, error } = await SupabaseClient.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    return data;
+    const loginTimeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Login timed out — check your connection and try again')), 10000)
+    );
+    const loginAttempt = SupabaseClient.auth.signInWithPassword({ email, password }).then(({ data, error }) => {
+      if (error) throw error;
+      return data;
+    });
+    return Promise.race([loginAttempt, loginTimeout]);
   }
 
   // ──────────────────────────────────────────────────────────
