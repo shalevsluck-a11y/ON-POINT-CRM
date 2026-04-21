@@ -2498,6 +2498,8 @@ const App = (() => {
   }
 
   function showTechModal(techId) {
+    // New technicians are added via the Invite User flow, not the tech modal
+    if (!techId) { showInviteModal(); return; }
     const settings = DB.getSettings();
     const tech = techId ? settings.technicians.find(t => t.id === techId) : null;
     const title = document.getElementById('tech-modal-title');
