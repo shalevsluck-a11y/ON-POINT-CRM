@@ -3467,7 +3467,11 @@ const App = (() => {
       }
     });
 
-    if (!currentUser) {
+    if (currentUser) {
+      // Session already confirmed by getSession() — ensure the app is shown even if
+      // onAuthStateChange callback fires late (e.g., slow WebSocket connection)
+      await _onAuthenticated();
+    } else {
       await _checkAndShowFirstSetup();
     }
   }
@@ -3476,17 +3480,19 @@ const App = (() => {
   async function _checkAndShowFirstSetup() {
     if (_setupCheckInProgress) return; // prevent duplicate call from auth callback + init()
     _setupCheckInProgress = true;
+    // Show login screen immediately so the app shell disappears < 2s
+    // then asynchronously check if first-admin setup is needed and swap if so
+    _removeAppShell();
+    LoginScreen.show();
     try {
       const needed = await Auth.checkFirstSetupNeeded();
-      _removeAppShell();
       if (needed) {
+        LoginScreen.hide();
         SetupScreen.show();
-      } else {
-        LoginScreen.show();
       }
+      // else: login screen is already showing — nothing to do
     } catch (_e) {
-      _removeAppShell();
-      LoginScreen.show();
+      // Login screen is already showing — swallow error silently
     }
   }
 
