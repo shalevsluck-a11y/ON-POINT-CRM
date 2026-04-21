@@ -44,10 +44,10 @@ serve(async (req) => {
       });
     }
 
-    const { email, name, role, phone } = await req.json();
+    const { name, role, phone } = await req.json();
 
-    if (!email || !name || !['admin', 'dispatcher', 'tech', 'contractor'].includes(role)) {
-      return new Response(JSON.stringify({ error: 'Invalid input: email, name, and role required' }), {
+    if (!name || !['admin', 'dispatcher', 'tech', 'contractor'].includes(role)) {
+      return new Response(JSON.stringify({ error: 'Name and role are required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -58,38 +58,69 @@ serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Send invite email — Supabase emails the set-password link automatically
-    const { data: inviteData, error: inviteErr } = await adminClient.auth.admin.inviteUserByEmail(email, {
-      data: { name },
-      redirectTo: 'https://crm.onpointprodoors.com',
+    // Build a deterministic login email from phone digits, or a timestamped fallback
+    const phoneDigits = (phone || '').replace(/\D/g, '');
+    const loginEmail = phoneDigits.length >= 7
+      ? `u${phoneDigits}@onpointprodoors.com`
+      : `staff${Date.now()}@onpointprodoors.com`;
+
+    // Create user — if already registered, look them up and re-issue a link
+    let userId: string;
+    const { data: newUser, error: createErr } = await adminClient.auth.admin.createUser({
+      email: loginEmail,
+      email_confirm: true,
+      user_metadata: { name },
     });
 
-    if (inviteErr) {
-      return new Response(JSON.stringify({ error: inviteErr.message }), {
+    if (createErr) {
+      if (createErr.message.includes('already') || createErr.message.includes('registered')) {
+        // Fetch by email from the paginated user list
+        const { data: listData } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
+        const existing = (listData?.users || []).find((u: { email?: string }) => u.email === loginEmail);
+        if (!existing) {
+          return new Response(JSON.stringify({ error: 'User exists but could not be located — try a different phone number' }), {
+            status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        userId = existing.id;
+      } else {
+        return new Response(JSON.stringify({ error: createErr.message }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } else {
+      userId = newUser.user.id;
+    }
+
+    // Upsert profile (name, role, phone)
+    const profileData: Record<string, string> = { name, role };
+    if (phone) profileData.phone = phone;
+    await adminClient.from('profiles').upsert({ id: userId, ...profileData }, { onConflict: 'id' });
+
+    // Generate a password-setup (recovery) link — no email sent
+    const { data: linkData, error: linkErr } = await adminClient.auth.admin.generateLink({
+      type: 'recovery',
+      email: loginEmail,
+      options: { redirectTo: 'https://crm.onpointprodoors.com' },
+    });
+
+    if (linkErr) {
+      return new Response(JSON.stringify({ error: linkErr.message }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const userId = inviteData.user.id;
-
-    // Upsert profile with name, role, and phone
-    const profileUpdate: Record<string, string> = { name, role };
-    if (phone) profileUpdate.phone = phone;
-
-    const { error: profileErr } = await adminClient
-      .from('profiles')
-      .upsert({ id: userId, ...profileUpdate }, { onConflict: 'id' });
-
-    if (profileErr) {
-      console.warn('Profile upsert failed:', profileErr.message);
-    }
-
-    return new Response(JSON.stringify({ success: true, userId }), {
+    return new Response(JSON.stringify({
+      success: true,
+      userId,
+      setupLink: linkData.properties?.action_link || '',
+      loginEmail,
+    }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (e) {
-    return new Response(JSON.stringify({ error: e.message }), {
+    return new Response(JSON.stringify({ error: (e as Error).message }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }

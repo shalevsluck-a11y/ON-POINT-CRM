@@ -2359,14 +2359,13 @@ const App = (() => {
     const modal = document.getElementById('invite-modal');
     if (!modal) return;
     document.getElementById('invite-name').value  = '';
-    document.getElementById('invite-email').value = '';
     document.getElementById('invite-phone').value = '';
     document.getElementById('invite-role').value  = 'tech';
     document.getElementById('invite-error').classList.add('hidden');
     document.getElementById('invite-form-body').classList.remove('hidden');
     document.getElementById('invite-success-body').classList.add('hidden');
     const btn = document.getElementById('invite-submit-btn');
-    if (btn) { btn.disabled = false; btn.textContent = 'Send Invite'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Create Account'; }
     modal.classList.remove('hidden');
   }
 
@@ -2374,16 +2373,23 @@ const App = (() => {
     document.getElementById('invite-modal')?.classList.add('hidden');
   }
 
-  function _buildWAAppLinkMsg(name, email) {
-    return `Hi ${name}, welcome to OnPoint Pro Doors CRM!\n\n` +
-      `Download and install the app on your phone:\n\n` +
-      `1. Open this link: https://crm.onpointprodoors.com\n` +
-      `2. Tap the Share button \u2191 at the bottom\n` +
-      `3. Tap Add to Home Screen\n` +
-      `4. The app installs like a real app\n\n` +
-      (email ? `Check your email (${email}) for your invite link to set your password.\n\nOnce you set your password, open the app and log in.\n\n` : '') +
-      `Any questions call (929) 429-2429.\n\n` +
-      `- OnPoint Pro Doors`;
+  function _buildWAAppLinkMsg(name, setupLink, loginEmail) {
+    const settings = DB.getSettings();
+    const ownerPhone = settings.ownerPhone || '(929) 429-2429';
+    return [
+      `Hi ${name}! Welcome to On Point Pro Doors.`,
+      '',
+      `You've been added to the team app. Tap the link below to set your password:`,
+      '',
+      setupLink || 'Link not available — contact admin',
+      '',
+      `After setting your password, open the app at:`,
+      `https://crm.onpointprodoors.com`,
+      '',
+      `Your login email: ${loginEmail || '(see admin)'}`,
+      '',
+      `Questions? Call ${ownerPhone}`,
+    ].join('\n');
   }
 
   function _openWAWithMsg(phone, msg) {
@@ -2393,26 +2399,25 @@ const App = (() => {
   }
 
   function _sendInviteWA() {
-    const msg = _buildWAAppLinkMsg(_lastInvite.name, _lastInvite.email);
+    const msg = _buildWAAppLinkMsg(_lastInvite.name, _lastInvite.setupLink, _lastInvite.loginEmail);
     _openWAWithMsg(_lastInvite.phone, msg);
   }
 
   function _sendInviteWAFromInput() {
     const phone = document.getElementById('invite-wa-phone-input')?.value?.trim() || '';
     if (!phone.replace(/\D/g, '')) { showToast('Enter a phone number', 'warning'); return; }
-    const msg = _buildWAAppLinkMsg(_lastInvite.name, _lastInvite.email);
+    const msg = _buildWAAppLinkMsg(_lastInvite.name, _lastInvite.setupLink, _lastInvite.loginEmail);
     _openWAWithMsg(phone, msg);
   }
 
-  function _sendUserWALink(name, email, phone) {
-    const msg = _buildWAAppLinkMsg(name || 'there', email || null);
+  function _sendUserWALink(name, phone) {
+    const msg = _buildWAAppLinkMsg(name || 'there', '', '');
     _openWAWithMsg(phone, msg);
   }
 
   async function submitInvite() {
     if (!Auth.isAdmin()) { showToast('Not authorized', 'error'); return; }
     const name  = document.getElementById('invite-name')?.value?.trim();
-    const email = document.getElementById('invite-email')?.value?.trim();
     const phone = document.getElementById('invite-phone')?.value?.trim() || '';
     const role  = document.getElementById('invite-role')?.value;
     const errEl = document.getElementById('invite-error');
@@ -2425,34 +2430,35 @@ const App = (() => {
       errEl.classList.remove('hidden');
       return;
     }
-    if (!email || !email.includes('@')) {
-      errEl.textContent = 'A valid email address is required.';
-      errEl.classList.remove('hidden');
-      return;
-    }
 
     btn.disabled    = true;
-    btn.textContent = 'Sending invite\u2026';
+    btn.textContent = 'Creating account\u2026';
 
     try {
-      await Auth.inviteUser(email, name, role, phone);
+      const result = await Auth.inviteUser(name, role, phone);
+      const { setupLink = '', loginEmail = '' } = result || {};
 
-      _lastInvite = { name, email, phone };
+      _lastInvite = { name, phone, setupLink, loginEmail };
       _renderAdminUsersSection().catch(() => {});
 
       document.getElementById('invite-form-body').classList.add('hidden');
       document.getElementById('invite-success-body').classList.remove('hidden');
-      document.getElementById('invite-success-email').textContent = email;
+
+      const emailEl = document.getElementById('invite-success-email');
+      if (emailEl) emailEl.textContent = loginEmail;
+
+      const linkEl = document.getElementById('invite-setup-link');
+      if (linkEl) linkEl.value = setupLink;
 
       const hasPhone = phone.replace(/\D/g, '').length >= 7;
       document.getElementById('invite-wa-with-phone').classList.toggle('hidden', !hasPhone);
       document.getElementById('invite-wa-no-phone').classList.toggle('hidden', hasPhone);
 
     } catch (e) {
-      errEl.textContent = e.message || 'Invite failed.';
+      errEl.textContent = e.message || 'Account creation failed.';
       errEl.classList.remove('hidden');
       btn.disabled    = false;
-      btn.textContent = 'Send Invite';
+      btn.textContent = 'Create Account';
     }
   }
 
