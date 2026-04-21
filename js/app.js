@@ -639,8 +639,8 @@ const App = (() => {
       ? `<a class="call-btn" href="${phoneHref}" onclick="event.stopPropagation()" title="Call ${_esc(job.customerName)}">&#128222;</a>`
       : '';
 
-    const waBtn = Auth.isAdminOrDisp() && job.phone
-      ? `<button class="wa-btn" onclick="event.stopPropagation();App.openWhatsApp('${job.jobId}')" title="WhatsApp">&#128172;</button>`
+    const waBtn = Auth.isAdminOrDisp()
+      ? `<button class="wa-btn" onclick="event.stopPropagation();App.openWhatsApp('${job.jobId}')" title="Dispatch to Tech">&#128172;</button>`
       : '';
 
     return `<div class="job-card ${statusClass}" onclick="App.openJobDetail('${job.jobId}')">
@@ -1241,19 +1241,11 @@ const App = (() => {
            </div>`;
     }
 
-    // WhatsApp — confirmation/appointment msg for customer; financial receipt for paid jobs
-    const _waPhone = _cleanPhoneForWA(job.phone);
-    const _waMsgCustomer = _waPhone ? encodeURIComponent(_buildWhatsAppConfirmationMsg(job)) : '';
-    const _waMsgReceipt  = _waPhone ? encodeURIComponent(_buildWhatsAppJobText(job)) : '';
-    const _waHref = _waPhone && job.status === 'paid'
-      ? `https://wa.me/${_waPhone}?text=${_waMsgReceipt}`
-      : _waPhone
-        ? `https://wa.me/${_waPhone}?text=${_waMsgCustomer}`
-        : '';
-    const waLink = _waPhone
-      ? `<a href="${_waHref}" class="detail-action-btn${job.status === 'paid' ? ' dab-green' : ''}" onclick="event.stopPropagation()" target="_blank" rel="noopener noreferrer">
-      <span class="dab-icon">&#128172;</span><span class="dab-label">${job.status === 'paid' ? 'Receipt' : 'WhatsApp'}</span>
-    </a>`
+    // WhatsApp — dispatch job details to assigned technician
+    const waLink = Auth.isAdminOrDisp()
+      ? `<button class="detail-action-btn" onclick="event.stopPropagation();App.openWhatsApp('${job.jobId}')">
+      <span class="dab-icon">&#128172;</span><span class="dab-label">Dispatch</span>
+    </button>`
       : '';
 
     const callLink = job.phone
@@ -3230,57 +3222,59 @@ const App = (() => {
     return null;
   }
 
-  // Customer-facing appointment confirmation (used for wa.me outbound)
-  function _buildWhatsAppConfirmationMsg(job) {
+  // Tech dispatch message — sent to assigned technician's WhatsApp
+  function _buildWhatsAppTechDispatchMsg(job) {
     const settings = DB.getSettings();
-    const tech = job.assignedTechId
-      ? settings.technicians.find(t => t.id === job.assignedTechId)
-      : null;
-
-    const dateLine = job.scheduledDate
-      ? _formatDate(job.scheduledDate)
-      : 'Date to be confirmed';
-    const timeLine = job.scheduledTime
-      ? _formatTime(job.scheduledTime)
-      : 'Time to be confirmed';
-    const techLine = tech ? tech.name : 'assigned shortly';
+    const fullAddress = [job.address, job.city, job.state].filter(Boolean).join(', ') || 'See job details';
+    const dateLine = job.scheduledDate ? _formatDate(job.scheduledDate) : 'TBD';
+    const timeLine = job.scheduledTime ? _formatTime(job.scheduledTime) : 'TBD';
     const ownerPhone = settings.ownerPhone || '(929) 429-2429';
 
-    return [
-      `Hello ${job.customerName || 'there'}!`,
+    const lines = [
+      'New Job Assignment — On Point Pro Doors',
       '',
-      `This is On Point Pro Doors confirming your appointment:`,
-      '',
+      `Customer: ${job.customerName || 'N/A'}`,
+      `Phone: ${job.phone || 'N/A'}`,
+      `Address: ${fullAddress}`,
       `Service: ${job.description || 'Garage Door Service'}`,
       `Date: ${dateLine}`,
       `Time: ${timeLine}`,
-      `Technician: ${techLine}`,
-      `Address: ${[job.address, job.city, job.state].filter(Boolean).join(', ') || 'on file'}`,
-      '',
-      `If you need to reschedule or have any questions, please call us at ${ownerPhone}.`,
-      '',
-      `Thank you for choosing On Point Pro Doors!`,
-    ].join('\n');
+    ];
+
+    if (job.notes) lines.push(`Notes: ${job.notes}`);
+
+    const techPayout = parseFloat(job.techPayout) || parseFloat(job.contractorFee) || 0;
+    if (techPayout > 0) lines.push('', `Your cut: $${techPayout.toFixed(2)}`);
+
+    lines.push('', `Questions? Call ${ownerPhone}`);
+    return lines.join('\n');
   }
 
-  // Open WhatsApp with customer appointment confirmation
+  // Open WhatsApp dispatch to assigned technician
   function openWhatsApp(jobId) {
     if (!Auth.isAdminOrDisp()) return;
     const job = DB.getJobById(jobId);
     if (!job) { showToast('Job not found', 'error'); return; }
 
-    if (!job.phone) {
-      showToast('No phone number on file for this job', 'warning');
+    const settings = DB.getSettings();
+    if (!job.assignedTechId) {
+      showToast('Assign a technician first before sending WhatsApp', 'warning');
       return;
     }
 
-    const cleanPhone = _cleanPhoneForWA(job.phone);
+    const tech = (settings.technicians || []).find(t => t.id === job.assignedTechId);
+    if (!tech || !tech.phone) {
+      showToast('Technician has no phone number on file — add it in Settings', 'warning');
+      return;
+    }
+
+    const cleanPhone = _cleanPhoneForWA(tech.phone);
     if (!cleanPhone) {
-      showToast('Invalid phone number', 'warning');
+      showToast('Invalid technician phone number', 'warning');
       return;
     }
 
-    const msg = _buildWhatsAppConfirmationMsg(job);
+    const msg = _buildWhatsAppTechDispatchMsg(job);
     const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   }
