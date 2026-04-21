@@ -856,3 +856,34 @@ select.field-input option { background: var(--color-surface); color: var(--color
   .print-zelle-memo  { background: #FFF8E1; border: 2px solid #FFD54F; border-radius: 8px; padding: 14px; font-size: 14px; line-height: 1.6; margin-top: 10px; }
   .print-zelle-title { font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #795548; margin-bottom: 6px; }
 }
+
+/* ── DESKTOP RESPONSIVE (1024px+) ───────────────────────── */
+@media (min-width: 1024px) {
+  body {
+    background: var(--color-surface-2);
+  }
+
+  #app {
+    max-width: 480px;
+    margin: 0 auto;
+    box-shadow: 0 0 40px rgba(0,0,0,0.4);
+    position: relative;
+  }
+
+  /* nav bar stays full-width within the app container */
+  .bottom-nav {
+    max-width: 480px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
+@media (min-width: 1440px) {
+  #app {
+    max-width: 520px;
+  }
+
+  .bottom-nav {
+    max-width: 520px;
+  }
+}
