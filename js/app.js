@@ -1956,7 +1956,7 @@ const App = (() => {
         <div class="field-group" style="flex:1">
           <label class="field-label">State</label>
           <select id="edit-state" class="field-input">
-            ${['ME','NH','VT','MA','RI','CT','NY','NJ','PA','DE','MD','DC','VA','WV','NC','SC','GA','FL','OH','KY','TN','IN','MI'].map(s => `<option value="${s}" ${job.state===s?'selected':''}>${s}</option>`).join('')}
+            ${['AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'].map(s => `<option value="${s}" ${(job.state||'NY')===s?'selected':''}>${s}</option>`).join('')}
           </select>
         </div>
         <div class="field-group" style="flex:1">
