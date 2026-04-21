@@ -2609,7 +2609,12 @@ const App = (() => {
     btn.textContent = 'Creating account\u2026';
 
     try {
-      const result = await Auth.createUser(name, email, password, role, assignedLeadSource);
+      // Add 15 second hard timeout to prevent infinite loading
+      const createPromise = Auth.createUser(name, email, password, role, assignedLeadSource);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Failed to create account — request timed out. Please try again.')), 15000)
+      );
+      const result = await Promise.race([createPromise, timeoutPromise]);
       const { email: loginEmail = email } = result || {};
 
       _lastInvite = { name, email: loginEmail, password };
@@ -2625,7 +2630,8 @@ const App = (() => {
       if (passwordEl) passwordEl.value = password;
 
     } catch (e) {
-      errEl.textContent = e.message || 'Account creation failed.';
+      console.error('Create user error:', e);
+      errEl.textContent = e.message || 'Failed to create account — please try again';
       errEl.classList.remove('hidden');
       btn.disabled    = false;
       btn.textContent = 'Create Account';
