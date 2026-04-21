@@ -106,6 +106,9 @@ const App = (() => {
     // Start notification bell + real-time banner toasts
     try { await Notifications.init(); } catch(e) { console.warn('Notifications.init error:', e.message); }
 
+    // Subscribe to push notifications (requests permission once)
+    try { await Auth.subscribeToPush(); } catch(e) { console.warn('Push subscription error:', e.message); }
+
     // Start background overdue-job checker (admin/dispatcher only)
     Reminders.init();
 

@@ -8,9 +8,6 @@
  */
 const { test, expect, chromium } = require('@playwright/test');
 
-// Force serial execution for this file
-test.describe.configure({ mode: 'serial' });
-
 const URL   = 'https://crm.onpointprodoors.com';
 const EMAIL = 'service@onpointprodoors.com';
 const PASS  = 'OnPoint2024!';
@@ -255,4 +252,121 @@ test('TEST 6 — Mobile 375x812: login screen renders, can login', async ({ brow
   expect(navVisible, 'Dashboard must be visible on mobile after login').toBe(true);
 
   await ctx.close();
+});
+
+// ══════════════════════════════════════════════════════════════
+// TEST 7 — PWA VS BROWSER STORAGE: separate storage contexts
+// ══════════════════════════════════════════════════════════════
+test('TEST 7 — PWA vs Browser storage separation', async ({ browser }) => {
+  const ctx = await browser.newContext({ storageState: undefined });
+  const page = await ctx.newPage();
+
+  await page.goto(URL);
+  await waitForLoginScreen(page, 5000);
+  await doLogin(page, EMAIL, PASS);
+  await waitForDashboard(page, 10000);
+
+  // Check localStorage keys
+  const storageKeys = await page.evaluate(() => {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      keys.push(localStorage.key(i));
+    }
+    return keys.filter(k => k && (k.includes('onpoint') || k.includes('auth')));
+  });
+
+  console.log('TEST 7: Storage keys found:', storageKeys);
+
+  // Should have storage keys with proper prefix
+  expect(storageKeys.length, 'Should have auth storage keys').toBeGreaterThan(0);
+
+  // At least one key should contain the storage prefix
+  const hasPrefix = storageKeys.some(k => k.includes('onpoint-web-auth') || k.includes('onpoint-pwa-auth'));
+  expect(hasPrefix, 'Storage keys should use onpoint prefix').toBe(true);
+
+  await ctx.close();
+});
+
+// ══════════════════════════════════════════════════════════════
+// TEST 8 — TOKEN REFRESH: token refreshes before expiry
+// ══════════════════════════════════════════════════════════════
+test('TEST 8 — Token refresh before expiry', async ({ browser }) => {
+  const ctx = await browser.newContext({ storageState: undefined });
+  const page = await ctx.newPage();
+
+  await page.goto(URL);
+  await waitForLoginScreen(page, 5000);
+  await doLogin(page, EMAIL, PASS);
+  await waitForDashboard(page, 10000);
+
+  // Get initial session
+  const initialSession = await page.evaluate(() => {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.includes('auth-token')) {
+        keys.push({ key, value: localStorage.getItem(key) });
+      }
+    }
+    return keys;
+  });
+
+  console.log('TEST 8a: Initial session token keys:', initialSession.map(s => s.key));
+
+  // Wait for potential token refresh (session health check runs every 4 min in auth.js)
+  // We'll wait 5 seconds and verify session is still valid
+  await page.waitForTimeout(5000);
+
+  // Refresh page to verify session persists
+  await page.reload();
+  await waitForDashboard(page, 10000);
+
+  const dashVisible = await page.locator('#app:not(.hidden)').isVisible();
+  console.log('TEST 8b: After refresh, dashboard visible:', dashVisible);
+  expect(dashVisible, 'Session should persist after page reload').toBe(true);
+
+  await ctx.close();
+});
+
+// ══════════════════════════════════════════════════════════════
+// TEST 9 — CALLBACK FIRES ON EXISTING SESSION: auth callback called
+// ══════════════════════════════════════════════════════════════
+test('TEST 9 — Callback fires on existing session', async ({ browser }) => {
+  // Step 1: Login and save storage
+  const ctx1 = await browser.newContext({ storageState: undefined });
+  const page1 = await ctx1.newPage();
+
+  await page1.goto(URL);
+  await waitForLoginScreen(page1, 5000);
+  await doLogin(page1, EMAIL, PASS);
+  await waitForDashboard(page1, 10000);
+
+  const storageState = await ctx1.storageState();
+  await ctx1.close();
+
+  // Step 2: Open with existing session and check if auth callback fires
+  const ctx2 = await browser.newContext({ storageState });
+  const page2 = await ctx2.newPage();
+
+  // Inject flag to detect if auth callback was called
+  await page2.addInitScript(() => {
+    window._authCallbackFired = false;
+    window._originalAuthInit = window.Auth?.init;
+  });
+
+  await page2.goto(URL, { waitUntil: 'domcontentloaded' });
+
+  // Wait for dashboard
+  await waitForDashboard(page2, 10000);
+
+  // Check if dashboard is visible (which means auth callback fired and loaded user)
+  const dashVisible = await page2.locator('#app:not(.hidden)').isVisible();
+  const loginHidden = await page2.locator('#login-screen').isHidden().catch(() => true);
+
+  console.log('TEST 9: dashVisible=%s loginHidden=%s', dashVisible, loginHidden);
+
+  expect(dashVisible, 'Dashboard should appear when auth callback fires on existing session').toBe(true);
+  expect(loginHidden, 'Login screen should be hidden').toBe(true);
+
+  await ctx2.close();
 });

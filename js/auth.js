@@ -379,6 +379,78 @@ const Auth = (() => {
   // PUSH NOTIFICATIONS
   // ──────────────────────────────────────────────────────────
 
+  /**
+   * Convert base64url string to Uint8Array for VAPID key
+   * @param {string} base64String - VAPID public key in base64url format
+   * @returns {Uint8Array} - Decoded key bytes
+   * @private
+   */
+  function _urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+      .replace(/\-/g, '+')
+      .replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
+  /**
+   * Subscribe the current user to push notifications
+   * Requests permission, registers service worker, saves subscription to DB
+   * @returns {Promise<PushSubscription|null>} - Subscription object or null if denied/unavailable
+   */
+  async function subscribeToPush() {
+    // VAPID public key for web push (from environment)
+    const VAPID_PUBLIC_KEY = 'BGNE39yvpaok-a8Iqxe9Pf-7sfnQMq282TWZ0WvKcahkIJSdOFGGQq8od2yeB5CzYa3F0TQcdt0-GyvhV3SjAXo';
+
+    if (!('serviceWorker' in navigator)) {
+      console.warn('Push: Service workers not supported');
+      return null;
+    }
+
+    if (!('PushManager' in window)) {
+      console.warn('Push: Push messaging not supported');
+      return null;
+    }
+
+    try {
+      // Request notification permission
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        console.warn('Push: Permission denied');
+        return null;
+      }
+
+      // Get service worker registration
+      const registration = await navigator.serviceWorker.ready;
+
+      // Subscribe to push
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+
+      // Save to database
+      await savePushSubscription(subscription);
+      console.log('Push: Subscription saved');
+      return subscription;
+
+    } catch (error) {
+      console.warn('Push: Subscription failed:', error.message);
+      return null;
+    }
+  }
+
+  /**
+   * Save a push notification subscription to the database
+   * Called after user grants notification permission and service worker registers
+   * @param {PushSubscription} sub - Browser push subscription object
+   * @returns {Promise<void>}
+   */
   async function savePushSubscription(sub) {
     if (!_currentUser) return;
     const { endpoint, keys } = sub.toJSON ? sub.toJSON() : sub;
@@ -390,6 +462,12 @@ const Auth = (() => {
     }, { onConflict: 'user_id,endpoint' });
   }
 
+  /**
+   * Delete a push notification subscription from the database
+   * Called when user unsubscribes or subscription becomes invalid
+   * @param {string} endpoint - Push subscription endpoint URL
+   * @returns {Promise<void>}
+   */
   async function deletePushSubscription(endpoint) {
     if (!_currentUser) return;
     await SupabaseClient.from('push_subscriptions')
@@ -424,6 +502,7 @@ const Auth = (() => {
     inviteUser,
     createUser,
     removeUser,
+    subscribeToPush,
     savePushSubscription,
     deletePushSubscription,
   };
