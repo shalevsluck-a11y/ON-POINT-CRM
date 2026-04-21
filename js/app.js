@@ -1906,7 +1906,8 @@ const App = (() => {
             <div style="font-size:14px;font-weight:600;color:var(--color-text);font-family:monospace">${_esc(ownerZelle || 'Not set — add in Settings')}</div>
           </div>
           ${ownerZelle ? `<button class="btn btn-secondary" style="padding:0 12px;align-self:flex-end"
-            onclick="navigator.clipboard.writeText(${JSON.stringify(ownerZelle)}).then(()=>showToast('Handle copied','success'))">Copy</button>` : ''}
+            onclick="navigator.clipboard.writeText(this.dataset.v).then(()=>showToast('Handle copied','success'))"
+            data-v="${_esc(ownerZelle)}">Copy</button>` : ''}
         </div>
         <div style="display:flex;gap:8px">
           <div style="flex:1">
@@ -1914,7 +1915,8 @@ const App = (() => {
             <div style="font-size:18px;font-weight:700;color:var(--color-text)">${amtStr}</div>
           </div>
           <button class="btn btn-secondary" style="padding:0 12px;align-self:flex-end"
-            onclick="navigator.clipboard.writeText(${JSON.stringify(amount.toFixed(2))}).then(()=>showToast('Amount copied','success'))">Copy</button>
+            onclick="navigator.clipboard.writeText(this.dataset.v).then(()=>showToast('Amount copied','success'))"
+            data-v="${_esc(amount.toFixed(2))}">Copy</button>
         </div>
       </div>
     `;
@@ -2411,7 +2413,8 @@ const App = (() => {
             ${u.phone ? `<button class="btn-icon" style="color:#25D366;font-size:18px" title="Send app link on WhatsApp"
               onclick="App._sendUserWALink('${u.id}')">&#128241;</button>` : ''}
             ${u.id !== currentUserId ? `<button class="btn-icon" style="color:var(--color-error);font-size:16px"
-              onclick="App._confirmRemoveUser('${u.id}','${_esc(u.name||u.email)}')" title="Remove user">&#128465;</button>` : ''}
+              onclick="App._confirmRemoveUser(this.dataset.uid,this.dataset.uname)" title="Remove user"
+              data-uid="${_esc(u.id)}" data-uname="${_esc(u.name||u.email)}">&#128465;</button>` : ''}
           </div>
         </div>
       `).join('') || '<div class="empty-state-sm">No users found</div>';
@@ -3396,7 +3399,8 @@ const App = (() => {
       .replace(/&/g,  '&amp;')
       .replace(/</g,  '&lt;')
       .replace(/>/g,  '&gt;')
-      .replace(/"/g,  '&quot;');
+      .replace(/"/g,  '&quot;')
+      .replace(/'/g,  '&#39;');
   }
 
   function _setText(id, val) {
