@@ -2542,10 +2542,21 @@ const App = (() => {
   }
 
   async function _confirmRemoveUser(userId, userName) {
+    let jobWarning = '';
+    try {
+      const { count } = await SupabaseClient
+        .from('jobs')
+        .select('id', { count: 'exact', head: true })
+        .eq('assigned_tech_id', userId);
+      if (count > 0) {
+        jobWarning = ` This user has ${count} assigned job${count !== 1 ? 's' : ''} — they will be unassigned.`;
+      }
+    } catch (_e) { /* non-critical */ }
+
     showConfirm({
       icon:    '&#128465;',
       title:   'Remove User',
-      message: `Remove ${userName} from the app? This cannot be undone.`,
+      message: `Remove ${userName} from the app?${jobWarning} This cannot be undone.`,
       okLabel: 'Remove',
       okClass: 'btn-danger',
       onOk: async () => {

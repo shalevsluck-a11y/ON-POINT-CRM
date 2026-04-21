@@ -210,16 +210,21 @@ const Auth = (() => {
     const { data: { session } } = await SupabaseClient.auth.getSession();
     let res, json;
     try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 30000);
       res = await fetch(`${SUPABASE_URL}/functions/v1/invite-user`, {
         method: 'POST',
+        signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({ name, role, phone: phone || '' }),
       });
+      clearTimeout(timer);
       json = await res.json();
     } catch (e) {
+      if (e.name === 'AbortError') throw new Error('Invite timed out — check connection');
       throw new Error('Network error — invite could not be sent');
     }
     if (!res.ok) throw new Error(json.error || 'Invite failed');
@@ -231,16 +236,21 @@ const Auth = (() => {
     const { data: { session } } = await SupabaseClient.auth.getSession();
     let res, json;
     try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 30000);
       res = await fetch(`${SUPABASE_URL}/functions/v1/remove-user`, {
         method: 'POST',
+        signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({ userId }),
       });
+      clearTimeout(timer);
       json = await res.json();
     } catch (e) {
+      if (e.name === 'AbortError') throw new Error('Request timed out — check connection');
       throw new Error('Network error — user could not be removed');
     }
     if (!res.ok) throw new Error(json.error || 'Remove failed');

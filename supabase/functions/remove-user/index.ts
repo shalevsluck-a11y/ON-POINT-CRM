@@ -65,6 +65,10 @@ serve(async (req) => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
+    // NULL out FK references before deleting to avoid constraint violations
+    await adminClient.from('jobs').update({ assigned_tech_id: null }).eq('assigned_tech_id', userId);
+    await adminClient.from('jobs').update({ created_by: null }).eq('created_by', userId);
+
     // Delete from auth.users — cascade removes profile row via FK
     const { error: deleteErr } = await adminClient.auth.admin.deleteUser(userId);
     if (deleteErr) {
