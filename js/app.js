@@ -2409,7 +2409,7 @@ const App = (() => {
               <option value="contractor" ${u.role==='contractor' ?'selected':''}>Contractor</option>
             </select>
             ${u.phone ? `<button class="btn-icon" style="color:#25D366;font-size:18px" title="Send app link on WhatsApp"
-              onclick="App._sendUserWALink(${JSON.stringify(u.name||'')},${JSON.stringify(u.phone||'')})">&#128241;</button>` : ''}
+              onclick="App._sendUserWALink('${u.id}')">&#128241;</button>` : ''}
             ${u.id !== currentUserId ? `<button class="btn-icon" style="color:var(--color-error);font-size:16px"
               onclick="App._confirmRemoveUser('${u.id}','${_esc(u.name||u.email)}')" title="Remove user">&#128465;</button>` : ''}
           </div>
@@ -2478,9 +2478,11 @@ const App = (() => {
     _openWAWithMsg(phone, msg);
   }
 
-  function _sendUserWALink(name, phone) {
-    const msg = _buildWAAppLinkMsg(name || 'there', '', '');
-    _openWAWithMsg(phone, msg);
+  function _sendUserWALink(userId) {
+    const tech = (DB.getSettings().technicians || []).find(t => t.id === userId);
+    if (!tech || !tech.phone) { showToast('No phone on file for this user', 'warning'); return; }
+    const msg = _buildWAAppLinkMsg(tech.name || 'there', '', '');
+    _openWAWithMsg(tech.phone, msg);
   }
 
   async function submitInvite() {
@@ -2495,6 +2497,12 @@ const App = (() => {
 
     if (!name) {
       errEl.textContent = 'Full name is required.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    const phoneDigits = phone.replace(/\D/g, '');
+    if (!phoneDigits || phoneDigits.length < 7) {
+      errEl.textContent = 'A valid phone number is required (minimum 7 digits) for WhatsApp delivery.';
       errEl.classList.remove('hidden');
       return;
     }
