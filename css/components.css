@@ -282,6 +282,7 @@
 .featured .rev-label  { color: rgba(255,255,255,0.5); }
 .featured .rev-amount { color: #ffffff; }
 .featured .rev-count  { color: rgba(255,255,255,0.55); }
+.mom-row { display: flex; align-items: center; padding: 8px 4px 2px; gap: 4px; }
 
 /* ── STATUS STRIP ──────────────────────────────────────────── */
 .status-strip {

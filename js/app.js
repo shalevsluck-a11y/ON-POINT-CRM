@@ -305,6 +305,27 @@ const App = (() => {
       _setText('rev-today-amount', _fmt(toOwnerRev(todayJobs.filter(paidOnly))));
       _setText('rev-week-amount',  _fmt(toOwnerRev(weekJobs.filter(paidOnly))));
       _setText('rev-month-amount', _fmt(toSales(monthJobs.filter(paidOnly))));
+
+      // Month-over-month comparison
+      const now = new Date();
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
+      const lastMonthEnd   = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
+      const lastMonthJobs  = jobs.filter(j => j.scheduledDate >= lastMonthStart && j.scheduledDate <= lastMonthEnd);
+      const thisMonthSales = toSales(monthJobs.filter(paidOnly));
+      const lastMonthSales = toSales(lastMonthJobs.filter(paidOnly));
+      const momEl = document.getElementById('mom-stats');
+      if (momEl && (thisMonthSales > 0 || lastMonthSales > 0)) {
+        const diff = thisMonthSales - lastMonthSales;
+        const pct  = lastMonthSales > 0 ? Math.round((diff / lastMonthSales) * 100) : null;
+        const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '—';
+        const color = diff > 0 ? 'var(--color-success)' : diff < 0 ? 'var(--color-error)' : 'var(--color-text-muted)';
+        const pctLabel = pct !== null ? ` (${pct > 0 ? '+' : ''}${pct}%)` : '';
+        const lastMonthName = new Date(now.getFullYear(), now.getMonth() - 1, 1).toLocaleString('en-US', { month: 'short' });
+        momEl.innerHTML = `<span style="color:var(--color-text-muted);font-size:12px">vs ${lastMonthName}: ${_fmt(lastMonthSales)}</span><span style="color:${color};font-size:12px;font-weight:700;margin-left:8px">${arrow} ${_fmt(Math.abs(diff))}${pctLabel}</span>`;
+        momEl.classList.remove('hidden');
+      } else if (momEl) {
+        momEl.classList.add('hidden');
+      }
     }
 
     _setText('rev-today-count', `${todayJobs.length} job${todayJobs.length !== 1 ? 's' : ''}`);
