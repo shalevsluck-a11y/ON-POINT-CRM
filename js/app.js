@@ -3600,3 +3600,20 @@ const App = (() => {
 document.addEventListener('DOMContentLoaded', () => {
   App.init();
 });
+
+// Absolute last-resort safety net — if after 5s nothing is visible, force login screen
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    const shell = document.getElementById('app-shell');
+    const login = document.getElementById('login-screen');
+    const app   = document.getElementById('main-app');
+    const somethingVisible = (
+      (login && !login.classList.contains('hidden')) ||
+      (app   && !app.classList.contains('hidden'))
+    );
+    if (!somethingVisible) {
+      if (shell) shell.style.display = 'none';
+      if (login) login.classList.remove('hidden');
+    }
+  }, 5000);
+});
