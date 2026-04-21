@@ -1534,13 +1534,24 @@ const App = (() => {
     if (!job) return;
 
     const photos = [...(job.photos || [])];
+    const MAX_PHOTOS = 5;
+
+    if (photos.length >= MAX_PHOTOS) {
+      showToast(`Maximum ${MAX_PHOTOS} photos per job`, 'warning');
+      return;
+    }
 
     const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
-    files.forEach(file => {
-      if (!ALLOWED_TYPES.includes(file.type)) {
-        showToast(`${file.name}: only JPEG, PNG, WebP, and GIF allowed`, 'warning');
-        return;
+    const allowedFiles = files.filter(f => {
+      if (!ALLOWED_TYPES.includes(f.type)) {
+        showToast(`${f.name}: only JPEG, PNG, WebP, and GIF allowed`, 'warning');
+        return false;
       }
+      return true;
+    }).slice(0, MAX_PHOTOS - photos.length);
+
+    if (!allowedFiles.length) return;
+    allowedFiles.forEach(file => {
 
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -1552,9 +1563,9 @@ const App = (() => {
           });
           processed++;
 
-          if (processed === files.length) {
+          if (processed === allowedFiles.length) {
             DB.saveJob({ ...job, photos });
-            showToast(`${files.length} photo${files.length > 1 ? 's' : ''} added`, 'success');
+            showToast(`${allowedFiles.length} photo${allowedFiles.length > 1 ? 's' : ''} added`, 'success');
             const updated = DB.getJobById(jobId);
             const container = document.getElementById('job-detail-content');
             if (container && updated) container.innerHTML = _buildJobDetailHTML(updated);
