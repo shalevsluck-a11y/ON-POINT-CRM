@@ -111,7 +111,12 @@ const App = (() => {
 
     // Subscribe to live job changes from other sessions
     _jobsChannel = DB.subscribeToJobs(
-      () => { renderDashboard(); renderJobList(); if (_jobsViewMode === 'kanban' && _state.currentView === 'jobs') renderKanban(); },
+      (newJob) => {
+        _playNotificationSound();
+        renderDashboard();
+        renderJobList();
+        if (_jobsViewMode === 'kanban' && _state.currentView === 'jobs') renderKanban();
+      },
       () => { renderDashboard(); renderJobList(); if (_jobsViewMode === 'kanban' && _state.currentView === 'jobs') renderKanban(); if (_state.currentView === 'job-detail') openJobDetail(_state.currentJobId); },
       (deletedJobId) => {
         renderDashboard();
@@ -121,6 +126,7 @@ const App = (() => {
           navigate('jobs');
         }
       },
+      (status) => _updateRealtimeStatus(status)
     );
 
     // Subscribe to settings/profile changes from other devices
@@ -180,6 +186,49 @@ const App = (() => {
 
     const settingsMenu = document.querySelector('.user-menu-item[onclick*="settings"]');
     if (settingsMenu) settingsMenu.classList.toggle('hidden', !isAdmin);
+  }
+
+  function _updateRealtimeStatus(status) {
+    const indicator = document.getElementById('realtime-status');
+    if (!indicator) return;
+
+    if (status === 'SUBSCRIBED') {
+      indicator.style.background = '#10b981'; // Green
+      indicator.title = 'Live updates active';
+    } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+      indicator.style.background = '#f59e0b'; // Orange
+      indicator.title = 'Reconnecting...';
+    } else if (status === 'CLOSED') {
+      indicator.style.background = '#ef4444'; // Red
+      indicator.title = 'Disconnected';
+    }
+  }
+
+  function _playNotificationSound() {
+    try {
+      // Create audio context for notification chime
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      // Professional chime sound (C5 note)
+      oscillator.frequency.value = 523.25;
+      oscillator.type = 'sine';
+
+      // Fade in/out envelope
+      const now = audioContext.currentTime;
+      gainNode.gain.setValueAtTime(0, now);
+      gainNode.gain.linearRampToValueAtTime(0.3, now + 0.01);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+
+      oscillator.start(now);
+      oscillator.stop(now + 0.3);
+    } catch (e) {
+      console.warn('Could not play notification sound:', e);
+    }
   }
 
   function toggleUserMenu() {

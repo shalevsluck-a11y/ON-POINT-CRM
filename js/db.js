@@ -231,30 +231,101 @@ const DB = (() => {
   }
 
   // ──────────────────────────────────────────────────────────
-  // REAL-TIME — subscribe to live job changes
+  // REAL-TIME — subscribe to live job changes with role-based filtering
   // ──────────────────────────────────────────────────────────
 
-  function subscribeToJobs(onInsert, onUpdate, onDelete) {
-    return supa
-      .channel('jobs-realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'jobs' }, payload => {
-        const job = _dbRowToJob(payload.new, {}, Auth.isAdmin(), Auth.isTechOrContractor());
-        Storage.saveJob(job);
-        if (onInsert) onInsert(job);
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'jobs' }, payload => {
-        const job = _dbRowToJob(payload.new, {}, Auth.isAdmin(), Auth.isTechOrContractor());
-        Storage.saveJob(job);
-        if (onUpdate) onUpdate(job);
-      })
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'jobs' }, payload => {
-        const jobId = payload.old?.job_id;
-        if (jobId) {
-          Storage.deleteJob(jobId);
-          if (onDelete) onDelete(jobId);
-        }
-      })
-      .subscribe();
+  function subscribeToJobs(onInsert, onUpdate, onDelete, onStatusChange) {
+    const user = Auth.getUser();
+    if (!user) return null;
+
+    const channel = supa.channel('public:jobs');
+
+    // Role-based event filtering
+    if (Auth.isAdminOrDisp()) {
+      // Admin/dispatcher see all jobs
+      channel
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'jobs' }, payload => {
+          const job = _dbRowToJob(payload.new, {}, true, false);
+          Storage.saveJob(job);
+          if (onInsert) onInsert(job);
+        })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'jobs' }, payload => {
+          const job = _dbRowToJob(payload.new, {}, true, false);
+          Storage.saveJob(job);
+          if (onUpdate) onUpdate(job);
+        })
+        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'jobs' }, payload => {
+          const jobId = payload.old?.job_id;
+          if (jobId) {
+            Storage.deleteJob(jobId);
+            if (onDelete) onDelete(jobId);
+          }
+        });
+    } else if (Auth.isTech() || Auth.isContractor()) {
+      // Tech/contractor only see jobs assigned to them or from their lead source
+      channel
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'jobs',
+          filter: `assigned_tech_id=eq.${user.id}`
+        }, payload => {
+          const job = _dbRowToJob(payload.new, {}, false, true);
+          Storage.saveJob(job);
+          if (onInsert) onInsert(job);
+        })
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'jobs',
+          filter: `assigned_tech_id=eq.${user.id}`
+        }, payload => {
+          const job = _dbRowToJob(payload.new, {}, false, true);
+          Storage.saveJob(job);
+          if (onUpdate) onUpdate(job);
+        })
+        .on('postgres_changes', {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'jobs',
+          filter: `assigned_tech_id=eq.${user.id}`
+        }, payload => {
+          const jobId = payload.old?.job_id;
+          if (jobId) {
+            Storage.deleteJob(jobId);
+            if (onDelete) onDelete(jobId);
+          }
+        });
+
+      // For contractors, also listen to jobs from their lead source
+      if (Auth.isContractor() && user.assignedLeadSource) {
+        channel.on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'jobs',
+          filter: `source=eq.${user.assignedLeadSource}`
+        }, payload => {
+          if (payload.eventType === 'DELETE') {
+            const jobId = payload.old?.job_id;
+            if (jobId) {
+              Storage.deleteJob(jobId);
+              if (onDelete) onDelete(jobId);
+            }
+          } else {
+            const job = _dbRowToJob(payload.new, {}, false, true);
+            Storage.saveJob(job);
+            if (payload.eventType === 'INSERT' && onInsert) onInsert(job);
+            if (payload.eventType === 'UPDATE' && onUpdate) onUpdate(job);
+          }
+        });
+      }
+    }
+
+    // Subscribe with status callback for reconnection handling
+    return channel.subscribe((status) => {
+      console.log('Realtime jobs channel status:', status);
+      if (onStatusChange) onStatusChange(status);
+    });
   }
 
   // ──────────────────────────────────────────────────────────
