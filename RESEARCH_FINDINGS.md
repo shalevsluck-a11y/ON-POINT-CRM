@@ -668,9 +668,246 @@ ALTER PUBLICATION supabase_realtime ADD TABLE users;
 
 ---
 
+## 7. Additional Patterns from Production CRMs
+
+### From Twenty CRM (Open Source Salesforce Alternative)
+
+**Session Clearing Pattern** (`packages/twenty-front/src/modules/auth/hooks/useAuth.ts`):
+```typescript
+const clearSession = useCallback(async () => {
+  clearSseClient()
+  
+  // Save critical state before clearing
+  const authProvidersValue = store.get(workspaceAuthProvidersState.atom)
+  const domainConfigurationValue = store.get(domainConfigurationState.atom)
+  
+  // Clear everything
+  sessionStorage.clear()
+  clearSessionLocalStorageKeys()
+  
+  // Restore non-session state
+  store.set(workspaceAuthProvidersState.atom, authProvidersValue)
+  store.set(domainConfigurationState.atom, domainConfigurationValue)
+  
+  // Reset all auth state
+  store.set(tokenPairState.atom, null)
+  store.set(currentUserState.atom, null)
+  
+  await client.clearStore()  // Apollo cache
+  navigate(AppPath.SignInUp)
+}, [clearSseClient, client, navigate, store])
+```
+
+**Key Insights**:
+- Clear both `sessionStorage` AND `localStorage` keys
+- Preserve non-auth state (configs, providers)
+- Clear GraphQL/Apollo cache
+- Atomic state updates
+
+**Token Refresh Pattern**:
+```typescript
+// Multi-workspace support with token pairs
+interface AuthTokenPair {
+  accessToken: string
+  refreshToken: string
+}
+
+// Workspace-specific login tokens
+const handleGetAuthTokensFromLoginToken = useCallback(
+  async (loginToken: string) => {
+    const result = await getAuthTokensFromLoginToken({
+      variables: { loginToken, origin }
+    })
+    
+    await handleLoadWorkspaceAfterAuthentication(
+      result.data.getAuthTokensFromLoginToken.tokens
+    )
+  },
+  [handleLoadWorkspaceAfterAuthentication]
+)
+```
+
+### From Supachat (Next.js Realtime Chat)
+
+**Singleton Pattern** (`supabase/browser.ts`):
+```typescript
+let client: TypedSupabaseClient | undefined
+
+export function getSupabaseBrowserClient() {
+  if (client) return client  // Return existing instance
+  
+  client = createBrowserClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+  
+  return client
+}
+
+// Hook usage
+export function useSupabaseBrowser() {
+  return useMemo(getSupabaseBrowserClient, [])
+}
+```
+
+**Realtime with Cleanup** (`components/MessageList.tsx`):
+```typescript
+useEffect(() => {
+  const channel = supabase
+    .channel('messages')
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'messages',
+    }, (payload) => {
+      setMessages((prev) => [domainObject].concat(prev))
+      
+      // Auto-scroll if user sent the message
+      if (payload.new.user_id === currentUserId) {
+        document.documentElement.scrollTop = scrollHeight
+      }
+    })
+    .subscribe()
+
+  // CRITICAL: Cleanup on unmount
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}, [supabase, setMessages])
+```
+
+**Key Pattern**: 
+- Unique channel names per feature
+- Optimistic UI only for current user
+- Cleanup in useEffect return
+- No separate "unsubscribe" function needed
+
+### From Frappe (ERPNext Framework)
+
+**Socket.IO Realtime Manager** (`frappe/public/js/frappe/socketio_client.js`):
+```javascript
+class RealTimeClient {
+  constructor() {
+    this.open_tasks = {}
+    this.open_docs = new Set()
+    this.disabled = false
+  }
+
+  init(port = 9000, lazy_connect = false) {
+    if (this.socket) return  // Singleton
+    
+    this.lazy_connect = lazy_connect
+    
+    this.socket = io(this.get_host(port), {
+      secure: window.location.protocol === 'https:',
+      withCredentials: true,
+      reconnectionAttempts: 3,
+      autoConnect: !lazy_connect,  // Can defer connection
+    })
+    
+    this.socket.on('connect_error', (err) => {
+      console.error('Connection error:', err.message)
+    })
+    
+    this.setup_listeners()
+  }
+  
+  connect() {
+    if (this.disabled) return
+    if (this.lazy_connect) {
+      this.socket.connect()
+      this.lazy_connect = false
+    }
+  }
+  
+  doc_subscribe(doctype, docname) {
+    // Throttle to prevent spam
+    if (frappe.flags.doc_subscribe) return
+    frappe.flags.doc_subscribe = true
+    
+    setTimeout(() => {
+      frappe.flags.doc_subscribe = false
+    }, 1000)
+    
+    this.emit('doc_subscribe', doctype, docname)
+    this.open_docs.add(`${doctype}:${docname}`)
+  }
+}
+```
+
+**Key Patterns**:
+- Lazy connection (connect only when needed)
+- Throttling to prevent subscription spam
+- Track open subscriptions with Set
+- Reconnection attempts limit
+
+---
+
+## 8. Critical Implementation Patterns Summary
+
+### Pattern 1: Storage Key Context Separation
+```javascript
+const isPWA = window.navigator.standalone || 
+              window.matchMedia('(display-mode: standalone)').matches
+const key = isPWA ? 'app-pwa-auth' : 'app-web-auth'
+```
+**Why**: PWA and browser use different storage contexts
+
+### Pattern 2: Callback for Existing Sessions
+```javascript
+// Check existing session
+const { data: { session } } = await supabase.auth.getSession()
+if (session?.user) {
+  await loadProfile(session.user)
+  // CRITICAL: Call callback here
+  if (onAuthChange) onAuthChange(currentUser)
+}
+```
+**Why**: Without this, app doesn't initialize on refresh
+
+### Pattern 3: Channel Cleanup
+```javascript
+useEffect(() => {
+  const channel = supabase.channel('name').on(...).subscribe()
+  return () => supabase.removeChannel(channel)
+}, [deps])
+```
+**Why**: Prevents memory leaks and duplicate events
+
+### Pattern 4: Singleton Client
+```javascript
+let client
+export function getClient() {
+  if (client) return client
+  client = createClient(url, key, config)
+  return client
+}
+```
+**Why**: Multiple clients cause auth conflicts
+
+### Pattern 5: Connection Status Tracking
+```javascript
+channel.subscribe((status) => {
+  if (status === 'SUBSCRIBED') updateIndicator('green')
+  else if (status === 'CHANNEL_ERROR') updateIndicator('orange')
+})
+```
+**Why**: Users need to know when connection is lost
+
+---
+
 ## References
 
-- Supabase Slack Clone: `examples/slack-clone/nextjs-slack-clone/lib/Store.js`
-- Expo Push Notifications: `examples/user-management/expo-push-notifications/lib/supabase.ts`
-- Auth Presence: `examples/realtime/nextjs-auth-presence/lib/supabase-context.tsx`
-- Official Docs: https://supabase.com/docs/guides/realtime
+- **Supabase Examples**:
+  - Slack Clone: `examples/slack-clone/nextjs-slack-clone/lib/Store.js`
+  - Expo Push: `examples/user-management/expo-push-notifications/lib/supabase.ts`
+  - Auth Presence: `examples/realtime/nextjs-auth-presence/lib/supabase-context.tsx`
+
+- **Production CRMs**:
+  - Twenty CRM: https://github.com/twentyhq/twenty
+  - Frappe/ERPNext: https://github.com/frappe/frappe
+  - Supachat: https://github.com/trymoto/supachat-starter
+
+- **Official Docs**:
+  - Supabase Realtime: https://supabase.com/docs/guides/realtime
+  - Web Push API: https://developer.mozilla.org/en-US/docs/Web/API/Push_API
