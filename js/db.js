@@ -365,25 +365,28 @@ const DB = (() => {
     };
 
     // Only expose admin-only financial fields to admin users.
-    // ownerPayout and contractorFee reveal business margin — never send to
-    // dispatcher or tech roles, even via localStorage / realtime.
+    // ownerPayout reveals business margin — never send to dispatcher, tech, or contractor.
+    // contractorFee is the contractor's own cut — visible to contractors only.
+    // techPayout is the tech's own cut — visible to techs only (DB view passes it through).
     if (isAdmin) {
       job.ownerPayout   = row.owner_payout   || 0;
       job.contractorFee = row.contractor_fee || 0;
       job.zelleMemo     = zelleMap?.[row.job_id] || '';
     } else {
       job.ownerPayout   = 0;
-      job.contractorFee = 0;
+      // Contractors should see their own fee; the jobs_limited view passes it through
+      job.contractorFee = Auth.isContractor() ? (row.contractor_fee || 0) : 0;
       job.zelleMemo     = '';
     }
 
-    // Tech users must not see revenue figures — zero them out.
+    // Tech/contractor users must not see company revenue figures — zero them out.
+    // Do NOT zero techPayout (tech's own cut) or contractorFee (contractor's own cut) —
+    // those are already handled above and the DB view intentionally exposes them.
     if (isTech) {
       job.estimatedTotal = 0;
       job.jobTotal       = 0;
       job.partsCost      = 0;
       job.taxAmount      = 0;
-      job.techPayout     = 0;
     }
 
     return job;
