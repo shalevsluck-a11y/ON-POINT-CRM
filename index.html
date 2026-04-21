@@ -460,19 +460,6 @@
           </select>
         </div>
 
-        <div id="contractor-section" class="hidden">
-          <div class="field-row">
-            <div class="field-group" style="flex:2">
-              <label class="field-label">Contractor Name</label>
-              <input type="text" id="f-contractor" class="field-input" placeholder="Contractor name">
-            </div>
-            <div class="field-group" style="flex:1">
-              <label class="field-label">Contractor %</label>
-              <input type="number" id="f-contractor-pct" class="field-input" placeholder="0" min="0" max="100" oninput="App.updatePayoutPreview()">
-            </div>
-          </div>
-        </div>
-
         <div class="field-group">
           <label class="field-label">Assign Technician</label>
           <div id="zip-suggestion" class="zip-suggestion hidden"></div>
@@ -480,51 +467,6 @@
             <div class="empty-state-sm">No technicians — add them in Settings first</div>
           </div>
           <input type="hidden" id="f-tech-id" value="">
-        </div>
-
-        <div class="field-group">
-          <label class="field-label">Estimated Job Total <span style="color:var(--color-text-faint);font-weight:400;font-size:11px">(optional — enter estimate for payout preview)</span></label>
-          <div class="currency-input">
-            <span class="currency-symbol">$</span>
-            <input type="number" id="f-total-est" class="field-input currency-field"
-                   placeholder="0.00" step="0.01" min="0" value="0"
-                   oninput="App.updatePayoutPreview()">
-          </div>
-        </div>
-
-        <div class="field-group">
-          <label class="field-label">Tech Payout %</label>
-          <input type="number" id="f-tech-pct" class="field-input" placeholder="e.g. 60"
-                 min="0" max="100" oninput="App.updatePayoutPreview()">
-        </div>
-
-        <div class="field-group" id="owner-pct-display" style="display:none">
-          <label class="field-label">Owner %</label>
-          <input type="text" id="f-owner-pct" class="field-input" readonly
-                 style="background-color:var(--color-bg);opacity:0.7;cursor:default" placeholder="Auto-calculated">
-        </div>
-
-        <div class="field-group">
-          <label class="field-label">Parts / Materials Cost</label>
-          <div class="currency-input">
-            <span class="currency-symbol">$</span>
-            <input type="number" id="f-parts-est" class="field-input currency-field"
-                   placeholder="0.00" step="0.01" min="0" value="0"
-                   oninput="App.updatePayoutPreview()">
-          </div>
-        </div>
-
-        <div id="payout-preview"></div>
-
-        <div class="field-group">
-          <label class="field-label">Payment Method</label>
-          <div class="payment-methods" id="pay-method-picker">
-            <button class="pay-btn active" data-method="cash" onclick="App.selectPayMethod(this)">Cash</button>
-            <button class="pay-btn" data-method="zelle" onclick="App.selectPayMethod(this)">Zelle</button>
-            <button class="pay-btn" data-method="check" onclick="App.selectPayMethod(this)">Check</button>
-            <button class="pay-btn" data-method="card" onclick="App.selectPayMethod(this)">Card</button>
-          </div>
-          <input type="hidden" id="f-pay-method" value="cash">
         </div>
 
         <div class="step-actions">

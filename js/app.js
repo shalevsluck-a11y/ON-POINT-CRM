@@ -169,6 +169,10 @@ const App = (() => {
       el.classList.toggle('hidden', Auth.isTechOrContractor());
     });
 
+    // Hide Google Sheets sync button from tech/contractor (admin + dispatcher only)
+    const syncBtn = document.getElementById('btn-sync');
+    if (syncBtn) syncBtn.classList.toggle('hidden', !Auth.isAdminOrDisp());
+
     // Hide Settings from bottom nav and user menu for non-admins
     const isAdmin = Auth.isAdmin();
     const settingsNav = document.querySelector('.nav-item[data-view="settings"]');
@@ -1009,8 +1013,6 @@ const App = (() => {
     _state.newJobDraft.assignedTechId   = techId;
     _state.newJobDraft.assignedTechName = tech.name;
     _state.newJobDraft.isSelfAssigned   = !!tech.isOwner;
-
-    updatePayoutPreview();
   }
 
   // ── SOURCE DROPDOWN ──────────────────────────────────
@@ -1052,61 +1054,20 @@ const App = (() => {
         if (nameField) nameField.value = source.name || '';
       }
     }
-    updatePayoutPreview();
   }
 
   // ── PAYMENT METHOD ───────────────────────────────────
 
   function selectPayMethod(btn) {
-    document.querySelectorAll('.pay-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    _state.selectedPayMethod = btn.dataset.method;
-    const hidden = document.getElementById('f-pay-method');
-    if (hidden) hidden.value = btn.dataset.method;
+    // No-op: payment method removed from new job form
+    // Payment method now only selected in close job modal
   }
 
   // ── PAYOUT PREVIEW ──────────────────────────────────
 
   function updatePayoutPreview() {
-    const previewEl = document.getElementById('payout-preview');
-    if (!previewEl) return;
-
-    const settings = DB.getSettings();
-
-    const total    = parseFloat(document.getElementById('f-total-est')?.value) || 0;
-    const parts    = parseFloat(document.getElementById('f-parts-est')?.value) || 0;
-    const techPct  = parseFloat(document.getElementById('f-tech-pct')?.value)  || 0;
-    const contrPct = parseFloat(document.getElementById('f-contractor-pct')?.value) || 0;
-    const state    = document.getElementById('f-state')?.value || settings.defaultState || 'NY';
-
-    const techId   = document.getElementById('f-tech-id')?.value || '';
-    const techData = settings.technicians.find(t => t.id === techId);
-    const isSelf   = techData?.isOwner || false;
-    const techName = techData?.name || 'Tech';
-
-    // Calculate and display owner %
-    const ownerPct = 100 - techPct - contrPct;
-    const ownerPctField = document.getElementById('f-owner-pct');
-    if (ownerPctField && Auth.canSeeFinancials()) {
-      ownerPctField.value = ownerPct.toFixed(1) + '%';
-      const ownerDisplay = document.getElementById('owner-pct-display');
-      if (ownerDisplay) ownerDisplay.style.display = 'block';
-    }
-
-    if (total === 0) {
-      previewEl.classList.add('hidden');
-      return;
-    }
-
-    const calc = PayoutEngine.calculate({
-      jobTotal: total, partsCost: parts, techPercent: techPct,
-      contractorPct: contrPct, taxOption: 'none',
-      taxRateNY: settings.taxRateNY, taxRateNJ: settings.taxRateNJ,
-    });
-
-    // Use outerHTML but preserve the id so subsequent calls still find it
-    const viewerRole = Auth.getUser()?.role || 'admin';
-    previewEl.outerHTML = PayoutEngine.renderBreakdownHTML(calc, techName, 'payout-preview', viewerRole);
+    // No-op: financial fields removed from new job form
+    // Payout preview now only shown in close job modal
   }
 
   // ── SAVE JOB ─────────────────────────────────────────
@@ -1128,23 +1089,15 @@ const App = (() => {
     if (!phone) { showToast('Enter phone number', 'warning');  return; }
     if (!techId){ showToast('Select a technician', 'warning'); return; }
 
-    const total = parseFloat(document.getElementById('f-total-est')?.value) || 0;
-
     const settings = DB.getSettings();
     const tech = settings.technicians.find(t => t.id === techId);
     const source = document.getElementById('f-source')?.value || 'my_lead';
     const state  = document.getElementById('f-state')?.value  || settings.defaultState || 'NY';
 
-    const parts    = parseFloat(document.getElementById('f-parts-est')?.value) || 0;
-    const techPct  = parseFloat(document.getElementById('f-tech-pct')?.value)  || tech?.percent || 0;
-    const contrPct = source === 'my_lead' ? 0 : parseFloat(document.getElementById('f-contractor-pct')?.value) || 0;
+    // Financial fields removed from new job form - set when closing job
+    const techPct  = tech?.percent || 60;
+    const contrPct = 0;
     const isSelf   = tech?.isOwner || false;
-
-    const calc = PayoutEngine.calculate({
-      jobTotal: total, partsCost: parts, techPercent: techPct,
-      contractorPct: contrPct, taxOption: 'none',
-      taxRateNY: settings.taxRateNY, taxRateNJ: settings.taxRateNJ,
-    });
 
     const job = {
       jobId:           DB.generateId(),
@@ -1161,21 +1114,21 @@ const App = (() => {
       notes:           document.getElementById('f-notes')?.value?.trim()   || '',
       rawLead:         _state.newJobDraft.rawLead || '',
       source:          source,
-      contractorName:  source === 'my_lead' ? '' : (document.getElementById('f-contractor')?.value?.trim() || ''),
+      contractorName:  '',
       contractorPct:   contrPct,
       ownerPct:        100 - techPct - contrPct,
       assignedTechId:  techId,
       assignedTechName:tech?.name || '',
       isSelfAssigned:  isSelf,
       techPercent:     techPct,
-      estimatedTotal:  total,
+      estimatedTotal:  0,
       jobTotal:        0,
-      partsCost:       parts,
-      taxAmount:       calc.taxAmount,
-      techPayout:      calc.techPayout,
-      ownerPayout:     calc.ownerPayout,
-      contractorFee:   calc.contractorFee,
-      paymentMethod:   _state.selectedPayMethod || 'cash',
+      partsCost:       0,
+      taxAmount:       0,
+      techPayout:      0,
+      ownerPayout:     0,
+      contractorFee:   0,
+      paymentMethod:   'cash',
       photos:          [],
       isRecurringCustomer: _state.newJobDraft.isRecurringCustomer || false,
       syncStatus:      'pending',
@@ -2405,12 +2358,16 @@ const App = (() => {
     const zelleGroup = document.getElementById('s-zelle-group');
     if (zelleGroup) zelleGroup.classList.toggle('hidden', !Auth.canSeeZelleMemo());
 
-    // Hide all admin-only settings sections from tech/contractor/dispatcher
+    // Hide admin-only settings sections from tech/contractor
     ['settings-tax-card','settings-tech-card','settings-sources-card',
-     'settings-sync-card','settings-data-card','settings-defaultstate-group'].forEach(id => {
+     'settings-data-card','settings-defaultstate-group'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.classList.toggle('hidden', !isAdmin);
     });
+
+    // Google Sheets sync visible to admin and dispatcher only
+    const syncCard = document.getElementById('settings-sync-card');
+    if (syncCard) syncCard.classList.toggle('hidden', !Auth.isAdminOrDisp());
 
     // Save button label differs by role
     const saveBtn = document.getElementById('settings-save-btn');
