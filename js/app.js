@@ -739,7 +739,25 @@ const App = (() => {
 
     // Reset source
     const sourceEl = document.getElementById('f-source');
-    if (sourceEl) { sourceEl.value = 'my_lead'; onSourceChange(); }
+    if (sourceEl) {
+      if (Auth.isContractor()) {
+        // Contractors: auto-set to their assigned lead source and lock the field
+        const user = Auth.getUser();
+        const assignedLeadSource = user?.assignedLeadSource;
+        if (assignedLeadSource) {
+          // Find the lead source ID by name
+          const settings = DB.getSettings();
+          const leadSource = (settings.leadSources || []).find(ls => ls.name === assignedLeadSource);
+          sourceEl.value = leadSource?.id || 'my_lead';
+          sourceEl.disabled = true;
+        }
+      } else {
+        // Admin/dispatcher: editable
+        sourceEl.value = 'my_lead';
+        sourceEl.disabled = false;
+      }
+      onSourceChange();
+    }
 
     // Reset payment method
     document.querySelectorAll('.pay-btn').forEach(b => b.classList.toggle('active', b.dataset.method === 'cash'));
