@@ -85,6 +85,9 @@ const App = (() => {
     _renderTechSelector();
     _populateSourceDropdown();
 
+    // Always land on dashboard after login — never restore a previous session's screen
+    navigate('dashboard');
+
     // Start notification bell + real-time banner toasts
     try { await Notifications.init(); } catch(e) { console.warn('Notifications.init error:', e.message); }
 
@@ -282,9 +285,13 @@ const App = (() => {
     const weekJobs   = jobs.filter(j => j.scheduledDate >= weekStart);
     const monthJobs  = jobs.filter(j => j.scheduledDate >= monthStart);
 
-    // Dispatcher must not see the revenue section at all
+    // Only admin sees revenue section
     const revSection = document.getElementById('revenue-section');
-    if (revSection) revSection.classList.toggle('hidden', Auth.isDispatcher());
+    if (revSection) revSection.classList.toggle('hidden', !Auth.isAdmin());
+
+    // Only admin sees technician performance section
+    const techPerfTitle = document.getElementById('tech-perf-section');
+    if (techPerfTitle) techPerfTitle.classList.toggle('hidden', !Auth.isAdmin());
 
     if (Auth.canSeeFinancials()) {
       // Admin: show owner revenue (ownerPayout + selfBonus for self-assigned)
@@ -416,17 +423,23 @@ const App = (() => {
     );
 
     const urgentHTML = urgent.length > 0
-      ? urgent.slice(0, 5).map(j => `
+      ? urgent.slice(0, 5).map(j => {
+          const daysAgo = j.scheduledDate
+            ? Math.floor((Date.now() - new Date(j.scheduledDate+'T00:00:00').getTime()) / 86400000)
+            : null;
+          const reason = !j.assignedTechId ? 'No tech assigned'
+            : daysAgo !== null && daysAgo > 0 ? `Follow-up · ${daysAgo}d overdue`
+            : 'Follow-up needed';
+          return `
           <div class="urgent-job-row" onclick="App.openJobDetail('${j.jobId}')">
             <div class="urgent-dot"></div>
             <div class="urgent-info">
               <div class="urgent-name">${_esc(j.customerName || 'Unknown')}</div>
-              <div class="urgent-addr">${_esc(j.address || '')} · ${j.scheduledDate ? _formatDate(j.scheduledDate) : 'No date'}</div>
+              <div class="urgent-addr">${_esc(j.address || '')} · <span style="color:var(--color-warning);font-weight:700">${reason}</span></div>
             </div>
-            <button class="btn btn-sm btn-secondary urgent-wa" onclick="event.stopPropagation();App.sendFollowUpWhatsApp('${j.jobId}')" title="Send follow-up WhatsApp">
-              &#128172;
-            </button>
-          </div>`).join('')
+            ${j.phone ? `<button class="btn btn-sm btn-secondary urgent-wa" onclick="event.stopPropagation();App.sendFollowUpWhatsApp('${j.jobId}')" title="Send follow-up WhatsApp">&#128172;</button>` : ''}
+          </div>`;
+        }).join('')
       : '<div class="empty-state-sm" style="color:var(--color-success)">✓ No follow-ups needed</div>';
 
     const unassignedHTML = unassigned.length > 0
@@ -680,6 +693,13 @@ const App = (() => {
     if (dateField) {
       const t = new Date();
       dateField.value = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+    }
+
+    // Pre-select state from configured default
+    const stateField = document.getElementById('f-state');
+    if (stateField) {
+      const defState = DB.getSettings().defaultState || 'NY';
+      stateField.value = defState;
     }
 
     // Check for saved draft
@@ -1210,11 +1230,15 @@ const App = (() => {
          </a>`
       : '';
 
-    const followUpBtn = job.status === 'follow_up' && Auth.isAdminOrDisp()
+    const followUpBtn = job.status === 'follow_up' && Auth.isAdminOrDisp() && job.phone
       ? `<button class="detail-action-btn dab-warn" onclick="App.sendFollowUpWhatsApp('${job.jobId}')">
            <span class="dab-icon">&#128172;</span><span class="dab-label">Remind</span>
          </button>`
-      : '';
+      : job.status === 'follow_up' && Auth.isAdminOrDisp() && !job.phone
+        ? `<div class="detail-action-btn" style="opacity:0.45;cursor:default" title="No phone on file">
+             <span class="dab-icon">&#128241;</span><span class="dab-label">No Phone</span>
+           </div>`
+        : '';
 
     return `
       <!-- Hero -->
@@ -1235,6 +1259,9 @@ const App = (() => {
         ${job.address ? `<button class="detail-action-btn" onclick="App.navigateToJob('${job.jobId}')"><span class="dab-icon">&#128205;</span><span class="dab-label">Navigate</span></button>` : ''}
         ${Auth.canEditAllJobs() ? `<button class="detail-action-btn" onclick="App.showEditJobModal('${job.jobId}')"><span class="dab-icon">&#9998;</span><span class="dab-label">Edit</span></button>` : ''}
       </div>
+
+      <!-- Status Actions (change job status) -->
+      ${statusActions}
 
       <!-- Close Job -->
       ${closeBtn}
@@ -2186,23 +2213,45 @@ const App = (() => {
 
   function _loadSettingsForm() {
     const s = DB.getSettings();
-    _setVal('s-owner-name',        s.ownerName);
-    _setVal('s-owner-phone',       s.ownerPhone);
-    _setVal('s-owner-zelle',       s.ownerZelle);
-    _setVal('s-tax-ny',            s.taxRateNY);
-    _setVal('s-tax-nj',            s.taxRateNJ);
-    _setVal('s-apps-script-url',   s.appsScriptUrl);
-    _setVal('s-default-state',     s.defaultState);
+    const user = Auth.getUser();
+    const isAdmin = Auth.isAdmin();
+
+    // MY INFO — non-admin sees their own profile; admin sees business settings
+    if (isAdmin) {
+      _setVal('s-owner-name',  s.ownerName);
+      _setVal('s-owner-phone', s.ownerPhone);
+      _setVal('s-owner-zelle', s.ownerZelle);
+    } else {
+      _setVal('s-owner-name',  user?.name  || '');
+      _setVal('s-owner-phone', user?.phone || '');
+    }
+
+    // Admin-only settings
+    _setVal('s-tax-ny',          s.taxRateNY);
+    _setVal('s-tax-nj',          s.taxRateNJ);
+    _setVal('s-apps-script-url', s.appsScriptUrl);
+    _setVal('s-default-state',   s.defaultState);
 
     // Zelle handle visible to admin only
     const zelleGroup = document.getElementById('s-zelle-group');
     if (zelleGroup) zelleGroup.classList.toggle('hidden', !Auth.canSeeZelleMemo());
 
-    _renderTechList(s.technicians);
-    _renderSourceList(s.leadSources);
+    // Hide all admin-only settings sections from tech/contractor/dispatcher
+    ['settings-tax-card','settings-tech-card','settings-sources-card',
+     'settings-sync-card','settings-data-card','settings-defaultstate-group'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle('hidden', !isAdmin);
+    });
 
-    // Admin-only: Users Management
-    if (Auth.isAdmin()) _renderAdminUsersSection().catch(() => {});
+    // Save button label differs by role
+    const saveBtn = document.getElementById('settings-save-btn');
+    if (saveBtn) saveBtn.textContent = isAdmin ? 'Save Settings' : 'Update My Profile';
+
+    if (isAdmin) {
+      _renderTechList(s.technicians);
+      _renderSourceList(s.leadSources);
+      _renderAdminUsersSection().catch(() => {});
+    }
   }
 
   async function _renderAdminUsersSection() {
@@ -2237,6 +2286,7 @@ const App = (() => {
               <option value="admin"      ${u.role==='admin'      ?'selected':''}>Admin</option>
               <option value="dispatcher" ${u.role==='dispatcher' ?'selected':''}>Dispatcher</option>
               <option value="tech"       ${u.role==='tech'       ?'selected':''}>Tech</option>
+              <option value="contractor" ${u.role==='contractor' ?'selected':''}>Contractor</option>
             </select>
             ${u.phone ? `<button class="btn-icon" style="color:#25D366;font-size:18px" title="Send app link on WhatsApp"
               onclick="App._sendUserWALink(${JSON.stringify(u.name||'')},${JSON.stringify(u.email||'')},${JSON.stringify(u.phone||'')})">&#128241;</button>` : ''}
@@ -2382,8 +2432,18 @@ const App = (() => {
   }
 
   async function saveSettings() {
+    // Non-admin: save only their own profile (name + phone)
     if (!Auth.isAdmin()) {
-      showToast('Only admins can save settings', 'error');
+      const name  = document.getElementById('s-owner-name')?.value?.trim()  || '';
+      const phone = document.getElementById('s-owner-phone')?.value?.trim() || '';
+      if (!name) { showToast('Name is required', 'warning'); return; }
+      try {
+        await Auth.updateProfile({ name, phone });
+        showToast('Profile updated', 'success');
+        _updateHeaderUser();
+      } catch (e) {
+        showToast('Failed to update profile: ' + (e.message || 'unknown error'), 'error');
+      }
       return;
     }
     const settings = {

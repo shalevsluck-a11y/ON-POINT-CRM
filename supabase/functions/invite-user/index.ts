@@ -46,7 +46,7 @@ serve(async (req) => {
 
     const { email, name, role, phone } = await req.json();
 
-    if (!email || !name || !['admin', 'dispatcher', 'tech'].includes(role)) {
+    if (!email || !name || !['admin', 'dispatcher', 'tech', 'contractor'].includes(role)) {
       return new Response(JSON.stringify({ error: 'Invalid input: email, name, and role required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });

@@ -142,7 +142,7 @@
     <div class="field-group">
       <label class="field-label">Email</label>
       <input type="email" id="login-email" class="field-input" placeholder="you@example.com"
-             autocomplete="username" autocapitalize="none">
+             autocomplete="username" autocapitalize="none" autofocus>
     </div>
     <div class="field-group">
       <label class="field-label">Password</label>
@@ -276,9 +276,11 @@
         </div>
       </div>
 
-      <div class="section-title">Technician Performance</div>
-      <div id="tech-performance-list" class="tech-perf-list">
-        <div class="empty-state-sm">No technicians configured yet</div>
+      <div id="tech-perf-section">
+        <div class="section-title">Technician Performance</div>
+        <div id="tech-performance-list" class="tech-perf-list">
+          <div class="empty-state-sm">No technicians configured yet</div>
+        </div>
       </div>
 
       <div id="recent-jobs-wrap">
@@ -388,29 +390,32 @@
           <div class="field-group" style="flex:1">
             <label class="field-label">State</label>
             <select id="f-state" class="field-input">
-              <option value="ME">ME</option>
-              <option value="NH">NH</option>
-              <option value="VT">VT</option>
-              <option value="MA">MA</option>
-              <option value="RI">RI</option>
-              <option value="CT">CT</option>
-              <option value="NY">NY</option>
-              <option value="NJ">NJ</option>
-              <option value="PA">PA</option>
-              <option value="DE">DE</option>
-              <option value="MD">MD</option>
-              <option value="DC">DC</option>
-              <option value="VA">VA</option>
-              <option value="WV">WV</option>
-              <option value="NC">NC</option>
-              <option value="SC">SC</option>
-              <option value="GA">GA</option>
-              <option value="FL">FL</option>
-              <option value="OH">OH</option>
-              <option value="KY">KY</option>
-              <option value="TN">TN</option>
-              <option value="IN">IN</option>
-              <option value="MI">MI</option>
+              <option value="AL">AL</option><option value="AK">AK</option>
+              <option value="AZ">AZ</option><option value="AR">AR</option>
+              <option value="CA">CA</option><option value="CO">CO</option>
+              <option value="CT">CT</option><option value="DE">DE</option>
+              <option value="DC">DC</option><option value="FL">FL</option>
+              <option value="GA">GA</option><option value="HI">HI</option>
+              <option value="ID">ID</option><option value="IL">IL</option>
+              <option value="IN">IN</option><option value="IA">IA</option>
+              <option value="KS">KS</option><option value="KY">KY</option>
+              <option value="LA">LA</option><option value="ME">ME</option>
+              <option value="MD">MD</option><option value="MA">MA</option>
+              <option value="MI">MI</option><option value="MN">MN</option>
+              <option value="MS">MS</option><option value="MO">MO</option>
+              <option value="MT">MT</option><option value="NE">NE</option>
+              <option value="NV">NV</option><option value="NH">NH</option>
+              <option value="NJ">NJ</option><option value="NM">NM</option>
+              <option value="NY">NY</option><option value="NC">NC</option>
+              <option value="ND">ND</option><option value="OH">OH</option>
+              <option value="OK">OK</option><option value="OR">OR</option>
+              <option value="PA">PA</option><option value="RI">RI</option>
+              <option value="SC">SC</option><option value="SD">SD</option>
+              <option value="TN">TN</option><option value="TX">TX</option>
+              <option value="UT">UT</option><option value="VT">VT</option>
+              <option value="VA">VA</option><option value="WA">WA</option>
+              <option value="WV">WV</option><option value="WI">WI</option>
+              <option value="WY">WY</option>
             </select>
           </div>
           <div class="field-group" style="flex:1">
@@ -427,7 +432,7 @@
           </div>
           <div class="field-group" style="flex:1">
             <label class="field-label">Time <span id="conf-time" class="conf-badge"></span></label>
-            <input type="time" id="f-time" class="field-input" min="08:00" max="20:00">
+            <input type="time" id="f-time" class="field-input">
           </div>
         </div>
 
@@ -568,7 +573,7 @@
           <label class="field-label">My Zelle Handle</label>
           <input type="text" id="s-owner-zelle" class="field-input" placeholder="Phone or email for Zelle">
         </div>
-        <div class="field-group">
+        <div class="field-group" id="settings-defaultstate-group">
           <label class="field-label">Default State</label>
           <select id="s-default-state" class="field-input">
             <option value="ME">Maine (ME)</option>
@@ -598,8 +603,8 @@
         </div>
       </div>
 
-      <!-- Tax Settings -->
-      <div class="settings-card">
+      <!-- Tax Settings (admin only) -->
+      <div class="settings-card" id="settings-tax-card">
         <div class="settings-section-title">Tax Rates (Applied only when YOU are the tech)</div>
         <div class="field-row">
           <div class="field-group" style="flex:1">
@@ -613,8 +618,8 @@
         </div>
       </div>
 
-      <!-- Technicians -->
-      <div class="settings-card">
+      <!-- Technicians (admin only) -->
+      <div class="settings-card" id="settings-tech-card">
         <div class="settings-section-title-row">
           <div class="settings-section-title">Technicians</div>
           <button class="btn-link" onclick="App.showTechModal()">+ Add</button>
@@ -624,8 +629,8 @@
         </div>
       </div>
 
-      <!-- Lead Sources -->
-      <div class="settings-card">
+      <!-- Lead Sources (admin only) -->
+      <div class="settings-card" id="settings-sources-card">
         <div class="settings-section-title-row">
           <div class="settings-section-title">Lead Sources</div>
           <button class="btn-link" onclick="App.showSourceModal()">+ Add</button>
@@ -635,8 +640,8 @@
         </div>
       </div>
 
-      <!-- Sync -->
-      <div class="settings-card">
+      <!-- Sync (admin only) -->
+      <div class="settings-card" id="settings-sync-card">
         <div class="settings-section-title">Google Sheets Sync</div>
         <div class="field-group">
           <label class="field-label">Apps Script Web App URL</label>
@@ -651,8 +656,8 @@
       <!-- Users (admin only — populated by JS) -->
       <div id="admin-users-section" class="hidden"></div>
 
-      <!-- Data -->
-      <div class="settings-card danger-card">
+      <!-- Data (admin only) -->
+      <div class="settings-card danger-card" id="settings-data-card">
         <div class="settings-section-title">Data Management</div>
         <button class="btn btn-secondary btn-full" onclick="App.exportData()" style="margin-bottom:8px">
           Export JSON Backup
@@ -663,7 +668,7 @@
       </div>
 
       <div style="padding-bottom:8px">
-        <button class="btn btn-primary btn-full" onclick="App.saveSettings()">Save Settings</button>
+        <button class="btn btn-primary btn-full" id="settings-save-btn" onclick="App.saveSettings()">Save Settings</button>
       </div>
 
     </section>
@@ -848,6 +853,7 @@
           <label class="field-label">Role</label>
           <select id="invite-role" class="field-input">
             <option value="tech">Technician</option>
+            <option value="contractor">Contractor</option>
             <option value="dispatcher">Dispatcher</option>
           </select>
         </div>
