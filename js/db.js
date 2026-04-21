@@ -21,10 +21,22 @@ const DB = (() => {
       // Tech/contractor get the DB-level view that masks financial columns at source.
       // Admin/dispatcher use the full jobs table so revenue figures are correct.
       const tableName = Auth.isTechOrContractor() ? 'jobs_limited' : 'jobs';
-      const { data, error } = await supa
-        .from(tableName)
-        .select('*')
-        .order('created_at', { ascending: false });
+      let query = supa.from(tableName).select('*');
+
+      // Contractor filtering: only show jobs matching their assigned lead source
+      if (Auth.isContractor()) {
+        const user = Auth.getUser();
+        const assignedLeadSource = user?.assignedLeadSource;
+        if (assignedLeadSource) {
+          query = query.eq('source', assignedLeadSource);
+        } else {
+          // Contractor with no assigned lead source sees no jobs
+          Storage.saveJobs([]);
+          return;
+        }
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
       if (error) throw error;
 
       // Also fetch zelle memos for admin
