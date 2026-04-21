@@ -1431,34 +1431,19 @@ const App = (() => {
         </div>
       </div>
 
-      <!-- Financials (admin sees full breakdown; tech sees only their payout) -->
-      ${Auth.canSeeFinancials() ? `
+      <!-- Financials (role-based view: admin full, tech their cut, contractor all splits, dispatcher hidden) -->
+      ${!Auth.isDispatcher() && (total > 0 || Auth.isTechOrContractor() && (parseFloat(job.techPayout) > 0 || parseFloat(job.contractorFee) > 0)) ? `
       <div class="detail-section collapsed" id="ds-financials">
         <div class="detail-section-title" onclick="App.toggleDetailSection('ds-financials')">
-          Financials <span class="section-chevron">›</span>
+          ${Auth.isTechOrContractor() ? 'Your Payout' : 'Financials'} <span class="section-chevron">›</span>
         </div>
         <div class="detail-section-body">
-          ${total > 0 ? PayoutEngine.renderBreakdownHTML(calc, job.assignedTechName || 'Tech') : `
+          ${total > 0 || isPaid ? PayoutEngine.renderBreakdownHTML(calc, job.assignedTechName || 'Tech', '', Auth.getUser()?.role || 'admin') : `
             <div class="detail-row">
               <div class="detail-row-label">Status</div>
               <div class="detail-row-value" style="color:var(--color-text-faint)">Enter total when closing job</div>
             </div>
           `}
-        </div>
-      </div>` : Auth.isTechOrContractor() && (parseFloat(job.techPayout) > 0 || parseFloat(job.contractorFee) > 0) ? `
-      <div class="detail-section collapsed" id="ds-financials">
-        <div class="detail-section-title" onclick="App.toggleDetailSection('ds-financials')">
-          Your Payout <span class="section-chevron">›</span>
-        </div>
-        <div class="detail-section-body">
-          <div class="detail-row">
-            <div class="detail-row-label">Your Payout</div>
-            <div class="detail-row-value" style="font-weight:800;color:var(--color-success)">${_fmt(Auth.isContractor() ? parseFloat(job.contractorFee)||0 : parseFloat(job.techPayout)||0)}</div>
-          </div>
-          <div class="detail-row">
-            <div class="detail-row-label">Payment</div>
-            <div class="detail-row-value" style="text-transform:capitalize">${job.paymentMethod || '—'}</div>
-          </div>
         </div>
       </div>` : ''}
 
