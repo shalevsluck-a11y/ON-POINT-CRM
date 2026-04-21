@@ -115,6 +115,18 @@ const DB = (() => {
   }
 
   async function _upsertJobRemote(job) {
+    // Techs/contractors have zeroed financial fields locally (the DB view masks them).
+    // Sending a full upsert would overwrite real job_total/estimated_total with zeros.
+    // Only allow them to patch the fields they're actually permitted to change.
+    if (Auth.isTechOrContractor()) {
+      const { error } = await supa.from('jobs').update({
+        status:     job.status,
+        updated_at: new Date().toISOString(),
+      }).eq('job_id', job.jobId);
+      if (error) throw error;
+      return;
+    }
+
     const row = _jobToDbRow(job);
     const { error } = await supa.from('jobs').upsert(row);
     if (error) throw error;
