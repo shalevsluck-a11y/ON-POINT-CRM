@@ -1535,8 +1535,12 @@ const App = (() => {
 
     const photos = [...(job.photos || [])];
 
+    const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
     files.forEach(file => {
-      if (!file.type.startsWith('image/')) return;
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        showToast(`${file.name}: only JPEG, PNG, WebP, and GIF allowed`, 'warning');
+        return;
+      }
 
       const reader = new FileReader();
       reader.onload = (e) => {
