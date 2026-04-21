@@ -78,7 +78,10 @@ const App = (() => {
     if (dateField && !dateField.value) dateField.value = dateStr;
 
     // Sync fresh data from Supabase in background, then re-render
-    try { await DB.init(); } catch(e) { console.warn('DB.init error:', e.message); }
+    try { await DB.init(); } catch(e) {
+      console.warn('DB.init error:', e.message);
+      showToast('Connection error — showing cached data. Pull to refresh.', 'warning');
+    }
     renderDashboard();
     renderJobList();
     _loadSettingsForm();
