@@ -262,7 +262,11 @@ const Auth = (() => {
       if (e.name === 'AbortError') throw new Error('Create user timed out — check connection');
       throw new Error('Network error — user could not be created');
     }
-    if (!res.ok) throw new Error(json.error || 'User creation failed');
+    if (!res.ok) {
+      const errorMsg = json?.error || json?.message || `User creation failed (HTTP ${res.status})`;
+      console.error('Create user error:', errorMsg, 'Full response:', json);
+      throw new Error(errorMsg);
+    }
     return json; // { success, userId, email, name }
   }
 
