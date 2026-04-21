@@ -1265,6 +1265,7 @@ const App = (() => {
         ${waLink}
         ${followUpBtn}
         ${job.address ? `<button class="detail-action-btn" onclick="App.navigateToJob('${job.jobId}')"><span class="dab-icon">&#128205;</span><span class="dab-label">Navigate</span></button>` : ''}
+        ${Auth.isAdmin() && (parseFloat(job.jobTotal) || parseFloat(job.estimatedTotal)) ? `<button class="detail-action-btn dab-green" onclick="App.openZelleRequest('${job.jobId}')"><span class="dab-icon">&#128178;</span><span class="dab-label">Zelle</span></button>` : ''}
         ${Auth.canEditAllJobs() ? `<button class="detail-action-btn" onclick="App.showEditJobModal('${job.jobId}')"><span class="dab-icon">&#9998;</span><span class="dab-label">Edit</span></button>` : ''}
       </div>
 
@@ -1815,6 +1816,19 @@ const App = (() => {
   }
 
   // ══════════════════════════════════════════════════════════
+  // ZELLE DEEP LINK (customer payment request)
+  function openZelleRequest(jobId) {
+    const job = DB.getJobById(jobId);
+    if (!job) return;
+    const amount = parseFloat(job.jobTotal) || parseFloat(job.estimatedTotal) || 0;
+    if (!amount) { showToast('No amount set on this job', 'warning'); return; }
+    const dateStr = job.scheduledDate ? new Date(job.scheduledDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+    const service = job.description ? job.description.substring(0, 40) : 'Service';
+    const memo = `On Point Pro Doors${dateStr ? ' · ' + dateStr : ''} · ${service}`;
+    const zelleUrl = `zelle://send?amount=${amount.toFixed(2)}&memo=${encodeURIComponent(memo)}`;
+    window.location.href = zelleUrl;
+  }
+
   // ZELLE MEMO
   // ══════════════════════════════════════════════════════════
 
@@ -3406,6 +3420,9 @@ const App = (() => {
 
     // Follow-up
     sendFollowUpWhatsApp,
+
+    // Zelle
+    openZelleRequest,
 
     // Modals
     showModal,
