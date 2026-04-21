@@ -2384,7 +2384,7 @@ const App = (() => {
     }
   }
 
-  async function _renderAdminUsersSection() {
+  async function _renderAdminUsersSection(isRetry = false) {
     const container = document.getElementById('admin-users-section');
     if (!container) return;
 
@@ -2427,6 +2427,10 @@ const App = (() => {
         </div>
       `).join('') || '<div class="empty-state-sm">No users found</div>';
     } catch (e) {
+      if (!isRetry) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        return _renderAdminUsersSection(true);
+      }
       const listEl = document.getElementById('admin-users-list');
       const msg = e?.message || String(e) || 'Failed to load users';
       if (listEl) listEl.innerHTML = `<div class="empty-state-sm" style="color:var(--color-error)">${_esc(msg)}<br><button class="btn-link" style="margin-top:8px" onclick="App._renderAdminUsersSection()">Retry</button></div>`;
