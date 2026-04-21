@@ -81,7 +81,7 @@ serve(async (req) => {
     console.log('Caller is admin, parsing request body...');
 
     // Get request data
-    const { name, email, password, role, assigned_lead_source } = await req.json();
+    const { name, email, password, role, assigned_lead_source, payout_pct } = await req.json();
 
     // Validate required fields
     if (!name || !email || !password) {
@@ -153,6 +153,12 @@ serve(async (req) => {
 
     if (assigned_lead_source) {
       profileData.assigned_lead_source = assigned_lead_source;
+    }
+
+    // Set payout percentage for tech/contractor roles
+    if ((role === 'tech' || role === 'contractor') && payout_pct !== null && payout_pct !== undefined) {
+      profileData.default_tech_percent = parseFloat(payout_pct);
+      console.log('Setting payout percentage:', payout_pct);
     }
 
     console.log('Creating profile...');

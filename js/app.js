@@ -2518,7 +2518,13 @@ const App = (() => {
   function toggleContractorFields() {
     const role = document.getElementById('invite-role')?.value;
     const isContractor = role === 'contractor';
+    const isTechOrContractor = role === 'tech' || role === 'contractor';
+
+    // Show lead source only for contractor
     document.getElementById('invite-lead-source-group')?.classList.toggle('hidden', !isContractor);
+
+    // Show payout % for tech and contractor
+    document.getElementById('invite-payout-group')?.classList.toggle('hidden', !isTechOrContractor);
   }
 
   function closeInviteModal() {
@@ -2597,6 +2603,7 @@ const App = (() => {
     const password = document.getElementById('invite-password')?.value;
     const role  = document.getElementById('invite-role')?.value;
     const assignedLeadSource = document.getElementById('invite-lead-source')?.value || null;
+    const payoutPct = document.getElementById('invite-payout-pct')?.value;
     const errEl = document.getElementById('invite-error');
     const btn   = document.getElementById('invite-submit-btn');
 
@@ -2617,6 +2624,11 @@ const App = (() => {
       errEl.classList.remove('hidden');
       return;
     }
+    if ((role === 'tech' || role === 'contractor') && (!payoutPct || payoutPct < 0 || payoutPct > 100)) {
+      errEl.textContent = 'Payout percentage is required for technicians and contractors (0-100).';
+      errEl.classList.remove('hidden');
+      return;
+    }
     if (role === 'contractor' && !assignedLeadSource) {
       errEl.textContent = 'Please select a lead source for the contractor.';
       errEl.classList.remove('hidden');
@@ -2628,7 +2640,7 @@ const App = (() => {
 
     try {
       // Add 15 second hard timeout to prevent infinite loading
-      const createPromise = Auth.createUser(name, email, password, role, assignedLeadSource);
+      const createPromise = Auth.createUser(name, email, password, role, assignedLeadSource, payoutPct);
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Failed to create account — request timed out. Please try again.')), 15000)
       );
