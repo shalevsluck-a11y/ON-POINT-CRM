@@ -887,3 +887,14 @@ select.field-input option { background: var(--color-surface); color: var(--color
     max-width: 520px;
   }
 }
+
+/* ── STICKY SETTINGS SAVE BUTTON ────────────────────────── */
+.settings-save-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  background: var(--color-surface);
+  padding: 12px 0 8px;
+  border-top: 1px solid var(--color-border);
+  margin-top: 8px;
+}
