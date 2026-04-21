@@ -19,8 +19,8 @@
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/logo.jpg">
-  <!-- Supabase JS v2 CDN — defer so it never blocks the first paint -->
-  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <!-- Supabase JS v2 — served locally so no CDN round-trip on every load -->
+  <script defer src="js/supabase.min.js"></script>
 </head>
 <body>
 
