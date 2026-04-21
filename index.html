@@ -853,10 +853,16 @@
         </div>
         <div class="field-group">
           <label class="field-label">Role</label>
-          <select id="invite-role" class="field-input">
+          <select id="invite-role" class="field-input" onchange="App.toggleContractorFields()">
             <option value="tech">Technician</option>
             <option value="contractor">Contractor</option>
             <option value="dispatcher">Dispatcher</option>
+          </select>
+        </div>
+        <div class="field-group hidden" id="invite-lead-source-group">
+          <label class="field-label">Assigned Lead Source</label>
+          <select id="invite-lead-source" class="field-input">
+            <option value="">Select lead source...</option>
           </select>
         </div>
         <button class="btn btn-primary btn-full" id="invite-submit-btn" onclick="App.submitInvite()">

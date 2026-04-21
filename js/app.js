@@ -2465,7 +2465,26 @@ const App = (() => {
     document.getElementById('invite-success-body').classList.add('hidden');
     const btn = document.getElementById('invite-submit-btn');
     if (btn) { btn.disabled = false; btn.textContent = 'Create Account'; }
+
+    // Populate lead sources dropdown
+    const settings = DB.getSettings();
+    const leadSources = settings.leadSources || [];
+    const leadSourceSelect = document.getElementById('invite-lead-source');
+    if (leadSourceSelect) {
+      leadSourceSelect.innerHTML = '<option value="">Select lead source...</option>' +
+        leadSources.map(ls => `<option value="${_esc(ls.name)}">${_esc(ls.name)}</option>`).join('');
+    }
+
+    // Hide contractor fields by default
+    document.getElementById('invite-lead-source-group')?.classList.add('hidden');
+
     modal.classList.remove('hidden');
+  }
+
+  function toggleContractorFields() {
+    const role = document.getElementById('invite-role')?.value;
+    const isContractor = role === 'contractor';
+    document.getElementById('invite-lead-source-group')?.classList.toggle('hidden', !isContractor);
   }
 
   function closeInviteModal() {
@@ -2543,6 +2562,7 @@ const App = (() => {
     const email = document.getElementById('invite-email')?.value?.trim();
     const password = document.getElementById('invite-password')?.value;
     const role  = document.getElementById('invite-role')?.value;
+    const assignedLeadSource = document.getElementById('invite-lead-source')?.value || null;
     const errEl = document.getElementById('invite-error');
     const btn   = document.getElementById('invite-submit-btn');
 
@@ -2563,12 +2583,17 @@ const App = (() => {
       errEl.classList.remove('hidden');
       return;
     }
+    if (role === 'contractor' && !assignedLeadSource) {
+      errEl.textContent = 'Please select a lead source for the contractor.';
+      errEl.classList.remove('hidden');
+      return;
+    }
 
     btn.disabled    = true;
     btn.textContent = 'Creating account\u2026';
 
     try {
-      const result = await Auth.createUser(name, email, password, role);
+      const result = await Auth.createUser(name, email, password, role, assignedLeadSource);
       const { email: loginEmail = email } = result || {};
 
       _lastInvite = { name, email: loginEmail, password };
@@ -3631,6 +3656,7 @@ const App = (() => {
     // Admin invite
     showInviteModal,
     closeInviteModal,
+    toggleContractorFields,
     submitInvite,
     _changeUserRole,
     _confirmRemoveUser,

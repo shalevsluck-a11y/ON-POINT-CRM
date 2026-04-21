@@ -236,13 +236,15 @@ const Auth = (() => {
     return json; // { success, userId, setupLink, loginEmail }
   }
 
-  async function createUser(name, email, password, role) {
+  async function createUser(name, email, password, role, assignedLeadSource = null) {
     if (!isAdmin()) throw new Error('Admin only');
     const { data: { session } } = await SupabaseClient.auth.getSession();
     let res, json;
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 30000);
+      const body = { name, email, password, role };
+      if (assignedLeadSource) body.assigned_lead_source = assignedLeadSource;
       res = await fetch(`${SUPABASE_URL}/functions/v1/create-user`, {
         method: 'POST',
         signal: controller.signal,
@@ -250,7 +252,7 @@ const Auth = (() => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ name, email, password, role }),
+        body: JSON.stringify(body),
       });
       clearTimeout(timer);
       json = await res.json();
