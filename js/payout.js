@@ -64,6 +64,13 @@ const PayoutEngine = (() => {
     }
     if (techPct + contrPct > 100) {
       warnings.push('Tech % + Contractor % exceeds 100% — check values');
+      return {
+        jobTotal: total, partsCost: partsActual, techPercent: techPct,
+        contractorPct: contrPct, taxOption, isSelfAssigned: !!isSelfAssigned,
+        taxRatePercent: 0, taxAmount: 0, afterTax: total, netAfterParts: total,
+        contractorFee: 0, techPayout: 0, ownerPayout: 0,
+        warnings, isValid: false,
+      };
     }
     if (total === 0) {
       warnings.push('Job total is $0 — enter an estimated amount');
