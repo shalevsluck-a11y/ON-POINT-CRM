@@ -3430,8 +3430,21 @@ const App = (() => {
 
   // Public boot entry point — sets up auth and wires session listener
   async function init() {
-    // Safety net: if something goes wrong during init, remove shell after 4s max
-    setTimeout(_removeAppShell, 4000);
+    // Safety net: if auth hangs >4s, force login screen so user is never stuck on blue screen.
+    // Must show login here — the 6s window.load timer can't, because _removeAppShell() removes
+    // the element from DOM and that timer returns early when it finds null.
+    setTimeout(() => {
+      const shell = document.getElementById('app-shell');
+      if (!shell) return; // auth already resolved normally — do nothing
+      const app   = document.getElementById('app');
+      const login = document.getElementById('login-screen');
+      const appVisible   = app   && !app.classList.contains('hidden');
+      const loginVisible = login && !login.classList.contains('hidden');
+      _removeAppShell();
+      if (!appVisible && !loginVisible) {
+        if (login) login.classList.remove('hidden');
+      }
+    }, 4000);
 
     // Detect invite link before Auth.init fires (hash cleared by Supabase after use)
     const isInviteFlow = window.location.hash.includes('type=invite') ||

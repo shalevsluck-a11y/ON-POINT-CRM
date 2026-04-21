@@ -1,7 +1,7 @@
 // On Point Pro Doors CRM — Service Worker
 // CACHE_VERSION is stamped by the deploy script on every push so the
 // browser always sees a changed sw.js file and installs the new version.
-const CACHE_VERSION = 'v20260421-r5';
+const CACHE_VERSION = 'v20260421-r6';
 const CACHE_NAME = `onpoint-${CACHE_VERSION}`;
 
 // Inline offline HTML — guaranteed fallback even with empty cache
@@ -51,8 +51,10 @@ self.addEventListener('install', (event) => {
 });
 
 // ── ACTIVATE ──────────────────────────────────────────────
-// Delete every old cache bucket, claim all clients immediately,
-// then navigate all open windows so they reload under the new SW.
+// Delete every old cache bucket and claim all clients immediately.
+// We do NOT force-reload clients here — JS/CSS are already network-first
+// (cache:'no-cache'), so the next navigation automatically gets fresh code.
+// Force-reloading mid-auth causes the blue screen to stick.
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
@@ -60,15 +62,6 @@ self.addEventListener('activate', (event) => {
         keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
       ))
       .then(() => self.clients.claim())
-      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
-      .then(windowClients => {
-        return Promise.all(
-          windowClients.map(client => {
-            // Reload each open window so it gets fresh content under the new SW
-            if ('navigate' in client) return client.navigate(client.url);
-          })
-        );
-      })
   );
 });
 
