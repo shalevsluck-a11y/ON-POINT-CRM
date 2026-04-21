@@ -2391,7 +2391,7 @@ const App = (() => {
     container.innerHTML = `<div class="settings-card">
       <div class="settings-section-title" style="display:flex;justify-content:space-between;align-items:center">
         <span>Users</span>
-        <button class="btn btn-primary" style="padding:6px 14px;font-size:13px" onclick="App.showInviteModal()">+ Invite User</button>
+        <button class="btn btn-primary" style="padding:6px 14px;font-size:13px" onclick="App.showInviteModal()">+ Create User</button>
       </div>
       <div id="admin-users-list"><div class="empty-state-sm">Loading users...</div></div>
     </div>`;
@@ -2438,7 +2438,8 @@ const App = (() => {
     const modal = document.getElementById('invite-modal');
     if (!modal) return;
     document.getElementById('invite-name').value  = '';
-    document.getElementById('invite-phone').value = '';
+    document.getElementById('invite-email').value = '';
+    document.getElementById('invite-password').value = '';
     document.getElementById('invite-role').value  = 'tech';
     document.getElementById('invite-error').classList.add('hidden');
     document.getElementById('invite-form-body').classList.remove('hidden');
@@ -2487,6 +2488,29 @@ const App = (() => {
     _openWAWithMsg(phone, msg);
   }
 
+  function _sendCredentialsWA() {
+    const msg = _buildWACredentialsMsg(_lastInvite.name, _lastInvite.email, _lastInvite.password);
+    _openWAWithMsg('', msg);
+  }
+
+  function _buildWACredentialsMsg(name, email, password) {
+    const settings = DB.getSettings();
+    const ownerPhone = settings.ownerPhone || '(929) 429-2429';
+    return [
+      `Hi ${name}! Welcome to On Point Pro Doors.`,
+      '',
+      `You've been added to the team app. Here are your login credentials:`,
+      '',
+      `Email: ${email}`,
+      `Password: ${password}`,
+      '',
+      `Open the app at:`,
+      `https://crm.onpointprodoors.com`,
+      '',
+      `If you have any issues, call us at ${ownerPhone}.`,
+    ].join('\n');
+  }
+
   function _sendUserWALink(userId) {
     const tech = (DB.getSettings().technicians || []).find(t => t.id === userId);
     if (!tech || !tech.phone) { showToast('No phone on file for this user', 'warning'); return; }
@@ -2497,7 +2521,8 @@ const App = (() => {
   async function submitInvite() {
     if (!Auth.isAdmin()) { showToast('Not authorized', 'error'); return; }
     const name  = document.getElementById('invite-name')?.value?.trim();
-    const phone = document.getElementById('invite-phone')?.value?.trim() || '';
+    const email = document.getElementById('invite-email')?.value?.trim();
+    const password = document.getElementById('invite-password')?.value;
     const role  = document.getElementById('invite-role')?.value;
     const errEl = document.getElementById('invite-error');
     const btn   = document.getElementById('invite-submit-btn');
@@ -2509,9 +2534,13 @@ const App = (() => {
       errEl.classList.remove('hidden');
       return;
     }
-    const phoneDigits = phone.replace(/\D/g, '');
-    if (!phoneDigits || phoneDigits.length < 7) {
-      errEl.textContent = 'A valid phone number is required (minimum 7 digits) for WhatsApp delivery.';
+    if (!email || !email.includes('@')) {
+      errEl.textContent = 'A valid email address is required.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+    if (!password || password.length < 8) {
+      errEl.textContent = 'Password must be at least 8 characters.';
       errEl.classList.remove('hidden');
       return;
     }
@@ -2520,24 +2549,20 @@ const App = (() => {
     btn.textContent = 'Creating account\u2026';
 
     try {
-      const result = await Auth.inviteUser(name, role, phone);
-      const { setupLink = '', loginEmail = '' } = result || {};
+      const result = await Auth.createUser(name, email, password, role);
+      const { email: loginEmail = email } = result || {};
 
-      _lastInvite = { name, phone, setupLink, loginEmail };
+      _lastInvite = { name, email: loginEmail, password };
       _renderAdminUsersSection().catch(() => {});
 
       document.getElementById('invite-form-body').classList.add('hidden');
       document.getElementById('invite-success-body').classList.remove('hidden');
 
       const emailEl = document.getElementById('invite-success-email');
-      if (emailEl) emailEl.textContent = loginEmail;
+      if (emailEl) emailEl.value = loginEmail;
 
-      const linkEl = document.getElementById('invite-setup-link');
-      if (linkEl) linkEl.value = setupLink;
-
-      const hasPhone = phone.replace(/\D/g, '').length >= 7;
-      document.getElementById('invite-wa-with-phone').classList.toggle('hidden', !hasPhone);
-      document.getElementById('invite-wa-no-phone').classList.toggle('hidden', hasPhone);
+      const passwordEl = document.getElementById('invite-success-password');
+      if (passwordEl) passwordEl.value = password;
 
     } catch (e) {
       errEl.textContent = e.message || 'Account creation failed.';
@@ -3588,6 +3613,7 @@ const App = (() => {
     _confirmRemoveUser,
     _sendInviteWA,
     _sendInviteWAFromInput,
+    _sendCredentialsWA,
     _sendUserWALink,
     _renderAdminUsersSection,
 

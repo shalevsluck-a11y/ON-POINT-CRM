@@ -231,6 +231,32 @@ const Auth = (() => {
     return json; // { success, userId, setupLink, loginEmail }
   }
 
+  async function createUser(name, email, password, role) {
+    if (!isAdmin()) throw new Error('Admin only');
+    const { data: { session } } = await SupabaseClient.auth.getSession();
+    let res, json;
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 30000);
+      res = await fetch(`${SUPABASE_URL}/functions/v1/create-user`, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ name, email, password, role }),
+      });
+      clearTimeout(timer);
+      json = await res.json();
+    } catch (e) {
+      if (e.name === 'AbortError') throw new Error('Create user timed out — check connection');
+      throw new Error('Network error — user could not be created');
+    }
+    if (!res.ok) throw new Error(json.error || 'User creation failed');
+    return json; // { success, userId, email, name }
+  }
+
   async function removeUser(userId) {
     if (!isAdmin()) throw new Error('Admin only');
     const { data: { session } } = await SupabaseClient.auth.getSession();
@@ -304,6 +330,7 @@ const Auth = (() => {
     getUsersForAdmin,
     updateUserRole,
     inviteUser,
+    createUser,
     removeUser,
     savePushSubscription,
     deletePushSubscription,
