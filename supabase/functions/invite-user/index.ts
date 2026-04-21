@@ -110,10 +110,17 @@ serve(async (req) => {
       });
     }
 
+    // Guarantee redirect_to points to production even if Supabase site URL is localhost
+    let setupLink = linkData.properties?.action_link || '';
+    setupLink = setupLink.replace(
+      /redirect_to=[^&]*/g,
+      'redirect_to=' + encodeURIComponent('https://crm.onpointprodoors.com')
+    );
+
     return new Response(JSON.stringify({
       success: true,
       userId,
-      setupLink: linkData.properties?.action_link || '',
+      setupLink,
       loginEmail,
     }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },

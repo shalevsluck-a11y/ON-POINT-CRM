@@ -123,14 +123,18 @@ const PayoutEngine = (() => {
 
   /**
    * Render HTML payout breakdown for the preview or detail view.
+   * @param {string} viewerRole - 'admin', 'dispatcher', 'tech', 'contractor'
    */
-  function renderBreakdownHTML(calc, techName = 'Tech', elemId = '') {
+  function renderBreakdownHTML(calc, techName = 'Tech', elemId = '', viewerRole = 'admin') {
     if (!calc) return '';
     const idAttr = elemId ? ` id="${elemId}"` : '';
-    // Escape techName to prevent XSS when rendering into innerHTML
     const safeTechName = _escHtml(techName);
-
     const rows = [];
+
+    // Dispatcher sees no financial details
+    if (viewerRole === 'dispatcher') {
+      return `<div class="payout-preview"${idAttr}><div class="payout-row" style="text-align:center;opacity:0.6">Financial details hidden for dispatcher role</div></div>`;
+    }
 
     rows.push(`<div class="payout-row">
       <span class="payout-label">Job Total</span>
@@ -162,40 +166,74 @@ const PayoutEngine = (() => {
       </div>`);
     }
 
-    if (calc.isSelfAssigned) {
-      // Owner IS the tech — their row is a "you earn" line, not a deduction
+    // TECH VIEW: Show their cut + combined "company cut" (never show contractor/owner separately)
+    if (viewerRole === 'tech') {
+      const companyCut = round2(calc.contractorFee + calc.ownerPayout);
+      const companyPct = round2(calc.contractorPct + (100 - calc.techPercent - calc.contractorPct));
+
       rows.push(`<div class="payout-row">
-        <span class="payout-label">You as Tech (${calc.techPercent}%)</span>
-        <span class="payout-value" style="color:var(--color-success)">+$${calc.techPayout.toFixed(2)}</span>
+        <span class="payout-label">Your Cut (${calc.techPercent}%)</span>
+        <span class="payout-value" style="color:var(--color-success)">$${calc.techPayout.toFixed(2)}</span>
       </div>`);
-    } else {
+      rows.push(`<div class="payout-row">
+        <span class="payout-label">Company Cut (${companyPct.toFixed(1)}%)</span>
+        <span class="payout-value deduct">-$${companyCut.toFixed(2)}</span>
+      </div>`);
+    }
+    // CONTRACTOR VIEW: Show all three splits (tech, contractor, owner)
+    else if (viewerRole === 'contractor') {
       rows.push(`<div class="payout-row">
         <span class="payout-label">${safeTechName} (${calc.techPercent}%)</span>
         <span class="payout-value deduct">-$${calc.techPayout.toFixed(2)}</span>
       </div>`);
-    }
-
-    if (calc.contractorFee > 0) {
+      if (calc.contractorFee > 0) {
+        rows.push(`<div class="payout-row">
+          <span class="payout-label">Your Cut (${calc.contractorPct}%)</span>
+          <span class="payout-value" style="color:var(--color-success)">$${calc.contractorFee.toFixed(2)}</span>
+        </div>`);
+      }
+      const ownerPct = round2(100 - calc.techPercent - calc.contractorPct);
       rows.push(`<div class="payout-row">
-        <span class="payout-label">Contractor Fee (${calc.contractorPct}%)</span>
-        <span class="payout-value deduct">-$${calc.contractorFee.toFixed(2)}</span>
+        <span class="payout-label">Owner Cut (${ownerPct.toFixed(1)}%)</span>
+        <span class="payout-value deduct">-$${calc.ownerPayout.toFixed(2)}</span>
       </div>`);
     }
+    // ADMIN VIEW: Show all three splits + total
+    else {
+      if (calc.isSelfAssigned) {
+        rows.push(`<div class="payout-row">
+          <span class="payout-label">You as Tech (${calc.techPercent}%)</span>
+          <span class="payout-value" style="color:var(--color-success)">+$${calc.techPayout.toFixed(2)}</span>
+        </div>`);
+      } else {
+        rows.push(`<div class="payout-row">
+          <span class="payout-label">${safeTechName} (${calc.techPercent}%)</span>
+          <span class="payout-value deduct">-$${calc.techPayout.toFixed(2)}</span>
+        </div>`);
+      }
 
-    rows.push(`<div class="payout-divider"></div>`);
+      if (calc.contractorFee > 0) {
+        rows.push(`<div class="payout-row">
+          <span class="payout-label">Contractor Fee (${calc.contractorPct}%)</span>
+          <span class="payout-value deduct">-$${calc.contractorFee.toFixed(2)}</span>
+        </div>`);
+      }
 
-    if (calc.isSelfAssigned) {
-      // Your total = what you earn as tech + whatever remains as owner
-      const yourTotal = round2(calc.ownerPayout + calc.techPayout);
-      rows.push(`<div class="payout-total-row">
-        <span class="payout-total-label">Your Total (Tech + Owner)</span>
-        <span class="payout-total-value">$${yourTotal.toFixed(2)}</span>
-      </div>`);
-    } else {
-      rows.push(`<div class="payout-total-row">
-        <span class="payout-total-label">Your Payout (Owner)</span>
-        <span class="payout-total-value">$${calc.ownerPayout.toFixed(2)}</span>
-      </div>`);
+      const ownerPct = round2(100 - calc.techPercent - calc.contractorPct);
+      rows.push(`<div class="payout-divider"></div>`);
+
+      if (calc.isSelfAssigned) {
+        const yourTotal = round2(calc.ownerPayout + calc.techPayout);
+        rows.push(`<div class="payout-total-row">
+          <span class="payout-total-label">Your Total (Tech + Owner ${ownerPct.toFixed(1)}%)</span>
+          <span class="payout-total-value">$${yourTotal.toFixed(2)}</span>
+        </div>`);
+      } else {
+        rows.push(`<div class="payout-total-row">
+          <span class="payout-total-label">Your Payout (Owner ${ownerPct.toFixed(1)}%)</span>
+          <span class="payout-total-value">$${calc.ownerPayout.toFixed(2)}</span>
+        </div>`);
+      }
     }
 
     const warnings = calc.warnings.map(w =>

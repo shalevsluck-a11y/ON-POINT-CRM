@@ -1079,6 +1079,15 @@ const App = (() => {
     const isSelf   = techData?.isOwner || false;
     const techName = techData?.name || 'Tech';
 
+    // Calculate and display owner %
+    const ownerPct = 100 - techPct - contrPct;
+    const ownerPctField = document.getElementById('f-owner-pct');
+    if (ownerPctField && Auth.canSeeFinancials()) {
+      ownerPctField.value = ownerPct.toFixed(1) + '%';
+      const ownerDisplay = document.getElementById('owner-pct-display');
+      if (ownerDisplay) ownerDisplay.style.display = 'block';
+    }
+
     if (total === 0) {
       previewEl.classList.add('hidden');
       return;
@@ -1091,7 +1100,8 @@ const App = (() => {
     });
 
     // Use outerHTML but preserve the id so subsequent calls still find it
-    previewEl.outerHTML = PayoutEngine.renderBreakdownHTML(calc, techName, 'payout-preview');
+    const viewerRole = Auth.getUser()?.role || 'admin';
+    previewEl.outerHTML = PayoutEngine.renderBreakdownHTML(calc, techName, 'payout-preview', viewerRole);
   }
 
   // ── SAVE JOB ─────────────────────────────────────────
@@ -1148,6 +1158,7 @@ const App = (() => {
       source:          source,
       contractorName:  source === 'my_lead' ? '' : (document.getElementById('f-contractor')?.value?.trim() || ''),
       contractorPct:   contrPct,
+      ownerPct:        100 - techPct - contrPct,
       assignedTechId:  techId,
       assignedTechName:tech?.name || '',
       isSelfAssigned:  isSelf,
@@ -1825,7 +1836,8 @@ const App = (() => {
     const prev = document.getElementById('close-payout-preview');
     if (prev) {
       // Preserve id so re-renders on subsequent keystrokes still find the element
-      prev.outerHTML = PayoutEngine.renderBreakdownHTML(calc, tech?.name || 'Tech', 'close-payout-preview');
+      const viewerRole = Auth.getUser()?.role || 'admin';
+      prev.outerHTML = PayoutEngine.renderBreakdownHTML(calc, tech?.name || 'Tech', 'close-payout-preview', viewerRole);
     }
   }
 
@@ -1874,6 +1886,7 @@ const App = (() => {
       techPayout:    calc.techPayout,
       ownerPayout:   calc.ownerPayout,
       contractorFee: calc.contractorFee,
+      ownerPct:      100 - (parseFloat(job.techPercent) || 0) - (parseFloat(job.contractorPct) || 0),
       paymentMethod: method,
       paidAt:        new Date().toISOString(),
       zelleMemo,
