@@ -2440,7 +2440,29 @@ const App = (() => {
         <span>Users</span>
         <button class="btn btn-primary" style="padding:6px 14px;font-size:13px" onclick="App.showInviteModal()">+ Create User</button>
       </div>
-      <div id="admin-users-list"><div class="empty-state-sm">Loading users...</div></div>
+      <div id="admin-users-list">
+        <div class="user-list-item" style="opacity:0.5;pointer-events:none">
+          <div class="user-item-avatar" style="background:#E5E7EB"></div>
+          <div class="user-item-info">
+            <div class="user-item-name" style="background:#E5E7EB;color:transparent;border-radius:4px">Loading...</div>
+            <div class="user-item-email" style="background:#E5E7EB;color:transparent;border-radius:4px;margin-top:4px;width:70%">email</div>
+          </div>
+        </div>
+        <div class="user-list-item" style="opacity:0.4;pointer-events:none">
+          <div class="user-item-avatar" style="background:#E5E7EB"></div>
+          <div class="user-item-info">
+            <div class="user-item-name" style="background:#E5E7EB;color:transparent;border-radius:4px">Loading...</div>
+            <div class="user-item-email" style="background:#E5E7EB;color:transparent;border-radius:4px;margin-top:4px;width:60%">email</div>
+          </div>
+        </div>
+        <div class="user-list-item" style="opacity:0.3;pointer-events:none">
+          <div class="user-item-avatar" style="background:#E5E7EB"></div>
+          <div class="user-item-info">
+            <div class="user-item-name" style="background:#E5E7EB;color:transparent;border-radius:4px">Loading...</div>
+            <div class="user-item-email" style="background:#E5E7EB;color:transparent;border-radius:4px;margin-top:4px;width:50%">email</div>
+          </div>
+        </div>
+      </div>
     </div>`;
     container.classList.remove('hidden');
 
