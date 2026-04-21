@@ -2471,10 +2471,8 @@ const App = (() => {
     ].join('\n');
   }
 
-  function _openWAWithMsg(phone, msg) {
-    const digits = String(phone).replace(/\D/g, '');
-    const waPhone = digits.length === 10 ? '1' + digits : digits;
-    window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+  function _openWAWithMsg(_phone, msg) {
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
   }
 
   function _sendInviteWA() {
