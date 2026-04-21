@@ -2693,6 +2693,11 @@ const App = (() => {
     const sources = [...(settings.leadSources || [])];
     const existingId = document.getElementById('m-source-id')?.value;
 
+    // Block duplicate names (case-insensitive), ignoring the record being edited
+    const nameLC = name.toLowerCase();
+    const duplicate = sources.find(s => s.name.toLowerCase() === nameLC && s.id !== existingId);
+    if (duplicate) { showToast(`"${name}" already exists`, 'warning'); return; }
+
     const data = {
       id: existingId || DB.generateId(),
       name,
