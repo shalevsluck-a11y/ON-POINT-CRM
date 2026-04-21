@@ -2705,7 +2705,13 @@ const App = (() => {
     const color    = document.getElementById('m-tech-color')?.value          || '#3B82F6';
 
     try {
-      await DB.updateTechProfile(existingId, { name, phone, color, percent: pct, zelle, zipCodes, isOwner });
+      const saveTimeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Save timed out — check connection and try again')), 10000)
+      );
+      await Promise.race([
+        DB.updateTechProfile(existingId, { name, phone, color, percent: pct, zelle, zipCodes, isOwner }),
+        saveTimeout,
+      ]);
 
       const settings = DB.getSettings();
       const techs = [...(settings.technicians || [])];
