@@ -223,8 +223,14 @@ const LeadParser = (() => {
     for (const [abbr, names] of Object.entries(stateMap)) {
       for (const name of names) {
         const esc = name.replace(/\s/g, '\\s*');
-        if (new RegExp(`\\b${esc}\\b`, 'i').test(text)) {
-          return { value: abbr, confidence: 'high' };
+        try {
+          if (new RegExp(`\\b${esc}\\b`, 'i').test(text)) {
+            return { value: abbr, confidence: 'high' };
+          }
+        } catch (_) {
+          if (text.toLowerCase().includes(name.toLowerCase())) {
+            return { value: abbr, confidence: 'high' };
+          }
         }
       }
     }
