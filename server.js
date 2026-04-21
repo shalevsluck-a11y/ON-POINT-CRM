@@ -10,6 +10,8 @@ app.use((_req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=(self), payment=()');
   next();
 });
 
@@ -35,9 +37,9 @@ app.use(express.static(path.join(__dirname), {
       res.setHeader('Cache-Control', 'no-cache, must-revalidate');
       return;
     }
-    // CSS: short TTL (5 min) — balanced between freshness and perf
+    // CSS: 1-day TTL — SW fetches fresh copies on load anyway
     if (filePath.endsWith('.css')) {
-      res.setHeader('Cache-Control', 'public, max-age=300');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
       return;
     }
     // Images and icons: cache for 1 year (stable assets)
