@@ -25,6 +25,11 @@ app.use(express.static(path.join(__dirname), {
       res.setHeader('Cache-Control', 'no-cache');
       return;
     }
+    // Vendor JS (supabase.min.js): immutable, cache 1 year — never changes between deploys
+    if (filePath.endsWith('supabase.min.js')) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      return;
+    }
     // HTML and JS: must-revalidate so phones always get fresh code after a deploy
     if (filePath.endsWith('.html') || filePath.endsWith('.js')) {
       res.setHeader('Cache-Control', 'no-cache, must-revalidate');
