@@ -876,7 +876,7 @@
             <input type="text" id="invite-setup-link" class="field-input" readonly
                    style="font-size:11px;font-family:monospace;flex:1" placeholder="Generating...">
             <button class="btn btn-secondary" style="padding:0 12px;white-space:nowrap"
-              onclick="navigator.clipboard.writeText(document.getElementById('invite-setup-link').value).then(()=>showToast('Link copied','success'))">Copy</button>
+              onclick="navigator.clipboard.writeText(document.getElementById('invite-setup-link').value).then(()=>App.showToast('Link copied','success'))">Copy</button>
           </div>
         </div>
 

@@ -37,9 +37,9 @@ const Storage = (() => {
       // Quota exceeded — try to remove old photo data
       if (e.name === 'QuotaExceededError') {
         console.warn('Storage full — attempting photo cleanup');
-        _trimPhotoStorage(jobs);
+        const trimmed = _trimPhotoStorage(jobs);
         try {
-          localStorage.setItem(KEYS.JOBS, JSON.stringify(jobs));
+          localStorage.setItem(KEYS.JOBS, JSON.stringify(trimmed));
           return true;
         } catch (e2) {
           console.error('Storage full even after cleanup:', e2);

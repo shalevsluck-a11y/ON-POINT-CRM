@@ -1624,8 +1624,10 @@ const App = (() => {
 
     if (title) title.textContent = `Photo ${idx+1} of ${job.photos.length}`;
     if (body) {
+      const safeSrc = typeof photo.data === 'string' && photo.data.startsWith('data:image/')
+        ? photo.data : '';
       body.innerHTML = `
-        <img src="${photo.data}" alt="Photo" style="width:100%;border-radius:8px;display:block">
+        <img src="${safeSrc}" alt="Photo" style="width:100%;border-radius:8px;display:block">
         <div class="photo-action-row">
           ${idx > 0 ? `<button class="btn btn-secondary" style="flex:1" onclick="App.viewPhoto('${jobId}', ${idx-1})">&#8249; Prev</button>` : '<div style="flex:1"></div>'}
           <button class="btn btn-danger" style="flex:1" onclick="App.deletePhoto('${jobId}', ${idx})">Delete</button>
