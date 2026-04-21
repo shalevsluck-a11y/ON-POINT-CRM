@@ -168,6 +168,14 @@ const App = (() => {
     document.querySelectorAll('.nav-add').forEach(el => {
       el.classList.toggle('hidden', Auth.isTechOrContractor());
     });
+
+    // Hide Settings from bottom nav and user menu for non-admins
+    const isAdmin = Auth.isAdmin();
+    const settingsNav = document.querySelector('.nav-item[data-view="settings"]');
+    if (settingsNav) settingsNav.classList.toggle('hidden', !isAdmin);
+
+    const settingsMenu = document.querySelector('.user-menu-item[onclick*="settings"]');
+    if (settingsMenu) settingsMenu.classList.toggle('hidden', !isAdmin);
   }
 
   function toggleUserMenu() {
@@ -216,6 +224,13 @@ const App = (() => {
     // Role guard: only admins and dispatchers can access the new-job view
     if (viewName === 'new-job' && !Auth.canCreateJobs()) {
       showToast('Only admins and dispatchers can create jobs', 'error');
+      return;
+    }
+
+    // Role guard: only admins can access settings
+    if (viewName === 'settings' && !Auth.isAdmin()) {
+      showToast('You do not have permission to access Settings', 'error');
+      navigate('dashboard');
       return;
     }
 
