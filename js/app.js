@@ -3601,19 +3601,20 @@ document.addEventListener('DOMContentLoaded', () => {
   App.init();
 });
 
-// Absolute last-resort safety net — if after 5s nothing is visible, force login screen
+// Last-resort safety net — only fires if app-shell is STILL visible after 6s
+// (meaning auth init genuinely hung). Never fires when the app loaded correctly.
 window.addEventListener('load', () => {
   setTimeout(() => {
     const shell = document.getElementById('app-shell');
+    // Only act if the shell is still in the DOM and visible
+    if (!shell || shell.style.display === 'none') return;
     const login = document.getElementById('login-screen');
-    const app   = document.getElementById('main-app');
-    const somethingVisible = (
-      (login && !login.classList.contains('hidden')) ||
-      (app   && !app.classList.contains('hidden'))
-    );
-    if (!somethingVisible) {
-      if (shell) shell.style.display = 'none';
+    const app   = document.getElementById('app');
+    const appVisible = app && !app.classList.contains('hidden');
+    const loginVisible = login && !login.classList.contains('hidden');
+    if (!appVisible && !loginVisible) {
+      shell.style.display = 'none';
       if (login) login.classList.remove('hidden');
     }
-  }, 5000);
+  }, 6000);
 });

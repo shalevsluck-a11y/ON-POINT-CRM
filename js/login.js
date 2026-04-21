@@ -7,6 +7,9 @@ const LoginScreen = (() => {
   function show() {
     document.getElementById('login-screen').classList.remove('hidden');
     document.getElementById('app').classList.add('hidden');
+    // Always reset the button so it can be clicked even if a prior attempt never cleared it
+    const btn = document.getElementById('login-btn');
+    if (btn) { btn.disabled = false; btn.textContent = 'Sign In'; }
     document.getElementById('login-email')?.focus();
   }
 
@@ -32,7 +35,10 @@ const LoginScreen = (() => {
 
     try {
       await Auth.login(email, password);
-      // onAuthChange in app.js will handle the rest
+      // onAuthChange in app.js will handle navigation.
+      // Re-enable the button so it's ready if this screen is ever shown again.
+      btn.disabled    = false;
+      btn.textContent = 'Sign In';
     } catch (e) {
       _showError(_friendlyError(e.message));
       btn.disabled    = false;

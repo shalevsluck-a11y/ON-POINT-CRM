@@ -17,18 +17,27 @@ const Auth = (() => {
 
     // Listen for auth state changes
     SupabaseClient.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        await _loadProfile(session.user);
-      } else {
+      try {
+        if (session?.user) {
+          await _loadProfile(session.user);
+        } else {
+          _currentUser = null;
+        }
+      } catch (e) {
+        console.error('Auth state change: profile load failed:', e.message);
         _currentUser = null;
       }
       if (_onAuthChange) _onAuthChange(_currentUser);
     });
 
     // Check for existing session
-    const { data: { session } } = await SupabaseClient.auth.getSession();
-    if (session?.user) {
-      await _loadProfile(session.user);
+    try {
+      const { data: { session } } = await SupabaseClient.auth.getSession();
+      if (session?.user) {
+        await _loadProfile(session.user);
+      }
+    } catch (e) {
+      console.error('Auth.init: getSession failed:', e.message);
     }
     return _currentUser;
   }
