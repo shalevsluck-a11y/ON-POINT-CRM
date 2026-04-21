@@ -213,6 +213,12 @@ const App = (() => {
   };
 
   function navigate(viewName, opts = {}) {
+    // Role guard: only admins and dispatchers can access the new-job view
+    if (viewName === 'new-job' && !Auth.canCreateJobs()) {
+      showToast('Only admins and dispatchers can create jobs', 'error');
+      return;
+    }
+
     // Handle special options
     if (opts && opts.filter) {
       _state.jobFilter = opts.filter;
