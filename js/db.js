@@ -60,8 +60,8 @@ const DB = (() => {
       const current = Storage.getSettings();
       const isAdmin = Auth.isAdmin();
 
-      // Build technician list — only include Zelle handles for admin
-      const techList = (techs || []).map(t => ({
+      // Build technician list — only tech/contractor roles, only Zelle for admin
+      const techList = (techs || []).filter(t => t.role === 'tech' || t.role === 'contractor').map(t => ({
         id:        t.id,
         name:      t.name,
         phone:     t.phone,
@@ -172,6 +172,12 @@ const DB = (() => {
     if (profileData.isOwner  !== undefined) row.is_owner             = profileData.isOwner;
     if (Object.keys(row).length === 0) return;
     const { error } = await supa.from('profiles').update(row).eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  async function deleteProfile(id) {
+    if (!Auth.isAdmin()) throw new Error('Admin only');
+    const { error } = await supa.from('profiles').delete().eq('id', id);
     if (error) throw new Error(error.message);
   }
 
@@ -449,6 +455,7 @@ const DB = (() => {
     getSettings,
     saveSettings,
     updateTechProfile,
+    deleteProfile,
     getOwnerTech,
     getTechById,
     getSourceById,

@@ -2627,18 +2627,25 @@ const App = (() => {
       showToast('Only admins can manage technicians', 'error');
       return;
     }
+    const settings = DB.getSettings();
+    const tech = (settings.technicians || []).find(t => t.id === techId);
     showConfirm({
       icon: '&#128465;',
       title: 'Remove Technician?',
-      message: 'Remove from the technician list? To delete their account, use the Users section.',
+      message: `Remove ${tech ? tech.name : 'this person'} from the technician list? This also removes their profile from the system.`,
       okLabel: 'Remove',
-      onOk: () => {
-        const settings = DB.getSettings();
-        const techs = (settings.technicians || []).filter(t => t.id !== techId);
-        Storage.saveSettings({ ...settings, technicians: techs });
-        _renderTechList(techs);
-        _renderTechSelector();
-        showToast('Technician removed', 'success');
+      onOk: async () => {
+        try {
+          await DB.deleteProfile(techId);
+          const updated = (settings.technicians || []).filter(t => t.id !== techId);
+          const s = DB.getSettings();
+          Storage.saveSettings({ ...s, technicians: updated });
+          _renderTechList(updated);
+          _renderTechSelector();
+          showToast('Technician removed', 'success');
+        } catch (e) {
+          showToast('Failed to remove: ' + (e.message || 'unknown error'), 'error');
+        }
       }
     });
   }
