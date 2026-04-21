@@ -1383,7 +1383,7 @@ const App = (() => {
             </div>
           `}
         </div>
-      </div>` : Auth.isTech() && job.techPayout > 0 ? `
+      </div>` : Auth.isTechOrContractor() && (parseFloat(job.techPayout) > 0 || parseFloat(job.contractorFee) > 0) ? `
       <div class="detail-section collapsed" id="ds-financials">
         <div class="detail-section-title" onclick="App.toggleDetailSection('ds-financials')">
           Your Payout <span class="section-chevron">›</span>
@@ -1391,7 +1391,7 @@ const App = (() => {
         <div class="detail-section-body">
           <div class="detail-row">
             <div class="detail-row-label">Your Payout</div>
-            <div class="detail-row-value" style="font-weight:800;color:var(--color-success)">${_fmt(parseFloat(job.techPayout)||0)}</div>
+            <div class="detail-row-value" style="font-weight:800;color:var(--color-success)">${_fmt(Auth.isContractor() ? parseFloat(job.contractorFee)||0 : parseFloat(job.techPayout)||0)}</div>
           </div>
           <div class="detail-row">
             <div class="detail-row-label">Payment</div>
@@ -1483,8 +1483,8 @@ const App = (() => {
   }
 
   function setJobStatus(jobId, status) {
-    // Techs can only update status on jobs assigned to them, and only to in_progress or closed
-    if (Auth.isTech()) {
+    // Techs/contractors can only update status on jobs assigned to them
+    if (Auth.isTechOrContractor()) {
       const user = Auth.getUser();
       const j    = DB.getJobById(jobId);
       if (!j || j.assignedTechId !== user?.id) {
