@@ -31,9 +31,21 @@ const App = (() => {
   let _settingsChannel = null;
   let _profilesChannel = null;
   let _firstSetupInProgress = false;
-  let _lastInvite = { name: '', email: '', phone: '' }; // for WA button after invite
+  let _lastInvite = { name: '', phone: '', setupLink: '', loginEmail: '' };
   let _jobsViewMode = localStorage.getItem('op_jobs_view') || 'list'; // 'list' | 'kanban'
   let _ptr = { startY: 0, pulling: false };
+  const _statusChangingJobs = new Set(); // debounce rapid status taps
+
+  // Disable a button, run an async fn, re-enable when done
+  function _withLoading(btnId, asyncFn) {
+    const btn = document.getElementById(btnId);
+    if (btn && btn.disabled) return Promise.resolve(); // already in flight
+    const orig = btn ? btn.textContent : '';
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving\u2026'; }
+    return Promise.resolve().then(() => asyncFn()).finally(() => {
+      if (btn) { btn.disabled = false; btn.textContent = orig; }
+    });
+  }
 
   // ══════════════════════════════════════════════════════════
   // INIT
@@ -1045,7 +1057,11 @@ const App = (() => {
 
   // ── SAVE JOB ─────────────────────────────────────────
 
-  async function saveNewJob() {
+  function saveNewJob() {
+    return _withLoading('btn-save-job', _doSaveNewJob);
+  }
+
+  async function _doSaveNewJob() {
     if (!Auth.canCreateJobs()) {
       showToast('Only admins and dispatchers can create jobs', 'error');
       return;
@@ -1113,7 +1129,12 @@ const App = (() => {
     // Update status based on whether scheduled
     if (job.scheduledDate) job.status = 'scheduled';
 
-    await DB.saveJob(job);
+    try {
+      await DB.saveJob(job);
+    } catch (e) {
+      showToast('Failed to save job: ' + (e.message || 'unknown error'), 'error');
+      return;
+    }
 
     // Push to Google Sheets immediately
     SyncManager.queueJob(job.jobId);
@@ -1121,12 +1142,8 @@ const App = (() => {
       if (!r.success) showToast('Saved — Sheets sync pending (check Settings URL)', 'warning');
     }).catch(() => {});
 
-    // Clear draft
     DB.clearDraft();
-
     showToast(`Job saved — ${name}`, 'success');
-
-    // Navigate to job detail
     navigate('job-detail');
     openJobDetail(job.jobId);
   }
@@ -1478,6 +1495,11 @@ const App = (() => {
   }
 
   function setJobStatus(jobId, status) {
+    const cooldownKey = `${jobId}:${status}`;
+    if (_statusChangingJobs.has(cooldownKey)) return;
+    _statusChangingJobs.add(cooldownKey);
+    setTimeout(() => _statusChangingJobs.delete(cooldownKey), 2000);
+
     // Techs/contractors can only update status on jobs assigned to them
     if (Auth.isTechOrContractor()) {
       const user = Auth.getUser();
@@ -2536,7 +2558,11 @@ const App = (() => {
     }
   }
 
-  async function saveSettings() {
+  function saveSettings() {
+    return _withLoading('settings-save-btn', _doSaveSettings);
+  }
+
+  async function _doSaveSettings() {
     // Non-admin: save only their own profile (name + phone)
     if (!Auth.isAdmin()) {
       const name  = document.getElementById('s-owner-name')?.value?.trim()  || '';
@@ -2622,7 +2648,11 @@ const App = (() => {
     showModal('modal-tech');
   }
 
-  async function saveTech() {
+  function saveTech() {
+    return _withLoading('btn-save-tech', _doSaveTech);
+  }
+
+  async function _doSaveTech() {
     if (!Auth.isAdmin()) {
       showToast('Only admins can manage technicians', 'error');
       return;
@@ -2732,7 +2762,11 @@ const App = (() => {
     showModal('modal-source');
   }
 
-  async function saveSource() {
+  function saveSource() {
+    return _withLoading('btn-save-source', _doSaveSource);
+  }
+
+  async function _doSaveSource() {
     if (!Auth.isAdmin()) {
       showToast('Only admins can manage lead sources', 'error');
       return;
@@ -3067,11 +3101,15 @@ const App = (() => {
 
   async function testSync() {
     showToast('Testing connection...', 'info');
-    const result = await SyncManager.testConnection();
-    if (result.success) {
-      showToast('Connection successful!', 'success');
-    } else {
-      showToast(result.error || 'Connection failed', 'error');
+    try {
+      const result = await SyncManager.testConnection();
+      if (result.success) {
+        showToast('Connection successful!', 'success');
+      } else {
+        showToast(result.error || 'Connection failed', 'error');
+      }
+    } catch (e) {
+      showToast('Connection test failed — check Apps Script URL', 'error');
     }
   }
 
