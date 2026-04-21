@@ -3087,13 +3087,17 @@ const App = (() => {
       if (!indicator.classList.contains('ptr-ready')) return;
       indicator.classList.remove('ptr-ready');
       indicator.classList.add('ptr-loading');
+      const safetyTimeout = setTimeout(() => indicator.classList.remove('ptr-loading'), 5000);
       try {
         await DB._syncJobsDown();
         renderDashboard();
         renderJobList();
         if (_jobsViewMode === 'kanban') renderKanban();
         showToast('Refreshed', 'success', 1500);
+      } catch (e) {
+        console.error('Pull to refresh failed:', e);
       } finally {
+        clearTimeout(safetyTimeout);
         setTimeout(() => indicator.classList.remove('ptr-loading'), 600);
       }
     }, { passive: true });
