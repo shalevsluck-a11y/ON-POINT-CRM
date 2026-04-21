@@ -734,10 +734,18 @@ const App = (() => {
 
   function _validateStep(step) {
     if (step === 2) {
-      const name = document.getElementById('f-name')?.value?.trim();
-      const phone = document.getElementById('f-phone')?.value?.trim();
-      if (!name) { showToast('Enter customer name', 'warning'); return false; }
-      if (!phone) { showToast('Enter phone number', 'warning'); return false; }
+      const nameEl  = document.getElementById('f-name');
+      const phoneEl = document.getElementById('f-phone');
+      const name  = nameEl?.value?.trim();
+      const phone = phoneEl?.value?.trim();
+      const _highlight = (el) => {
+        if (!el) return;
+        el.style.borderColor = 'var(--color-error)';
+        el.focus();
+        setTimeout(() => el.style.borderColor = '', 2500);
+      };
+      if (!name)  { _highlight(nameEl);  showToast('Customer name is required', 'warning'); return false; }
+      if (!phone) { _highlight(phoneEl); showToast('Phone number is required', 'warning');  return false; }
     }
     return true;
   }
