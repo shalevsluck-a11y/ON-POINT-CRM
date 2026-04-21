@@ -7,6 +7,8 @@ const Auth = (() => {
 
   let _currentUser = null;  // { id, email, name, role, color, isOwner, ... }
   let _onAuthChange = null; // callback set by App
+  let _sessionHealthInterval = null;
+  let _consecutiveRefreshFailures = 0;
 
   // ──────────────────────────────────────────────────────────
   // INIT — call once on page load
@@ -20,6 +22,7 @@ const Auth = (() => {
       try {
         if (session?.user) {
           await _loadProfile(session.user);
+          _consecutiveRefreshFailures = 0;
         } else {
           _currentUser = null;
         }
@@ -35,11 +38,58 @@ const Auth = (() => {
       const { data: { session } } = await SupabaseClient.auth.getSession();
       if (session?.user) {
         await _loadProfile(session.user);
+        _startSessionHealthCheck();
       }
     } catch (e) {
       console.error('Auth.init: getSession failed:', e.message);
     }
     return _currentUser;
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // SESSION HEALTH CHECK — refresh token every 4 minutes
+  // ──────────────────────────────────────────────────────────
+
+  function _startSessionHealthCheck() {
+    if (_sessionHealthInterval) clearInterval(_sessionHealthInterval);
+
+    _sessionHealthInterval = setInterval(async () => {
+      try {
+        const { data: { session }, error } = await SupabaseClient.auth.getSession();
+
+        if (error || !session) {
+          _consecutiveRefreshFailures++;
+          console.warn(`Session health check failed (${_consecutiveRefreshFailures}/2)`);
+
+          // Try refreshing the session
+          if (_consecutiveRefreshFailures === 1) {
+            setTimeout(async () => {
+              const { error: retryError } = await SupabaseClient.auth.refreshSession();
+              if (!retryError) {
+                console.log('Session refreshed successfully on retry');
+                _consecutiveRefreshFailures = 0;
+              }
+            }, 30000); // Retry after 30 seconds
+          } else if (_consecutiveRefreshFailures >= 2) {
+            // After 2 consecutive failures, force re-login
+            console.error('Session health check failed twice - forcing re-login');
+            _stopSessionHealthCheck();
+            await logout();
+          }
+        } else {
+          _consecutiveRefreshFailures = 0;
+        }
+      } catch (e) {
+        console.error('Session health check error:', e);
+      }
+    }, 240000); // Every 4 minutes (240,000ms)
+  }
+
+  function _stopSessionHealthCheck() {
+    if (_sessionHealthInterval) {
+      clearInterval(_sessionHealthInterval);
+      _sessionHealthInterval = null;
+    }
   }
 
   // ──────────────────────────────────────────────────────────
@@ -87,18 +137,42 @@ const Auth = (() => {
   }
 
   // ──────────────────────────────────────────────────────────
-  // LOGIN
+  // LOGIN with automatic retry
   // ──────────────────────────────────────────────────────────
 
   async function login(email, password) {
-    const loginTimeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Login timed out — check your connection and try again')), 10000)
-    );
-    const loginAttempt = SupabaseClient.auth.signInWithPassword({ email, password }).then(({ data, error }) => {
-      if (error) throw error;
-      return data;
-    });
-    return Promise.race([loginAttempt, loginTimeout]);
+    let lastError = null;
+    const maxRetries = 3;
+    const retryDelays = [0, 3000, 6000]; // 0ms, 3s, 6s
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        if (attempt > 0) {
+          // Wait before retry
+          await new Promise(resolve => setTimeout(resolve, retryDelays[attempt]));
+        }
+
+        const loginTimeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Login timed out')), 10000)
+        );
+        const loginAttempt = SupabaseClient.auth.signInWithPassword({ email, password }).then(({ data, error }) => {
+          if (error) throw error;
+          return data;
+        });
+
+        const result = await Promise.race([loginAttempt, loginTimeout]);
+        _startSessionHealthCheck();
+        return result;
+      } catch (error) {
+        lastError = error;
+        console.warn(`Login attempt ${attempt + 1}/${maxRetries} failed:`, error.message);
+        if (attempt < maxRetries - 1) {
+          console.log(`Retrying in ${retryDelays[attempt + 1] / 1000}s...`);
+        }
+      }
+    }
+
+    throw new Error(lastError?.message || 'Login failed after 3 attempts — check your connection');
   }
 
   // ──────────────────────────────────────────────────────────
@@ -106,8 +180,10 @@ const Auth = (() => {
   // ──────────────────────────────────────────────────────────
 
   async function logout() {
+    _stopSessionHealthCheck();
     await SupabaseClient.auth.signOut();
     _currentUser = null;
+    _consecutiveRefreshFailures = 0;
   }
 
   // ──────────────────────────────────────────────────────────
