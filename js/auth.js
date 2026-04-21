@@ -39,6 +39,8 @@ const Auth = (() => {
       if (session?.user) {
         await _loadProfile(session.user);
         _startSessionHealthCheck();
+        // CRITICAL: Call onAuthChange callback for existing session
+        if (_onAuthChange) _onAuthChange(_currentUser);
       }
     } catch (e) {
       console.error('Auth.init: getSession failed:', e.message);
