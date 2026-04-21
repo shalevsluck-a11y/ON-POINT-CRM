@@ -2378,6 +2378,9 @@ const App = (() => {
   // ══════════════════════════════════════════════════════════
 
   function _loadSettingsForm() {
+    // Reset users list loading state when entering Settings
+    _usersListFetchInProgress = false;
+
     const s = DB.getSettings();
     const user = Auth.getUser();
     const isAdmin = Auth.isAdmin();
@@ -2444,6 +2447,8 @@ const App = (() => {
     _usersListFetchInProgress = true;
 
     try {
+      // Ensure fresh session before fetching users
+      await SupabaseClient.auth.getSession();
       const users = await Auth.getUsersForAdmin();
       const currentUserId = Auth.getUser()?.id;
       const listEl = document.getElementById('admin-users-list');

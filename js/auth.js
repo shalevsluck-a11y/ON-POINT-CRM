@@ -193,7 +193,7 @@ const Auth = (() => {
   async function getUsersForAdmin() {
     if (!isAdmin()) throw new Error('Admin only');
     const timeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Users list timed out — check connection')), 10000)
+      setTimeout(() => reject(new Error('Users list timed out — check connection')), 20000)
     );
     const query = SupabaseClient.rpc('get_users_for_admin').then(({ data, error }) => {
       if (error) throw new Error(error.message || error.details || 'RPC error');
