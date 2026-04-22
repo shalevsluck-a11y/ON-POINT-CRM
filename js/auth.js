@@ -426,7 +426,10 @@ const Auth = (() => {
 
   async function createUser(name, email, role, assignedLeadSource = null, payoutPct = null) {
     if (!isAdmin()) throw new Error('Admin only');
-    const { data: { session } } = await SupabaseClient.auth.getSession();
+    const magicToken = localStorage.getItem('magic_token') ||
+                       localStorage.getItem('onpoint-pwa-auth-magic_token') ||
+                       localStorage.getItem('onpoint-web-auth-magic_token');
+    if (!magicToken) throw new Error('Not authenticated');
     let res, json;
     try {
       const controller = new AbortController();
@@ -436,7 +439,7 @@ const Auth = (() => {
         signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${magicToken}`,
         },
         body: JSON.stringify({ name, email, role }),
       });
@@ -456,7 +459,10 @@ const Auth = (() => {
 
   async function removeUser(userId) {
     if (!isAdmin()) throw new Error('Admin only');
-    const { data: { session } } = await SupabaseClient.auth.getSession();
+    const magicToken = localStorage.getItem('magic_token') ||
+                       localStorage.getItem('onpoint-pwa-auth-magic_token') ||
+                       localStorage.getItem('onpoint-web-auth-magic_token');
+    if (!magicToken) throw new Error('Not authenticated');
     let res, json;
     try {
       const controller = new AbortController();
@@ -466,7 +472,7 @@ const Auth = (() => {
         signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${magicToken}`,
         },
       });
       clearTimeout(timer);

@@ -68,19 +68,19 @@ app.post('/admin/create-user', async (req, res) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
-    if (userError || !user) {
+
+    // Verify magic token against profiles table
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, role')
+      .eq('magic_token', token)
+      .single();
+
+    if (profileError || !profile) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Check if requesting user is admin
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || profile.role !== 'admin') {
+    if (profile.role !== 'admin') {
       return res.status(403).json({ error: 'Admin only' });
     }
 
@@ -146,19 +146,19 @@ app.delete('/admin/delete-user/:id', async (req, res) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
-    if (userError || !user) {
+
+    // Verify magic token against profiles table
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, role')
+      .eq('magic_token', token)
+      .single();
+
+    if (profileError || !profile) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Check if requesting user is admin
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || profile.role !== 'admin') {
+    if (profile.role !== 'admin') {
       return res.status(403).json({ error: 'Admin only' });
     }
 
