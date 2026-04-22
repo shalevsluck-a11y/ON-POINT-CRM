@@ -246,6 +246,16 @@ When resuming in new session:
 - All 12 health-checked containers are healthy ✓
 - Ready to configure Nginx proxy
 
+### ✅ STEP 7: Nginx Proxy Configured
+- Created /etc/nginx/sites-available/supabase-api ✓
+- Configured proxy from api.onpointprodoors.com to http://localhost:8000 ✓
+- Enabled site: ln -s to sites-enabled ✓
+- Nginx configuration tested: syntax OK ✓
+- Nginx reloaded: systemctl reload nginx ✓
+- Proxy verified working: 401 Unauthorized from Kong (expected) ✓
+- DNS note: api.onpointprodoors.com needs A record → 187.77.8.155 (manual step)
+- Ready to get SSL certificate
+
 ## Final Verification Summary
 
 **Sharingan Audit Results (Task 11):**
