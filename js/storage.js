@@ -26,8 +26,8 @@ const Storage = (() => {
 
       // Filter jobs based on dispatcher permissions
       if (window.Auth && window.Auth.isDispatcher && window.Auth.isDispatcher()) {
-        const profile = window.Auth.getProfile();
-        const allowedSources = profile?.allowedLeadSources;
+        const user = window.Auth.getUser();
+        const allowedSources = user?.allowedLeadSources;
         // If allowedSources is set (not null/undefined), filter jobs
         if (allowedSources && Array.isArray(allowedSources) && allowedSources.length > 0) {
           jobs = jobs.filter(job => allowedSources.includes(job.source));

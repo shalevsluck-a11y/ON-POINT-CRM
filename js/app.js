@@ -1149,8 +1149,8 @@ const App = (() => {
 
     // Auto-select for dispatcher with only one allowed source
     if (Auth.isDispatcher()) {
-      const profile = Auth.getProfile();
-      const allowedSources = profile?.allowedLeadSources || null;
+      const user = Auth.getUser();
+      const allowedSources = user?.allowedLeadSources || null;
       if (allowedSources && allowedSources.length === 1) {
         // Find the matching source
         const sourceName = allowedSources[0];
