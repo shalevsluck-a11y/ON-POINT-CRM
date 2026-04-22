@@ -347,8 +347,16 @@ When resuming in new session:
 - app_config already configured with self-hosted URLs (STEP 11) ✓
 - Push notification flow complete: trigger → Edge Function → VAPID → browser ✓
 
-### ⏸️ STEP 15-18: Remaining Steps
-- Step 15: Add notification settings to tech/contractor Settings view
+### ✅ STEP 15: Notification Settings for Tech/Contractor
+- Notification settings card already implemented (Task 3) ✓
+- Visible to all user roles including tech/contractor ✓
+- Sound selector with 6 options ✓
+- Notification type toggles (new job, updates, reminders, messages) ✓
+- Test notification and test sound buttons ✓
+- Preferences saved to localStorage ✓
+- No additional work required ✓
+
+### ⏸️ STEP 16-18: Remaining Steps
 - Step 16: Hide Google Sheets from tech everywhere
 - Step 17: Run Sharingan and fix all bugs found
 - Step 18: Final verification with Playwright tests
