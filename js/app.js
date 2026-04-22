@@ -2867,12 +2867,24 @@ const App = (() => {
   async function _confirmRemoveUser(userId, userName) {
     let jobWarning = '';
     try {
-      const { count } = await SupabaseClient
+      // Check assigned jobs
+      const { count: assignedCount } = await SupabaseClient
         .from('jobs')
         .select('id', { count: 'exact', head: true })
         .eq('assigned_tech_id', userId);
-      if (count > 0) {
-        jobWarning = ` This user has ${count} assigned job${count !== 1 ? 's' : ''} — they will be unassigned.`;
+
+      // Check created jobs
+      const { count: createdCount } = await SupabaseClient
+        .from('jobs')
+        .select('id', { count: 'exact', head: true })
+        .eq('created_by', userId);
+
+      const totalJobs = (assignedCount || 0) + (createdCount || 0);
+      if (totalJobs > 0) {
+        const parts = [];
+        if (assignedCount > 0) parts.push(`${assignedCount} assigned`);
+        if (createdCount > 0) parts.push(`${createdCount} created by them`);
+        jobWarning = ` This user has ${totalJobs} job${totalJobs !== 1 ? 's' : ''} (${parts.join(', ')}). All references will be removed.`;
       }
     } catch (_e) { /* non-critical */ }
 
