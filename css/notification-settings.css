@@ -1,0 +1,141 @@
+/* ============================================================
+   NOTIFICATION SETTINGS - Ringtone Picker UI Styles
+   ============================================================ */
+
+#notification-settings-container {
+  margin: 20px 0;
+}
+
+.notification-settings-card {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.notification-settings-header {
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.notification-settings-header:hover {
+  background: #f8f9fa;
+}
+
+.notification-settings-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 600;
+  color: #1a1a1a;
+  font-size: 15px;
+}
+
+.notification-settings-title svg {
+  color: #2563eb;
+}
+
+.notification-settings-current {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #666;
+  font-size: 14px;
+}
+
+.notification-settings-options {
+  border-top: 1px solid #f0f0f0;
+  padding: 8px;
+}
+
+.notification-option {
+  padding: 12px 16px;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: 4px;
+}
+
+.notification-option:hover {
+  background: #f8f9fa;
+}
+
+.notification-option.selected {
+  background: #eff6ff;
+  border: 1px solid #2563eb;
+}
+
+.notification-option-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.notification-option-name {
+  font-weight: 500;
+  color: #1a1a1a;
+  font-size: 14px;
+}
+
+.notification-option-check {
+  color: #2563eb;
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.notification-preview-btn {
+  padding: 6px 12px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.notification-preview-btn:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+.notification-preview-btn:active {
+  transform: translateY(0);
+}
+
+.notification-preview-btn svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Mobile Responsive */
+@media (max-width: 640px) {
+  .notification-settings-header {
+    padding: 14px 16px;
+  }
+
+  .notification-option {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .notification-preview-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
