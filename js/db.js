@@ -240,28 +240,31 @@ const DB = (() => {
 
     const channel = supa.channel('public:jobs');
 
-    // Role-based event filtering
-    if (Auth.isAdminOrDisp()) {
-      // Admin/dispatcher see all jobs
-      channel
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'jobs' }, payload => {
-          const job = _dbRowToJob(payload.new, {}, true, false);
-          Storage.saveJob(job);
-          if (onInsert) onInsert(job);
-        })
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'jobs' }, payload => {
-          const job = _dbRowToJob(payload.new, {}, true, false);
-          Storage.saveJob(job);
-          if (onUpdate) onUpdate(job);
-        })
-        .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'jobs' }, payload => {
-          const jobId = payload.old?.job_id;
-          if (jobId) {
-            Storage.deleteJob(jobId);
-            if (onDelete) onDelete(jobId);
-          }
-        });
-    } else if (Auth.isTech() || Auth.isContractor()) {
+    // Everyone sees all jobs (admin + dispatcher only)
+    channel
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'jobs' }, payload => {
+        console.log('[Realtime] INSERT:', payload.new.job_id);
+        const job = _dbRowToJob(payload.new, {}, true, false);
+        Storage.saveJob(job);
+        if (onInsert) onInsert(job);
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'jobs' }, payload => {
+        console.log('[Realtime] UPDATE:', payload.new.job_id);
+        const job = _dbRowToJob(payload.new, {}, true, false);
+        Storage.saveJob(job);
+        if (onUpdate) onUpdate(job);
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'jobs' }, payload => {
+        console.log('[Realtime] DELETE:', payload.old?.job_id);
+        const jobId = payload.old?.job_id;
+        if (jobId) {
+          Storage.deleteJob(jobId);
+          if (onDelete) onDelete(jobId);
+        }
+      });
+
+    // Old tech/contractor code removed - app is dispatcher + owner only
+    if (false && (Auth.isTech() || Auth.isContractor())) {
       // Tech/contractor see jobs assigned to them
       // Use wildcard event to catch all changes, then filter client-side
       // This ensures we catch jobs being newly assigned (assigned_tech_id changes from null to user.id)

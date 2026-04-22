@@ -183,12 +183,12 @@ const App = (() => {
     const syncBtn = document.getElementById('btn-sync');
     if (syncBtn) syncBtn.classList.toggle('hidden', !Auth.isAdminOrDisp());
 
-    // Hide Settings from bottom nav and user menu for non-admins
+    // Hide Settings from user menu for non-admins (dispatcher should not see Settings)
     const isAdmin = Auth.isAdmin();
     const settingsNav = document.querySelector('.nav-item[data-view="settings"]');
     if (settingsNav) settingsNav.classList.toggle('hidden', !isAdmin);
 
-    const settingsMenu = document.querySelector('.user-menu-item[onclick*="settings"]');
+    const settingsMenu = document.getElementById('nav-settings');
     if (settingsMenu) settingsMenu.classList.toggle('hidden', !isAdmin);
   }
 
@@ -3760,32 +3760,17 @@ const App = (() => {
     return lines.join('\n');
   }
 
-  // Open WhatsApp dispatch to assigned technician
+  // Open WhatsApp with job details (user chooses recipient)
   function openWhatsApp(jobId) {
     if (!Auth.isAdminOrDisp()) return;
     const job = DB.getJobById(jobId);
     if (!job) { showToast('Job not found', 'error'); return; }
 
-    const settings = DB.getSettings();
-    if (!job.assignedTechId) {
-      showToast('Assign a technician first before sending WhatsApp', 'warning');
-      return;
-    }
-
-    const tech = (settings.technicians || []).find(t => t.id === job.assignedTechId);
-    if (!tech || !tech.phone) {
-      showToast('Technician has no phone number on file — add it in Settings', 'warning');
-      return;
-    }
-
-    const cleanPhone = _cleanPhoneForWA(tech.phone);
-    if (!cleanPhone) {
-      showToast('Invalid technician phone number', 'warning');
-      return;
-    }
-
+    // Build message with job details
     const msg = _buildWhatsAppTechDispatchMsg(job);
-    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+
+    // Open WhatsApp with pre-filled message (user chooses recipient)
+    const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
