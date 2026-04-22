@@ -19,93 +19,35 @@ const LoginScreen = (() => {
   }
 
   async function submit() {
-    const input = document.getElementById('login-email')?.value?.trim();
+    const code = document.getElementById('login-email')?.value?.trim()?.toUpperCase();
     const btn   = document.getElementById('login-btn');
     const errEl = document.getElementById('login-error');
 
-    if (!input) {
-      _showError('Please enter your magic link or email address.');
+    if (!code) {
+      _showError('Please enter your login code.');
       return;
     }
 
     btn.disabled    = true;
-    btn.textContent = 'Processing…';
+    btn.textContent = 'Logging in…';
     errEl.classList.add('hidden');
 
-    // Check if input is a magic link URL or token
-    if (input.includes('#token=') || input.includes('token=')) {
-      try {
-        // Extract token from pasted URL or raw token
-        let token;
-        if (input.includes('#token=')) {
-          token = input.split('#token=')[1].split('&')[0];
-        } else if (input.includes('token=')) {
-          token = input.split('token=')[1].split('&')[0];
-        } else {
-          token = input;
-        }
-
-        if (!token) {
-          throw new Error('Could not extract token from magic link');
-        }
-
-        // Store token and mark for permanent session
-        localStorage.setItem('magic_token', token);
-        localStorage.setItem('stay_logged_in', 'true');
-
-        // Show success and reload to trigger auth
-        errEl.textContent = '✅ Logging you in...';
-        errEl.style.color = '#10b981';
-        errEl.classList.remove('hidden');
-
-        // Reload to trigger auth.js magic token detection
-        setTimeout(() => window.location.reload(), 500);
-        return;
-      } catch (e) {
-        _showError('Invalid magic link. Please check and try again.');
-        btn.disabled    = false;
-        btn.textContent = 'Continue';
-        return;
-      }
-    }
-
-    // Otherwise, treat as email and send magic link
-    const email = input;
-
-    // Validate email format
-    if (!email.includes('@')) {
-      _showError('Please enter a valid email address or magic link.');
-      btn.disabled    = false;
-      btn.textContent = 'Send Magic Link';
-      return;
-    }
-
-    btn.textContent = 'Sending…';
-
     try {
-      // Send magic link via Supabase auth
-      const { error } = await SupabaseClient.auth.signInWithOtp({
-        email: email,
-        options: {
-          emailRedirectTo: 'https://crm.onpointprodoors.com'
-        }
-      });
+      // Store code and mark for permanent session
+      localStorage.setItem('magic_token', code);
+      localStorage.setItem('stay_logged_in', 'true');
 
-      if (error) throw error;
-
-      // Show success message
-      errEl.textContent = '✅ Magic link sent! Check your email and click the link to log in.';
+      // Show success and reload to trigger auth
+      errEl.textContent = '✅ Logging you in...';
       errEl.style.color = '#10b981';
       errEl.classList.remove('hidden');
-      btn.textContent = 'Magic Link Sent';
-      setTimeout(() => {
-        btn.disabled = false;
-        btn.textContent = 'Send Magic Link';
-      }, 5000);
+
+      // Reload to trigger auth.js login
+      setTimeout(() => window.location.reload(), 300);
     } catch (e) {
-      _showError(_friendlyError(e.message));
+      _showError('Login failed. Please try again.');
       btn.disabled    = false;
-      btn.textContent = 'Send Magic Link';
+      btn.textContent = 'Login';
     }
   }
 

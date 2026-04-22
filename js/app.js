@@ -2641,16 +2641,17 @@ const App = (() => {
       if (!listEl) return;
 
       listEl.innerHTML = users.map(u => {
-        const magicLink = u.magic_token ? `https://crm.onpointprodoors.com/#token=${u.magic_token}` : '';
+        const loginCode = u.magic_token || '';
         return `
         <div class="user-list-item" style="flex-direction:column;align-items:stretch;padding:12px">
           <div style="display:flex;align-items:center;gap:12px">
             <div class="user-item-avatar" style="background:${u.color||'#3B82F6'}">${_initials(u.name||u.id)}</div>
             <div class="user-item-info" style="flex:1">
               <div class="user-item-name">${_esc(u.name || 'Unknown')}</div>
-              <div class="user-item-email">${_esc(u.email||'')}</div>
+              ${loginCode ? `<div style="font-size:13px;font-weight:600;font-family:monospace;color:var(--color-primary);letter-spacing:1px;margin-top:2px">CODE: ${loginCode}</div>` : ''}
             </div>
             <div class="user-item-role" style="display:flex;align-items:center;gap:6px">
+              ${loginCode ? `<button class="btn-icon" onclick="navigator.clipboard.writeText('${loginCode}');App.showToast('Code copied!','success')" title="Copy login code" style="font-size:14px">📋</button>` : ''}
               <span style="font-size:12px;padding:4px 12px;background:${u.role==='admin'?'var(--color-primary)':'var(--color-surface-3)'};color:${u.role==='admin'?'#fff':'var(--color-text)'};border-radius:6px;font-weight:500;text-transform:capitalize">${u.role}</span>
               ${u.role==='dispatcher' ? `<button class="btn-icon" onclick="App.showDispatcherPermissions('${u.id}')" title="Edit permissions">&#9998;</button>` : ''}
               ${u.id !== currentUserId ? `<button class="btn-icon" style="color:var(--color-error);font-size:16px"
@@ -2658,12 +2659,6 @@ const App = (() => {
                 data-uid="${_esc(u.id)}" data-uname="${_esc(u.name||u.email)}">&#128465;</button>` : ''}
             </div>
           </div>
-          ${magicLink ? `
-          <div style="margin-top:8px;padding:8px;background:var(--color-surface-2);border-radius:6px;display:flex;align-items:center;gap:8px">
-            <div style="flex:1;font-size:11px;color:var(--color-text-secondary);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${magicLink}</div>
-            <button class="btn-icon" onclick="navigator.clipboard.writeText('${magicLink}');App.showToast('Magic link copied!','success')" title="Copy magic link" style="font-size:14px">📋</button>
-          </div>
-          ` : ''}
         </div>
         `;
       }).join('') || '<div class="empty-state-sm">No users found</div>';
@@ -2732,20 +2727,20 @@ const App = (() => {
     document.getElementById('invite-modal')?.classList.add('hidden');
   }
 
-  function _sendMagicLinkWA() {
-    if (!_lastInvite || !_lastInvite.magicLink) {
-      showToast('No magic link available', 'warning');
+  function _sendLoginCodeWA() {
+    if (!_lastInvite || !_lastInvite.loginCode) {
+      showToast('No login code available', 'warning');
       return;
     }
     const msg = [
       `Hi ${_lastInvite.name}! You have been added to OnPoint Pro Doors CRM.`,
       '',
-      `Tap this link to log in instantly:`,
-      _lastInvite.magicLink,
+      `Your login code: ${_lastInvite.loginCode}`,
       '',
-      `Save the app to your home screen:`,
-      `1. Open https://crm.onpointprodoors.com in Safari`,
-      `2. Tap Share then Add to Home Screen`,
+      `To log in:`,
+      `1. Open https://crm.onpointprodoors.com`,
+      `2. Enter your login code: ${_lastInvite.loginCode}`,
+      `3. You'll stay logged in automatically`,
       '',
       `Questions? Call (929) 429-2429`,
     ].join('\n');
@@ -2823,24 +2818,24 @@ const App = (() => {
       const randomNum = Math.floor(1000 + Math.random() * 9000);
       const email = `${name.toLowerCase().replace(/\s+/g, '.')}.${randomNum}@onpointprodoors.com`;
 
-      // Create user via Edge Function (generates magic link)
+      // Create dispatcher (generates login code)
       // Role is always 'dispatcher', no payout or lead source
       const result = await Auth.createUser(
         name,
-        email,
+        null,
         'dispatcher',
         null,
         null
       );
 
-      if (!result.success || !result.magicLink) {
-        throw new Error('Failed to create user or generate magic link');
+      if (!result.success || !result.loginCode) {
+        throw new Error('Failed to create user or generate login code');
       }
 
       // Save for WhatsApp message
       _lastInvite = {
         name,
-        magicLink: result.magicLink
+        loginCode: result.loginCode
       };
 
       // Refresh users list

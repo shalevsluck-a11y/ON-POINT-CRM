@@ -454,7 +454,7 @@ const Auth = (() => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${magicToken}`,
         },
-        body: JSON.stringify({ name, email, role }),
+        body: JSON.stringify({ name, role }),
       });
       clearTimeout(timer);
       json = await res.json();
@@ -467,7 +467,7 @@ const Auth = (() => {
       console.error('Create user error:', errorMsg, 'Full response:', json);
       throw new Error(errorMsg);
     }
-    return json; // { success, userId, name, email, magicLink }
+    return json; // { success, userId, name, email, loginCode }
   }
 
   async function removeUser(userId) {
