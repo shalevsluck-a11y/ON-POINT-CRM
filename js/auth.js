@@ -28,11 +28,23 @@ const Auth = (() => {
     const hash = window.location.hash;
     if (hash && hash.includes('token=')) {
       const token = hash.split('token=')[1].split('&')[0];
-      console.log('[Auth] NEW magic token found in URL - clearing old session and reloading...');
+      console.log('[Auth] NEW magic token found in URL - FORCE CLEARING EVERYTHING...');
 
       // CLEAR ALL old tokens first
       localStorage.clear();
       sessionStorage.clear();
+
+      // Unregister ALL service workers and clear ALL caches
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+          registrations.forEach(reg => reg.unregister());
+        });
+      }
+      if ('caches' in window) {
+        caches.keys().then(keys => {
+          keys.forEach(key => caches.delete(key));
+        });
+      }
 
       // Store NEW token in MULTIPLE locations
       localStorage.setItem('magic_token', token);
@@ -40,9 +52,9 @@ const Auth = (() => {
       localStorage.setItem('onpoint-web-auth-magic_token', token);
       sessionStorage.setItem('magic_token', token);
 
-      // Clear hash and force reload to use new token
+      // Clear hash and force HARD reload
       window.location.hash = '';
-      window.location.reload();
+      window.location.href = window.location.origin + '/?nocache=' + Date.now();
       return; // Stop here, reload will restart init
     }
 
