@@ -235,7 +235,7 @@ app.post('/auth/magic-session', async (req, res) => {
     // Verify magic token and get profile
     let { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('id, name, role, magic_token')
+      .select('id, name, role, magic_token, allowed_lead_sources, assigned_lead_source, phone, color, zip_codes, default_tech_percent, zelle_handle, is_owner')
       .eq('magic_token', magic_token)
       .single();
 
@@ -276,7 +276,15 @@ app.post('/auth/magic-session', async (req, res) => {
       profile: {
         id: profile.id,
         name: profile.name,
-        role: profile.role
+        role: profile.role,
+        allowed_lead_sources: profile.allowed_lead_sources,
+        assigned_lead_source: profile.assigned_lead_source,
+        phone: profile.phone,
+        color: profile.color,
+        zip_codes: profile.zip_codes,
+        default_tech_percent: profile.default_tech_percent,
+        zelle_handle: profile.zelle_handle,
+        is_owner: profile.is_owner
       },
       hashed_token: sessionData.properties.hashed_token,
       email: email
