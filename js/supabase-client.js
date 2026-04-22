@@ -38,9 +38,24 @@ const _supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
     storageKey: storageKey,
   },
   realtime: {
-    params: { eventsPerSecond: 10 },
+    params: {
+      eventsPerSecond: 10,
+      log_level: 'info'
+    },
+    // Force WebSocket connection with explicit endpoint
+    transport: window.WebSocket,
+    timeout: 10000,
+    heartbeatIntervalMs: 30000,
+  },
+  global: {
+    headers: {
+      'apikey': SUPABASE_ANON,
+    },
   },
 });
+
+// Log realtime connection status
+console.log('[Realtime] Client configured with URL:', SUPABASE_URL);
 
 // Single export used throughout the app
 const SupabaseClient = _supa;

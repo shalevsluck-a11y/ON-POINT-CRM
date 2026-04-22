@@ -335,8 +335,17 @@ const DB = (() => {
     }
 
     // Subscribe with status callback for reconnection handling
-    return channel.subscribe((status) => {
-      console.log('Realtime jobs channel status:', status);
+    return channel.subscribe((status, err) => {
+      console.log('[Realtime] Jobs channel status:', status, err ? 'Error:' : '', err);
+      if (status === 'SUBSCRIBED') {
+        console.log('[Realtime] ✓ Successfully subscribed to jobs channel');
+      } else if (status === 'CLOSED') {
+        console.warn('[Realtime] ✗ Jobs channel closed - will retry');
+      } else if (status === 'CHANNEL_ERROR') {
+        console.error('[Realtime] ✗ Channel error:', err);
+      } else if (status === 'TIMED_OUT') {
+        console.error('[Realtime] ✗ Subscription timed out');
+      }
       if (onStatusChange) onStatusChange(status);
     });
   }
