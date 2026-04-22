@@ -13,15 +13,18 @@ CREATE POLICY jobs_dispatcher_select ON jobs
   USING (
     get_user_role() = 'dispatcher' AND (
       -- If allowed_lead_sources is NULL, see all jobs (unrestricted)
-      (SELECT allowed_lead_sources FROM profiles WHERE id = auth.uid()) IS NULL
+      NOT EXISTS (
+        SELECT 1 FROM profiles
+        WHERE id = auth.uid()
+        AND allowed_lead_sources IS NOT NULL
+      )
       OR
       -- If allowed_lead_sources has values, see only jobs from those sources
-      (
-        array_length((SELECT allowed_lead_sources FROM profiles WHERE id = auth.uid()), 1) > 0
-        AND source = ANY((SELECT allowed_lead_sources FROM profiles WHERE id = auth.uid()))
+      EXISTS (
+        SELECT 1 FROM profiles
+        WHERE id = auth.uid()
+        AND allowed_lead_sources IS NOT NULL
+        AND jobs.source = ANY(allowed_lead_sources)
       )
     )
   );
-
-COMMENT ON POLICY jobs_dispatcher_select ON jobs IS
-  'Dispatcher can see all jobs if allowed_lead_sources is NULL, or only assigned sources if configured';
