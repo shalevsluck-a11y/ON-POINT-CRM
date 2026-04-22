@@ -34,7 +34,10 @@ const LoginScreen = (() => {
     errEl.classList.add('hidden');
 
     try {
-      await Auth.login(email, password);
+      await Auth.login(email, password, (attempt) => {
+        // Show "Connecting..." during retries
+        btn.textContent = `Connecting... (${attempt}/3)`;
+      });
       // onAuthChange in app.js will handle navigation.
       // Re-enable the button so it's ready if this screen is ever shown again.
       btn.disabled    = false;
@@ -61,6 +64,8 @@ const LoginScreen = (() => {
       return 'Please verify your email first.';
     if (msg.includes('Too many requests'))
       return 'Too many attempts. Please wait a moment.';
+    if (msg.includes('CONNECTION_TIMEOUT') || msg.includes('CONNECTION_ERROR') || msg.includes('timeout') || msg.includes('timed out'))
+      return 'Please check your connection and try again.';
     return msg;
   }
 
