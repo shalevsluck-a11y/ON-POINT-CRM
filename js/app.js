@@ -149,7 +149,7 @@ const App = (() => {
     const settings = DB.getSettings();
     if (settings.appsScriptUrl) setTimeout(() => SyncManager.syncAll(), 3000);
 
-    // Background polling: refresh jobs every 10 seconds to ensure realtime sync
+    // Background polling: refresh jobs every 30 seconds as fallback
     setInterval(async () => {
       try {
         await DB.syncJobsFromRemote();
@@ -159,7 +159,7 @@ const App = (() => {
       } catch (e) {
         console.warn('Background sync error:', e.message);
       }
-    }, 10000);
+    }, 30000);
 
   }
 
