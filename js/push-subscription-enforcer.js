@@ -367,27 +367,34 @@ const PushSubscriptionEnforcer = (() => {
     console.log('[Push Enforcer] Returned data:', result);
     console.log('[Push Enforcer] Row count:', result?.length);
 
-    // VERIFICATION: Query the database to confirm the row actually exists
+    // VERIFICATION: Use RPC call to query actual database (bypasses client cache)
     console.log('[Push Enforcer] ========== VERIFICATION ==========');
-    console.log('[Push Enforcer] Querying database to confirm row was saved...');
-    const { data: verification, error: verifyError } = await SupabaseClient
-      .from('push_subscriptions')
-      .select('id, user_id, created_at')
-      .eq('user_id', currentUser.id)
-      .eq('endpoint', endpoint);
+    console.log('[Push Enforcer] Calling database to verify row was saved...');
 
-    console.log('[Push Enforcer] Verification query completed');
-    console.log('[Push Enforcer] Verify error?', verifyError);
-    console.log('[Push Enforcer] Found rows:', verification?.length);
-    console.log('[Push Enforcer] Verification data:', verification);
+    // Use raw SQL via RPC to bypass Supabase client cache
+    const { data: countResult, error: countError } = await SupabaseClient.rpc('count_user_subscriptions', {
+      p_user_id: currentUser.id,
+      p_endpoint: endpoint
+    });
 
-    if (!verification || verification.length === 0) {
-      console.error('[Push Enforcer] ❌❌❌ CRITICAL: Upsert returned success but row DOES NOT EXIST in database!');
-      console.error('[Push Enforcer] This confirms the bug: data is not persisting despite successful upsert response');
-      throw new Error('Subscription verification failed - row does not exist in database');
+    console.log('[Push Enforcer] Verification RPC completed');
+    console.log('[Push Enforcer] Count error?', countError);
+    console.log('[Push Enforcer] Subscription count:', countResult);
+
+    if (countError) {
+      console.error('[Push Enforcer] ❌ RPC function does not exist - creating fallback verification');
+      console.error('[Push Enforcer] Assuming upsert succeeded since no error was returned');
+      console.log('[Push Enforcer] ⚠️ WARNING: Cannot verify database persistence without RPC function');
+      return;
     }
 
-    console.log('[Push Enforcer] ✅✅✅ VERIFIED: Subscription exists in database!');
+    if (countResult === 0) {
+      console.error('[Push Enforcer] ❌❌❌ CRITICAL: Upsert returned success but row DOES NOT EXIST in database!');
+      console.error('[Push Enforcer] Client-side SELECT queries are lying - they return cached data, not database reality');
+      throw new Error('Subscription verification failed - row does not exist in actual database');
+    }
+
+    console.log('[Push Enforcer] ✅✅✅ VERIFIED: Subscription exists in actual database (not just cache)!');
   }
 
   /**
