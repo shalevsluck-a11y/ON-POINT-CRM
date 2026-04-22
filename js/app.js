@@ -1176,11 +1176,13 @@ const App = (() => {
       console.log('[SOURCE FILTER] All sources:', sources.map(s => s.name));
 
       if (allowedSourceNames && allowedSourceNames.length > 0) {
-        // Filter to only show allowed sources
-        filteredSources = sources.filter(s => allowedSourceNames.includes(s.name));
+        // Filter to only show allowed sources (case-insensitive)
+        const allowedNamesLower = allowedSourceNames.map(n => n.toLowerCase());
+        filteredSources = sources.filter(s => allowedNamesLower.includes(s.name.toLowerCase()));
         console.log('[SOURCE FILTER] Filtered to:', filteredSources.map(s => s.name));
       } else {
-        console.log('[SOURCE FILTER] No allowed sources set - showing all (this is the bug!)');
+        console.log('[SOURCE FILTER] WARNING: No allowed sources set - blocking all sources');
+        filteredSources = []; // Don't show any sources if none are allowed
       }
     }
 
@@ -1202,17 +1204,20 @@ const App = (() => {
     // Auto-select and disable if dispatcher has only one allowed source
     if (Auth.isDispatcher() && allowedSourceNames && allowedSourceNames.length === 1) {
       const sourceName = allowedSourceNames[0];
-      if (sourceName === 'my_lead') {
+      if (sourceName.toLowerCase() === 'my_lead' || sourceName === 'my_lead') {
         select.value = 'my_lead';
       } else {
-        const source = sources.find(s => s.name === sourceName);
+        // Case-insensitive search for the source
+        const source = sources.find(s => s.name.toLowerCase() === sourceName.toLowerCase());
         if (source) {
           select.value = source.id;
+          console.log('[SOURCE FILTER] Auto-selected source:', source.name, 'ID:', source.id);
         }
       }
       select.disabled = true;
       select.style.opacity = '0.6';
       select.style.cursor = 'not-allowed';
+      console.log('[SOURCE FILTER] Dropdown disabled (single source)');
     } else {
       select.disabled = false;
       select.style.opacity = '1';
