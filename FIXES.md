@@ -213,3 +213,63 @@ Run `supabase/migrations/038_diagnose_and_fix_triggers.sql` in Supabase SQL Edit
 - Preview buttons work with real MP3 playback ✅
 - Console is clean ✅
 
+---
+
+## TASK 4: Force Push Subscription on Every Device ✅
+
+### Changes Made:
+1. **Created push-subscription-enforcer.js (350 lines)**:
+   - Runs on EVERY page load, login, focus, visibility change
+   - Shows BLOCKING modal if permission is 'default'
+   - Shows PERSISTENT red banner if permission is 'denied'
+   - Never gives up until user is subscribed
+   - iOS-safe: Re-verifies subscription when page becomes visible
+
+2. **Blocking Permission Modal**:
+   - Cannot dismiss without clicking "Enable Notifications"
+   - Full-screen overlay (z-index: 99999)
+   - Clear warning: "You will miss new jobs if you skip this"
+   - User gesture (button click) triggers Notification.requestPermission()
+
+3. **Denied Permission Banner**:
+   - Persistent red banner at top of screen
+   - Shows until permission is granted
+   - iPhone-specific instructions on iOS devices
+   - Desktop instructions for Chrome/Firefox/Edge
+
+4. **Subscription Logic**:
+   - Checks for existing subscription first
+   - Creates new subscription if none exists
+   - Saves to database with upsert (no duplicates)
+   - UNIQUE(user_id, endpoint) constraint already exists ✅
+   - Runs every time page becomes visible (iOS service worker killer fix)
+
+5. **Integration**:
+   - Added script to index.html
+   - Replaced silent subscribeToPush() with PushSubscriptionEnforcer.init()
+   - Initializes 1 second after login
+   - Sets up visibilitychange and focus listeners
+
+### Technical Details:
+- VAPID public key: BNThACyKMai6hck9NCqpLf_Qdyx_qhpcqGCeOI-_qr1ZS-FyfSx1woTtR9ERYjXBtn8bT5u3am_dBvSADIy_oLc
+- Database table: push_subscriptions with UNIQUE(user_id, endpoint)
+- upsert on conflict: Prevents duplicate subscriptions
+- Service worker ready check: Waits for SW before subscribing
+- Rate limiting: 5 second interval between enforcement attempts
+
+### Status: ✅ DEPLOYED
+- Enforcer live at https://crm.onpointprodoors.com
+- PM2 online
+- No console errors
+- Ready for testing
+
+### Next: TEST WITH MULTIPLE DEVICES
+See PUSH_SUBSCRIPTION_TEST.md for complete test plan.
+
+**Critical Test:**
+1. Clear push_subscriptions table
+2. Login on Device A → modal appears → allow → 1 row
+3. Login on Device B → modal appears → allow → 2 rows
+4. Create job on Device A → Device B gets push popup
+5. Device A (creator) gets NOTHING
+
