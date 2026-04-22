@@ -152,6 +152,8 @@ self.addEventListener('push', (event) => {
   try { data = event.data ? event.data.json() : data; }
   catch (_e) { data.body = event.data ? event.data.text() : data.body; }
 
+  console.log('[SW] Push notification received:', data);
+
   event.waitUntil(
     self.registration.showNotification(data.title || 'On Point CRM', {
       body:    data.body || '',
@@ -159,7 +161,11 @@ self.addEventListener('push', (event) => {
       badge:   '/assets/icon.svg',
       tag:     data.jobId ? `job-${data.jobId}` : 'onpoint-notif',
       data:    { jobId: data.jobId || null },
-      vibrate: [100, 50, 100],
+      vibrate: [200, 100, 200],
+      requireInteraction: false,
+      silent: false,
+      // iOS/Safari specific
+      actions: [],
     })
   );
 });
