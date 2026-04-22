@@ -90,25 +90,35 @@ const Auth = (() => {
       if (session?.user) {
         await _loadProfile(session.user);
         _startSessionHealthCheck();
-        // CRITICAL: Call onAuthChange callback for existing session
-        if (_onAuthChange) _onAuthChange(_currentUser);
       }
     } catch (e) {
       console.error('Auth.init: getSession failed:', e.message);
     }
+
+    // CRITICAL: Always call onAuthChange at end of init to show login screen if no user
+    if (_onAuthChange) {
+      _onAuthChange(_currentUser);
+    }
+
     return _currentUser;
   }
 
   async function _loginWithMagicToken(token) {
-    console.log('[Auth] Exchanging magic token for Supabase session:', token.substring(0, 15) + '...');
+    console.log('[Auth] Exchanging login code for session:', token.substring(0, 15) + '...');
 
     try {
-      // Exchange magic token for proper Supabase session via server
+      // Exchange login code for proper Supabase session via server with timeout
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
       const response = await fetch('/auth/magic-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ magic_token: token })
+        body: JSON.stringify({ magic_token: token }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeout);
 
       if (!response.ok) {
         const error = await response.json();
