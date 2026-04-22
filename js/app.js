@@ -2734,7 +2734,8 @@ const App = (() => {
   async function submitInvite() {
     if (!Auth.isAdmin()) { showToast('Not authorized', 'error'); return; }
     const name  = document.getElementById('invite-name')?.value?.trim();
-    const email = document.getElementById('invite-email')?.value?.trim();
+    const username = document.getElementById('invite-email')?.value?.trim();
+    const password = document.getElementById('invite-password')?.value;
     const errEl = document.getElementById('invite-error');
     const btn   = document.getElementById('invite-submit-btn');
 
@@ -2745,41 +2746,49 @@ const App = (() => {
       errEl.classList.remove('hidden');
       return;
     }
-    if (!email || !email.includes('@')) {
-      errEl.textContent = 'A valid email address is required.';
+    if (!username) {
+      errEl.textContent = 'Username is required.';
       errEl.classList.remove('hidden');
       return;
     }
+    if (!password || password.length < 6) {
+      errEl.textContent = 'Password must be at least 6 characters.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
     btn.disabled    = true;
-    btn.textContent = 'Creating dispatcherï¿½';
+    btn.textContent = 'Creating dispatcher…';
 
     try {
-      // Add 15 second hard timeout to prevent infinite loading
-      const createPromise = Auth.inviteUser(name, 'dispatcher', email);
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Failed to create account â€” request timed out. Please try again.')), 15000)
-      );
-      const result = await Promise.race([createPromise, timeoutPromise]);
-      const { setupLink, loginEmail } = result || {};
+      // Convert username to email format
+      const email = `${username}@onpointprodoors.com`;
 
-      _lastInvite = { name, setupLink, loginEmail };
+      const createPromise = Auth.createUser(name, email, password, 'dispatcher', null, null);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Failed to create dispatcher — request timed out. Please try again.')), 15000)
+      );
+      await Promise.race([createPromise, timeoutPromise]);
+
+      _lastInvite = { name, email: username, password };
       _renderAdminUsersSection().catch(() => {});
 
       document.getElementById('invite-form-body').classList.add('hidden');
       document.getElementById('invite-success-body').classList.remove('hidden');
-      document.getElementById('invite-success-email').value = loginEmail;
-      document.getElementById('invite-success-password').value = setupLink;
+      document.getElementById('invite-success-email').value = username;
+      document.getElementById('invite-success-password').value = password;
       btn.disabled = false;
       btn.textContent = 'Create Dispatcher Account';
 
     } catch (e) {
-      console.error('Create user error:', e);
-      errEl.textContent = e.message || 'Failed to create account â€” please try again';
+      console.error('Create dispatcher error:', e);
+      errEl.textContent = e.message || 'Failed to create dispatcher — please try again';
       errEl.classList.remove('hidden');
       btn.disabled    = false;
-      btn.textContent = 'Create Account';
+      btn.textContent = 'Create Dispatcher Account';
     }
   }
+
 
   async function _confirmRemoveUser(userId, userName) {
     let jobWarning = '';
