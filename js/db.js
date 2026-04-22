@@ -149,7 +149,8 @@ const DB = (() => {
     console.log('[DB] _upsertJobRemote - Upserting row:', { job_id: row.job_id, customer_name: row.customer_name, source: row.source });
     const { data, error } = await supa.from('jobs').upsert(row).select();
     if (error) {
-      console.error('[DB] _upsertJobRemote - Upsert FAILED:', error);
+      console.error('[DB] _upsertJobRemote - Upsert FAILED:', JSON.stringify(error, null, 2));
+      console.error('[DB] _upsertJobRemote - Error details:', error.message, error.code, error.details, error.hint);
       throw error;
     }
     console.log('[DB] _upsertJobRemote - Upsert SUCCESS, returned data:', data);

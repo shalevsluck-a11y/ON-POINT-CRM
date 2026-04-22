@@ -1161,6 +1161,14 @@ const App = (() => {
     if (!select) return;
     const settings = DB.getSettings();
     const sources  = settings.leadSources || [];
+    const user = Auth.getUser();
+
+    console.log('[SOURCE DROPDOWN] === POPULATING SOURCE DROPDOWN ===');
+    console.log('[SOURCE DROPDOWN] Current user:', user);
+    console.log('[SOURCE DROPDOWN] User role:', user?.role);
+    console.log('[SOURCE DROPDOWN] Is dispatcher?', Auth.isDispatcher());
+    console.log('[SOURCE DROPDOWN] Is admin?', Auth.isAdmin());
+    console.log('[SOURCE DROPDOWN] All sources from settings:', sources);
 
     // Filter sources based on dispatcher permissions
     let filteredSources = sources;
@@ -1187,23 +1195,34 @@ const App = (() => {
     }
 
     // Build dropdown with filtered sources
+    console.log('[SOURCE DROPDOWN] Filtered sources:', filteredSources);
+    console.log('[SOURCE DROPDOWN] Building dropdown...');
     select.innerHTML = '';
 
     // Add "My Lead" if allowed
-    if (!Auth.isDispatcher() || !allowedSourceNames || allowedSourceNames.includes('my_lead')) {
+    const shouldShowMyLead = !Auth.isDispatcher() || !allowedSourceNames || allowedSourceNames.includes('my_lead');
+    console.log('[SOURCE DROPDOWN] Should show My Lead?', shouldShowMyLead);
+    if (shouldShowMyLead) {
       select.innerHTML = `<option value="my_lead">My Lead (Direct)</option>`;
+      console.log('[SOURCE DROPDOWN] Added "My Lead" option');
     }
 
+    console.log('[SOURCE DROPDOWN] Adding', filteredSources.length, 'source options...');
     filteredSources.forEach(s => {
       const opt = document.createElement('option');
       opt.value = s.id;
       opt.textContent = `${s.name} (${s.contractorPercent || 0}%)`;
       select.appendChild(opt);
+      console.log('[SOURCE DROPDOWN] Added source:', s.name, 'ID:', s.id);
     });
+
+    // Log final dropdown state
+    console.log('[SOURCE DROPDOWN] Final dropdown options:', Array.from(select.options).map(o => ({ value: o.value, text: o.textContent })));
 
     // Auto-select and disable if dispatcher has only one allowed source
     if (Auth.isDispatcher() && allowedSourceNames && allowedSourceNames.length === 1) {
       const sourceName = allowedSourceNames[0];
+      console.log('[SOURCE DROPDOWN] Dispatcher with single source, auto-selecting:', sourceName);
       if (sourceName.toLowerCase() === 'my_lead' || sourceName === 'my_lead') {
         select.value = 'my_lead';
       } else {
@@ -1211,18 +1230,19 @@ const App = (() => {
         const source = sources.find(s => s.name.toLowerCase() === sourceName.toLowerCase());
         if (source) {
           select.value = source.id;
-          console.log('[SOURCE FILTER] Auto-selected source:', source.name, 'ID:', source.id);
+          console.log('[SOURCE DROPDOWN] Auto-selected source:', source.name, 'ID:', source.id);
         }
       }
       select.disabled = true;
       select.style.opacity = '0.6';
       select.style.cursor = 'not-allowed';
-      console.log('[SOURCE FILTER] Dropdown disabled (single source)');
+      console.log('[SOURCE DROPDOWN] Dropdown disabled (single source)');
     } else {
       select.disabled = false;
       select.style.opacity = '1';
       select.style.cursor = '';
     }
+    console.log('[SOURCE DROPDOWN] === DONE POPULATING ===');
   }
 
   function onSourceChange() {
