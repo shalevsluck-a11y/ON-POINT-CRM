@@ -3912,15 +3912,15 @@ const App = (() => {
         <div style="max-width:400px;width:100%;text-align:center">
           <img src="assets/logo.jpg" alt="Logo" style="width:120px;height:120px;border-radius:50%;margin-bottom:24px;box-shadow:0 4px 12px rgba(0,0,0,0.3)">
           <h1 style="color:#fff;margin-bottom:12px;font-size:24px">Welcome to On Point CRM</h1>
-          <p style="color:#aaa;margin-bottom:32px;font-size:14px">Paste your magic link below to continue</p>
-          <input type="text" id="magic-link-input" placeholder="Paste your magic link here"
+          <p style="color:#aaa;margin-bottom:32px;font-size:14px">Enter your login code or paste your link</p>
+          <input type="text" id="magic-link-input" placeholder="DISPATCHER-A1B2 or paste full link"
             style="width:100%;padding:14px;border:2px solid #333;border-radius:8px;background:#16213e;color:#fff;font-size:14px;margin-bottom:16px;box-sizing:border-box"
             autocomplete="off" autocapitalize="off">
           <button id="magic-link-btn"
             style="width:100%;padding:14px;background:#0066ff;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer">
             Continue
           </button>
-          <p style="color:#666;margin-top:24px;font-size:12px">Don't have a link? Contact your administrator</p>
+          <p style="color:#666;margin-top:24px;font-size:12px">Don't have a code? Contact your administrator</p>
         </div>
       </div>
     `;
@@ -3929,14 +3929,20 @@ const App = (() => {
     const btn = document.getElementById('magic-link-btn');
 
     const processLink = () => {
-      const link = input.value.trim();
-      if (!link) return;
+      let inputValue = input.value.trim();
+      if (!inputValue) return;
 
-      // Extract token from magic link URL
-      const match = link.match(/token=([a-f0-9]+)/);
-      if (match && match[1]) {
-        const token = match[1];
-        console.log('[App] Magic token extracted from pasted link');
+      let token = inputValue;
+
+      // If input contains URL with #token= or token=, extract just the token
+      if (inputValue.includes('#token=')) {
+        token = inputValue.split('#token=')[1].split('&')[0];
+      } else if (inputValue.includes('token=') && inputValue.includes('http')) {
+        token = inputValue.split('token=')[1].split('&')[0];
+      }
+
+      if (token) {
+        console.log('[App] Login code/token:', token.substring(0, 10) + '...');
         // Store in all locations
         localStorage.setItem('magic_token', token);
         localStorage.setItem('onpoint-pwa-auth-magic_token', token);
@@ -3945,7 +3951,7 @@ const App = (() => {
         // Reload to trigger auth
         window.location.reload();
       } else {
-        alert('Invalid magic link. Please paste the full link you received.');
+        alert('Please enter your login code or paste your full link.');
       }
     };
 
