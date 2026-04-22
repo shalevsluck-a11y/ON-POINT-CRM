@@ -49,8 +49,11 @@ const Auth = (() => {
   }
 
   // ──────────────────────────────────────────────────────────
-  // SESSION HEALTH CHECK — refresh token every 4 minutes
+  // SESSION HEALTH CHECK — verify session is valid
   // ──────────────────────────────────────────────────────────
+  // NOTE: Supabase autoRefreshToken handles token refresh automatically.
+  // This check is primarily for monitoring - we never force logout.
+  // Trust Supabase to manage the session lifecycle.
 
   function _startSessionHealthCheck() {
     if (_sessionHealthInterval) clearInterval(_sessionHealthInterval);
@@ -61,30 +64,35 @@ const Auth = (() => {
 
         if (error || !session) {
           _consecutiveRefreshFailures++;
-          console.warn(`Session health check failed (${_consecutiveRefreshFailures}/2)`);
+          console.warn(`Session health check: no session (count: ${_consecutiveRefreshFailures})`);
 
-          // Try refreshing the session
-          if (_consecutiveRefreshFailures === 1) {
-            setTimeout(async () => {
-              const { error: retryError } = await SupabaseClient.auth.refreshSession();
-              if (!retryError) {
-                console.log('Session refreshed successfully on retry');
-                _consecutiveRefreshFailures = 0;
-              }
-            }, 30000); // Retry after 30 seconds
-          } else if (_consecutiveRefreshFailures >= 2) {
-            // After 2 consecutive failures, force re-login
-            console.error('Session health check failed twice - forcing re-login');
+          // Try refreshing the session if it's missing
+          // But DON'T force logout - let Supabase handle expiration
+          if (_consecutiveRefreshFailures <= 3) {
+            // Attempt refresh (Supabase will handle if refresh token is valid)
+            const { error: refreshError } = await SupabaseClient.auth.refreshSession();
+            if (!refreshError) {
+              console.log('Session refreshed successfully');
+              _consecutiveRefreshFailures = 0;
+            } else {
+              console.warn('Session refresh failed:', refreshError.message);
+              // Don't logout - user might be offline, Supabase will handle expiration
+            }
+          } else {
+            // After multiple failures, stop checking but DON'T logout
+            // User will be logged out naturally when they try to use the app
+            console.warn('Session health check: stopping after repeated failures (session may have expired)');
             _stopSessionHealthCheck();
-            await logout();
           }
         } else {
           _consecutiveRefreshFailures = 0;
+          // Session is healthy - no action needed
         }
       } catch (e) {
         console.error('Session health check error:', e);
+        // Don't logout on errors - might just be network issues
       }
-    }, 240000); // Every 4 minutes (240,000ms)
+    }, 600000); // Every 10 minutes (600,000ms) - less aggressive than before
   }
 
   function _stopSessionHealthCheck() {
