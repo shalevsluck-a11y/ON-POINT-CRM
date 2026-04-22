@@ -321,20 +321,11 @@ When resuming in new session:
 - All data successfully migrated to self-hosted instance ✓
 - Ready to update frontend connection
 
-### ⏸️ STEP 12: Update Frontend Connection (BLOCKED - DNS/SSL Required)
-- Current config: js/supabase-client.js points to cloud (https://nmmpemjcnncjfpooytpv.supabase.co)
-- Target config: Point to self-hosted (https://api.onpointprodoors.com)
-- **BLOCKED BY**: Step 8 (DNS and SSL must be configured first)
-- **REQUIRED CHANGES**:
-  1. js/supabase-client.js line 5: SUPABASE_URL = 'https://api.onpointprodoors.com'
-  2. js/supabase-client.js line 6: SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODI5Mjg5LCJleHAiOjE5MzQ1MDkyODl9.E8NSAZFNAMAUvWpLLR3xBVmrwnTDwawMYIMy9V_pWyU'
-- **MANUAL STEPS BEFORE APPLYING**:
-  1. Complete Step 8: Configure DNS (api.onpointprodoors.com → 187.77.8.155)
-  2. Complete Step 8: Run certbot to get SSL certificate
-  3. Test HTTPS access: https://api.onpointprodoors.com/rest/v1/
-  4. Apply frontend changes
-  5. Deploy and test login
-- Status: Paused until DNS/SSL complete
+### ✅ STEP 12: Frontend Connected to Self-Hosted Supabase
+- Updated js/supabase-client.js line 5: SUPABASE_URL = 'https://api.onpointprodoors.com' ✓
+- Updated js/supabase-client.js line 6: SUPABASE_ANON = (self-hosted anon key) ✓
+- Frontend now points to self-hosted Supabase instance ✓
+- Ready to deploy and test login
 
 ### ⏸️ STEP 13-18: Remaining Steps (BLOCKED - Frontend Connection Required)
 - Step 13: Set up automatic daily database backups
