@@ -135,19 +135,19 @@
       <img src="assets/logo.jpg" alt="On Point Pro Doors" class="login-logo">
     </div>
     <h1 class="login-title">On Point Pro Doors</h1>
-    <p class="login-sub">Paste your magic link or enter email</p>
+    <p class="login-sub">Enter your login code</p>
 
     <div id="login-error" class="login-error hidden"></div>
 
-    <form onsubmit="LoginScreen.submit();return false;" autocomplete="on">
+    <form onsubmit="LoginScreen.submit();return false;" autocomplete="off">
     <div class="field-group">
-      <label class="field-label">Magic Link or Email</label>
-      <input type="text" id="login-email" class="field-input" placeholder="Paste magic link or enter email"
-             autocomplete="off" autocapitalize="none" autofocus>
+      <label class="field-label">Login Code</label>
+      <input type="text" id="login-email" class="field-input" placeholder="Enter your code"
+             autocomplete="off" autocapitalize="characters" autofocus style="text-transform:uppercase">
     </div>
 
     <button type="submit" class="btn btn-primary btn-full" id="login-btn">
-      Continue
+      Login
     </button>
     </form>
 

@@ -86,18 +86,22 @@ app.post('/admin/create-user', async (req, res) => {
       return res.status(403).json({ error: 'Admin only' });
     }
 
-    const { name, email, role } = req.body;
-    if (!name || !email || !role) {
-      return res.status(400).json({ error: 'Name, email, and role are required' });
+    const { name, role } = req.body;
+    if (!name || !role) {
+      return res.status(400).json({ error: 'Name and role are required' });
     }
 
-    // Generate unique magic token for custom auth
-    const magicToken = Math.random().toString(36).substring(2) +
-                       Math.random().toString(36).substring(2) +
-                       Date.now().toString(36);
+    // Generate simple login code (e.g., ADMIN-A1B2, TECH-X7Y9)
+    const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const loginCode = `${role.toUpperCase()}-${randomPart}`;
 
-    console.log(`[CREATE USER] Creating user: ${name}, email: ${email}, role: ${role}`);
-    console.log(`[CREATE USER] Generated magic token: ${magicToken.substring(0, 10)}...`);
+    // Auto-generate email from name
+    const emailSafeName = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const randomSuffix = Math.random().toString(36).substring(2, 6);
+    const email = `${emailSafeName}.${randomSuffix}@onpointprodoors.com`;
+
+    console.log(`[CREATE USER] Creating user: ${name}, role: ${role}`);
+    console.log(`[CREATE USER] Login code: ${loginCode}`);
 
     // Generate random temporary password for Supabase auth
     const tempPassword = Math.random().toString(36) + Math.random().toString(36);
@@ -117,14 +121,14 @@ app.post('/admin/create-user', async (req, res) => {
 
     console.log(`[CREATE USER] Auth user created with ID: ${newUser.user.id}`);
 
-    // Create profile with magic token
+    // Create profile with login code
     const { error: createProfileError } = await supabaseAdmin
       .from('profiles')
       .upsert({
         id: newUser.user.id,
         name,
         role,
-        magic_token: magicToken
+        magic_token: loginCode
       });
 
     if (createProfileError) {
@@ -133,18 +137,14 @@ app.post('/admin/create-user', async (req, res) => {
     }
 
     console.log(`[CREATE USER] Profile created successfully`);
-
-    // Build magic link using custom token format
-    const magicLink = `https://crm.onpointprodoors.com/#token=${magicToken}`;
-
-    console.log(`[CREATE USER] Magic link: ${magicLink.substring(0, 60)}...`);
+    console.log(`[CREATE USER] Login code: ${loginCode}`);
 
     res.json({
       success: true,
       userId: newUser.user.id,
       name,
       email,
-      magicLink: magicLink
+      loginCode: loginCode
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
