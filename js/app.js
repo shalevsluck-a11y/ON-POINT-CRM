@@ -381,7 +381,7 @@ const App = (() => {
     }
     if (viewName === 'calendar')   renderCalendar();
     if (viewName === 'settings')   _loadSettingsForm();
-    if (viewName === 'new-job')    _initNewJobView();
+    if (viewName === 'new-job')    _initNewJobView().catch(e => console.error('[NEW JOB] Init error:', e));
 
     // Scroll to top
     if (viewEl) viewEl.scrollTop = 0;
@@ -856,7 +856,19 @@ const App = (() => {
   // NEW JOB FLOW
   // ══════════════════════════════════════════════════════════
 
-  function _initNewJobView() {
+  async function _initNewJobView() {
+    console.log('[NEW JOB] Initializing new job view...');
+
+    // CRITICAL: Force settings sync before showing the form
+    // This ensures lead sources are loaded before populating dropdown
+    console.log('[NEW JOB] Force syncing settings from database...');
+    try {
+      await DB.syncSettingsFromRemote();
+      console.log('[NEW JOB] ✓ Settings sync complete');
+    } catch (e) {
+      console.error('[NEW JOB] Settings sync failed:', e);
+    }
+
     _state.currentStep = 1;
     _state.newJobDraft = {};
     _state.parsedLead  = null;
@@ -1168,7 +1180,15 @@ const App = (() => {
     console.log('[SOURCE DROPDOWN] User role:', user?.role);
     console.log('[SOURCE DROPDOWN] Is dispatcher?', Auth.isDispatcher());
     console.log('[SOURCE DROPDOWN] Is admin?', Auth.isAdmin());
+    console.log('[SOURCE DROPDOWN] Settings object:', settings);
     console.log('[SOURCE DROPDOWN] All sources from settings:', sources);
+    console.log('[SOURCE DROPDOWN] Sources count:', sources.length);
+
+    // CRITICAL CHECK: If no sources loaded, settings might not be synced yet
+    if (sources.length === 0) {
+      console.error('[SOURCE DROPDOWN] ⚠️ NO LEAD SOURCES IN SETTINGS! This will cause dropdown to show only My Lead');
+      console.error('[SOURCE DROPDOWN] Settings sync may have failed or not completed yet');
+    }
 
     // Filter sources based on dispatcher permissions
     let filteredSources = sources;
