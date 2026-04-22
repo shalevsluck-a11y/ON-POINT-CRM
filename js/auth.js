@@ -17,6 +17,19 @@ const Auth = (() => {
   async function init(onAuthChange) {
     _onAuthChange = onAuthChange;
 
+    // Check for magic link token in URL hash
+    const hash = window.location.hash;
+    if (hash && hash.includes('token=')) {
+      const token = hash.split('token=')[1].split('&')[0];
+      window.location.hash = ''; // Clear the token from URL
+      try {
+        await _loginWithMagicToken(token);
+        return _currentUser;
+      } catch (e) {
+        console.error('Magic link login failed:', e.message);
+      }
+    }
+
     // Listen for auth state changes
     SupabaseClient.auth.onAuthStateChange(async (event, session) => {
       try {
@@ -46,6 +59,62 @@ const Auth = (() => {
       console.error('Auth.init: getSession failed:', e.message);
     }
     return _currentUser;
+  }
+
+  async function _loginWithMagicToken(token) {
+    // Store token permanently
+    localStorage.setItem('magic_token', token);
+
+    // Query magic_tokens table to join with auth.users to get email
+    const { data, error } = await SupabaseClient
+      .from('magic_tokens')
+      .select('user_id, expires_at')
+      .eq('token', token)
+      .single();
+
+    if (error || !data) {
+      localStorage.removeItem('magic_token');
+      throw new Error('Invalid magic link');
+    }
+
+    // Check expiry
+    if (new Date(data.expires_at) < new Date()) {
+      localStorage.removeItem('magic_token');
+      throw new Error('Magic link expired');
+    }
+
+    // Get profile to find email
+    const { data: profile } = await SupabaseClient
+      .from('profiles')
+      .select('*')
+      .eq('id', data.user_id)
+      .single();
+
+    if (!profile) {
+      localStorage.removeItem('magic_token');
+      throw new Error('User not found');
+    }
+
+    // Use the token as the password (first 20 chars)
+    const magicPassword = token.substring(0, 20);
+
+    // Try to login - this will work if admin set the password to match the token
+    try {
+      // Construct email from username
+      const username = profile.name.toLowerCase();
+      const email = username.includes('@') ? username : `${username}@onpointprodoors.com`;
+
+      await login(email, magicPassword);
+    } catch (e) {
+      // If login fails, user needs to login manually once
+      // Store their info so we can show instructions
+      localStorage.setItem('magic_link_pending', JSON.stringify({
+        name: profile.name,
+        token: token,
+        password: magicPassword
+      }));
+      throw new Error('First time setup - please contact admin to activate your magic link');
+    }
   }
 
   // ──────────────────────────────────────────────────────────
