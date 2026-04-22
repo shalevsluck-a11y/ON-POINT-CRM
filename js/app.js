@@ -220,13 +220,14 @@ const App = (() => {
     const syncBtn = document.getElementById('btn-sync');
     if (syncBtn) syncBtn.classList.toggle('hidden', !Auth.isAdminOrDisp());
 
-    // Hide Settings from user menu for non-admins (dispatcher should not see Settings)
+    // Show Settings to admin and dispatcher (for notification settings)
     const isAdmin = Auth.isAdmin();
+    const canAccessSettings = Auth.isAdminOrDisp();
     const settingsNav = document.querySelector('.nav-item[data-view="settings"]');
-    if (settingsNav) settingsNav.classList.toggle('hidden', !isAdmin);
+    if (settingsNav) settingsNav.classList.toggle('hidden', !canAccessSettings);
 
     const settingsMenu = document.getElementById('nav-settings');
-    if (settingsMenu) settingsMenu.classList.toggle('hidden', !isAdmin);
+    if (settingsMenu) settingsMenu.classList.toggle('hidden', !canAccessSettings);
   }
 
   function _updateRealtimeStatus(status) {
@@ -3569,39 +3570,13 @@ const App = (() => {
   }
 
   // ══════════════════════════════════════════════════════════
-  // DARK MODE
+  // LIGHT MODE ONLY (dark mode removed per user request)
   // ══════════════════════════════════════════════════════════
 
   function _initDarkMode() {
-    // Dark navy is the default — only apply light if user explicitly chose it
-    const savedMode = localStorage.getItem('op_dark_mode');
-    if (savedMode === '0') {
-      document.documentElement.setAttribute('data-theme', 'light');
-    } else {
-      document.documentElement.removeAttribute('data-theme'); // default = dark navy
-    }
-    _updateDarkModeBtn();
-  }
-
-  function _updateDarkModeBtn() {
-    const btn = document.getElementById('btn-dark-mode');
-    if (!btn) return;
-    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-    btn.innerHTML = isLight
-      ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>'
-      : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
-  }
-
-  function toggleDarkMode() {
-    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-    if (isLight) {
-      document.documentElement.removeAttribute('data-theme'); // back to dark navy
-      localStorage.setItem('op_dark_mode', '1');
-    } else {
-      document.documentElement.setAttribute('data-theme', 'light');
-      localStorage.setItem('op_dark_mode', '0');
-    }
-    _updateDarkModeBtn();
+    // ALWAYS use light theme - dark mode removed
+    document.documentElement.setAttribute('data-theme', 'light');
+    localStorage.setItem('op_dark_mode', '0');
   }
 
   // ══════════════════════════════════════════════════════════
@@ -4351,9 +4326,6 @@ const App = (() => {
     // Kanban / view toggle
     toggleJobsView,
     renderKanban,
-
-    // Dark mode
-    toggleDarkMode,
 
     // Follow-up
     sendFollowUpWhatsApp,

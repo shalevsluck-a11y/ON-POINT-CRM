@@ -239,15 +239,12 @@ const RealtimeManager = (() => {
   }
 
   function _updatePresenceUI() {
-    const container = document.getElementById('online-users');
-    if (!container) return;
+    const countEl = document.getElementById('online-count');
+    if (!countEl) return;
 
     const count = _onlineUsers.size;
-    container.innerHTML = `
-      <span style="color: var(--color-text-secondary); font-size: 13px;">
-        <span style="color: #10B981;">●</span> ${count} online
-      </span>
-    `;
+    countEl.textContent = `${count} online`;
+    console.log('[RealtimeManager] Online users:', count);
   }
 
   // ──────────────────────────────────────────────────────────
