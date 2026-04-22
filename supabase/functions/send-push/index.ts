@@ -14,7 +14,7 @@ serve(async (req) => {
 
   try {
     // Parse request body first to check if this is a database trigger call
-    const { title, body, jobId, targetUserId, broadcast, roles } = await req.json();
+    const { title, body, jobId, targetUserId, broadcast, roles, excludedUserId } = await req.json();
 
     // Database triggers use broadcast + roles pattern - these are trusted internal calls
     const isDatabaseTrigger = broadcast === true && Array.isArray(roles) && roles.length > 0;
@@ -72,7 +72,14 @@ serve(async (req) => {
     } else if (broadcast && roles && roles.length > 0) {
       // Broadcast to specific roles - join with profiles to filter by role
       const { data: profiles } = await adminClient.from('profiles').select('id').in('role', roles);
-      const userIds = profiles?.map(p => p.id) || [];
+      let userIds = profiles?.map(p => p.id) || [];
+
+      // Exclude the user who triggered the action (creator/closer)
+      if (excludedUserId) {
+        userIds = userIds.filter(id => id !== excludedUserId);
+        console.log(`Excluding user ${excludedUserId} from broadcast`);
+      }
+
       if (userIds.length === 0) {
         return new Response(JSON.stringify({ success: true, sent: 0 }), {
           status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },

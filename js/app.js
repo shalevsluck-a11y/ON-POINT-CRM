@@ -133,7 +133,17 @@ const App = (() => {
     // Subscribe to live job changes from other sessions
     _jobsChannel = DB.subscribeToJobs(
       (newJob) => {
-        _playNotificationSound();
+        // Only play sound if the job was NOT created/closed by current user
+        const currentUser = Auth.getUser();
+        const isOwnAction = currentUser && (
+          newJob.created_by === currentUser.id ||
+          newJob.closed_by === currentUser.id
+        );
+
+        if (!isOwnAction) {
+          _playNotificationSound();
+        }
+
         renderDashboard();
         renderJobList();
         if (_jobsViewMode === 'kanban' && _state.currentView === 'jobs') renderKanban();
