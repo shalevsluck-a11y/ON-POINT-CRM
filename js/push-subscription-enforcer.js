@@ -307,6 +307,21 @@ const PushSubscriptionEnforcer = (() => {
       return;
     }
 
+    // CRITICAL: Check if Supabase session exists before attempting insert
+    const { data: { session } } = await SupabaseClient.auth.getSession();
+    console.log('[Push Enforcer] ========== SESSION CHECK ==========');
+    console.log('[Push Enforcer] Has session?', !!session);
+    console.log('[Push Enforcer] Session user:', session?.user?.id);
+    console.log('[Push Enforcer] Current user:', currentUser.id);
+    console.log('[Push Enforcer] Match?', session?.user?.id === currentUser.id);
+
+    if (!session) {
+      console.error('[Push Enforcer] ❌ NO SUPABASE SESSION - Cannot save subscription!');
+      console.error('[Push Enforcer] User is logged in via magic link but Supabase session is missing');
+      console.error('[Push Enforcer] This explains why upsert returns success but data does not persist');
+      throw new Error('No Supabase session - subscription cannot be saved');
+    }
+
     const { endpoint, keys } = sub.toJSON ? sub.toJSON() : sub;
 
     console.log('[Push Enforcer] Saving subscription for user:', currentUser.id);
@@ -348,9 +363,31 @@ const PushSubscriptionEnforcer = (() => {
       throw error;
     }
 
-    console.log('[Push Enforcer] ✅ Subscription saved to database successfully');
+    console.log('[Push Enforcer] ✅ Subscription upsert returned success');
     console.log('[Push Enforcer] Returned data:', result);
     console.log('[Push Enforcer] Row count:', result?.length);
+
+    // VERIFICATION: Query the database to confirm the row actually exists
+    console.log('[Push Enforcer] ========== VERIFICATION ==========');
+    console.log('[Push Enforcer] Querying database to confirm row was saved...');
+    const { data: verification, error: verifyError } = await SupabaseClient
+      .from('push_subscriptions')
+      .select('id, user_id, created_at')
+      .eq('user_id', currentUser.id)
+      .eq('endpoint', endpoint);
+
+    console.log('[Push Enforcer] Verification query completed');
+    console.log('[Push Enforcer] Verify error?', verifyError);
+    console.log('[Push Enforcer] Found rows:', verification?.length);
+    console.log('[Push Enforcer] Verification data:', verification);
+
+    if (!verification || verification.length === 0) {
+      console.error('[Push Enforcer] ❌❌❌ CRITICAL: Upsert returned success but row DOES NOT EXIST in database!');
+      console.error('[Push Enforcer] This confirms the bug: data is not persisting despite successful upsert response');
+      throw new Error('Subscription verification failed - row does not exist in database');
+    }
+
+    console.log('[Push Enforcer] ✅✅✅ VERIFIED: Subscription exists in database!');
   }
 
   /**
