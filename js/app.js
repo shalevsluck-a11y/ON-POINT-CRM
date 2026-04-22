@@ -1706,12 +1706,21 @@ const App = (() => {
   // ══════════════════════════════════════════════════════════
 
   function showCloseJobModal(jobId) {
-    if (!Auth.canEditAllJobs()) {
+    const job = DB.getJobById(jobId);
+    if (!job) return;
+
+    // Tech can only close jobs assigned to them
+    if (Auth.isTech() && job.assignedTechId !== Auth.getUser()?.id) {
+      showToast('You can only close jobs assigned to you', 'error');
+      return;
+    }
+
+    // Admin/dispatcher can close any job
+    if (!Auth.canEditAllJobs() && !Auth.isTech()) {
       showToast('Not authorized to close jobs', 'error');
       return;
     }
-    const job = DB.getJobById(jobId);
-    if (!job) return;
+
     if (job.status === 'paid') { showToast('Job already paid', 'info'); return; }
 
     _state.closeJobId = jobId;
@@ -1837,12 +1846,20 @@ const App = (() => {
   }
 
   function finalizeJob(jobId) {
-    if (!Auth.canEditAllJobs()) {
+    const job = DB.getJobById(jobId);
+    if (!job) return;
+
+    // Tech can only finalize jobs assigned to them
+    if (Auth.isTech() && job.assignedTechId !== Auth.getUser()?.id) {
+      showToast('You can only close jobs assigned to you', 'error');
+      return;
+    }
+
+    // Admin/dispatcher can finalize any job
+    if (!Auth.canEditAllJobs() && !Auth.isTech()) {
       showToast('Not authorized to close jobs', 'error');
       return;
     }
-    const job = DB.getJobById(jobId);
-    if (!job) return;
 
     const total     = parseFloat(document.getElementById('close-total')?.value) || 0;
     const parts     = parseFloat(document.getElementById('close-parts')?.value) || 0;
@@ -1871,21 +1888,34 @@ const App = (() => {
       jobId: job.jobId,
     }) : '';
 
-    const updated = {
-      ...job,
-      status:        'paid',
-      jobTotal:      total,
-      partsCost:     parts,
-      taxOption,
-      taxAmount:     calc.taxAmount,
-      techPayout:    calc.techPayout,
-      ownerPayout:   calc.ownerPayout,
-      contractorFee: calc.contractorFee,
-      ownerPct:      100 - (parseFloat(job.techPercent) || 0) - (parseFloat(job.contractorPct) || 0),
-      paymentMethod: method,
-      paidAt:        new Date().toISOString(),
-      zelleMemo,
-    };
+    // Tech can only update specific columns (enforce at client level AND database RLS)
+    const updated = Auth.isTech()
+      ? {
+          ...job,
+          status:        'closed', // Tech closes to 'closed', admin marks as 'paid'
+          jobTotal:      total,
+          partsCost:     parts,
+          taxOption,
+          taxAmount:     calc.taxAmount,
+          techPayout:    calc.techPayout,
+          paymentMethod: method,
+          // Tech CANNOT set: ownerPayout, contractorFee, ownerPct, zelleMemo, paidAt
+        }
+      : {
+          ...job,
+          status:        'paid',
+          jobTotal:      total,
+          partsCost:     parts,
+          taxOption,
+          taxAmount:     calc.taxAmount,
+          techPayout:    calc.techPayout,
+          ownerPayout:   calc.ownerPayout,
+          contractorFee: calc.contractorFee,
+          ownerPct:      100 - (parseFloat(job.techPercent) || 0) - (parseFloat(job.contractorPct) || 0),
+          paymentMethod: method,
+          paidAt:        new Date().toISOString(),
+          zelleMemo,
+        };
 
     DB.saveUndo(DB.getJobById(jobId));
     DB.saveJob(updated);
@@ -1898,13 +1928,19 @@ const App = (() => {
     }).catch(() => {});
 
     closeModal();
-    const _myTake = calc.isSelfAssigned
-      ? calc.ownerPayout + calc.techPayout
-      : calc.ownerPayout;
-    showToast(calc.isSelfAssigned
-      ? `Paid! Your take: ${_fmt(_myTake)}`
-      : `Paid! Owner: ${_fmt(calc.ownerPayout)} · Tech: ${_fmt(calc.techPayout)}`,
-      'success');
+
+    // Different success messages for tech vs admin
+    if (Auth.isTech()) {
+      showToast(`Job closed. Your earnings: ${_fmt(calc.techPayout)}`, 'success');
+    } else {
+      const _myTake = calc.isSelfAssigned
+        ? calc.ownerPayout + calc.techPayout
+        : calc.ownerPayout;
+      showToast(calc.isSelfAssigned
+        ? `Paid! Your take: ${_fmt(_myTake)}`
+        : `Paid! Owner: ${_fmt(calc.ownerPayout)} · Tech: ${_fmt(calc.techPayout)}`,
+        'success');
+    }
 
     // Refresh detail view
     const container = document.getElementById('job-detail-content');
