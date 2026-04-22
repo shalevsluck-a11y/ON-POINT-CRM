@@ -862,9 +862,34 @@ const App = (() => {
     // CRITICAL: Force settings sync before showing the form
     // This ensures lead sources are loaded before populating dropdown
     console.log('[NEW JOB] Force syncing settings from database...');
+
+    // Add loading state to dropdown
+    const sourceEl = document.getElementById('f-source');
+    if (sourceEl) {
+      sourceEl.innerHTML = '<option>Loading...</option>';
+      sourceEl.disabled = true;
+    }
+
     try {
       await DB.syncSettingsFromRemote();
       console.log('[NEW JOB] ✓ Settings sync complete');
+
+      // VERIFY settings actually loaded - retry up to 5 times
+      let retries = 0;
+      let settings = DB.getSettings();
+      while ((!settings.leadSources || settings.leadSources.length === 0) && retries < 5) {
+        console.log('[NEW JOB] Settings not loaded yet, retrying...', retries + 1);
+        await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms
+        await DB.syncSettingsFromRemote();
+        settings = DB.getSettings();
+        retries++;
+      }
+
+      if (settings.leadSources && settings.leadSources.length > 0) {
+        console.log('[NEW JOB] ✓ Settings verified - leadSources loaded:', settings.leadSources.length);
+      } else {
+        console.error('[NEW JOB] ⚠️ WARNING: Settings sync completed but NO leadSources loaded!');
+      }
     } catch (e) {
       console.error('[NEW JOB] Settings sync failed:', e);
     }
