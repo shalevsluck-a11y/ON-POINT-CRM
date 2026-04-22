@@ -1763,6 +1763,18 @@ const App = (() => {
     SyncManager.queueJob(jobId);
     showToast(`Status → ${status.replace('_',' ')}`, 'success');
 
+    // Auto-sync to Google Sheets when job is closed
+    if (status === 'closed' && Auth.isAdminOrDisp()) {
+      const updatedJob = DB.getJobById(jobId);
+      SyncManager.syncJob(updatedJob).then(result => {
+        if (result.success && !result.skipped) {
+          console.log(`[Auto-sync] Job ${jobId} synced to Google Sheets`);
+        }
+      }).catch(err => {
+        console.warn(`[Auto-sync] Failed for job ${jobId}:`, err);
+      });
+    }
+
     // Re-render detail
     const container = document.getElementById('job-detail-content');
     const updated = DB.getJobById(jobId);
@@ -2658,9 +2670,9 @@ const App = (() => {
       if (el) el.classList.toggle('hidden', !isAdmin);
     });
 
-    // Google Sheets sync visible to admin and dispatcher only
+    // Google Sheets sync visible to admin only
     const syncCard = document.getElementById('settings-sync-card');
-    if (syncCard) syncCard.classList.toggle('hidden', !Auth.isAdminOrDisp());
+    if (syncCard) syncCard.classList.toggle('hidden', !isAdmin);
 
     // Save button label differs by role
     const saveBtn = document.getElementById('settings-save-btn');
@@ -3484,6 +3496,18 @@ const App = (() => {
         SyncManager.queueJob(jobId);
         showToast(`${_esc(job.customerName || 'Job')} → ${newStatus.replace('_', ' ')}`, 'success');
         renderKanban();
+
+        // Auto-sync to Google Sheets when job is closed
+        if (newStatus === 'closed' && Auth.isAdminOrDisp()) {
+          const updatedJob = DB.getJobById(jobId);
+          SyncManager.syncJob(updatedJob).then(result => {
+            if (result.success && !result.skipped) {
+              console.log(`[Auto-sync] Job ${jobId} synced to Google Sheets`);
+            }
+          }).catch(err => {
+            console.warn(`[Auto-sync] Failed for job ${jobId}:`, err);
+          });
+        }
       });
 
       // Touch drag support (simplified: tap to open, long-press not needed for touch)
