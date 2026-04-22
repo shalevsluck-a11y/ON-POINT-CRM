@@ -319,6 +319,53 @@ When resuming in new session:
 - All data successfully migrated to self-hosted instance ✓
 - Ready to update frontend connection
 
+### ⏸️ STEP 12: Update Frontend Connection (BLOCKED - DNS/SSL Required)
+- Current config: js/supabase-client.js points to cloud (https://nmmpemjcnncjfpooytpv.supabase.co)
+- Target config: Point to self-hosted (https://api.onpointprodoors.com)
+- **BLOCKED BY**: Step 8 (DNS and SSL must be configured first)
+- **REQUIRED CHANGES**:
+  1. js/supabase-client.js line 5: SUPABASE_URL = 'https://api.onpointprodoors.com'
+  2. js/supabase-client.js line 6: SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODI5Mjg5LCJleHAiOjE5MzQ1MDkyODl9.E8NSAZFNAMAUvWpLLR3xBVmrwnTDwawMYIMy9V_pWyU'
+- **MANUAL STEPS BEFORE APPLYING**:
+  1. Complete Step 8: Configure DNS (api.onpointprodoors.com → 187.77.8.155)
+  2. Complete Step 8: Run certbot to get SSL certificate
+  3. Test HTTPS access: https://api.onpointprodoors.com/rest/v1/
+  4. Apply frontend changes
+  5. Deploy and test login
+- Status: Paused until DNS/SSL complete
+
+### ⏸️ STEP 13-18: Remaining Steps (BLOCKED - Frontend Connection Required)
+- Step 13: Set up automatic daily database backups
+- Step 14: Fix push notifications end-to-end on self-hosted
+- Step 15: Add notification settings to tech/contractor Settings view
+- Step 16: Hide Google Sheets from tech everywhere
+- Step 17: Run Sharingan and fix all bugs found
+- Step 18: Final verification with Playwright tests
+- **All blocked until Steps 8 and 12 are complete**
+
+## Self-Hosting Status Summary
+
+**Completed (Steps 1-7, 9-11):**
+- ✅ Server resources verified
+- ✅ Docker and Docker Compose installed
+- ✅ Supabase repository cloned
+- ✅ Environment variables configured with generated secrets
+- ✅ All 13 Supabase containers running healthy
+- ✅ Nginx proxy configured for api.onpointprodoors.com
+- ✅ Data exported from cloud Supabase
+- ✅ 11 migrations applied to self-hosted database
+- ✅ All data imported and verified (3 users, 9 jobs, settings)
+
+**Blocked (Steps 8, 12-18):**
+- ⏸️ Step 8: SSL certificate (needs DNS first)
+- ⏸️ Step 12-18: Frontend connection and remaining features (need Step 8)
+
+**Manual Action Required:**
+1. Configure DNS: Add A record api.onpointprodoors.com → 187.77.8.155
+2. Wait for DNS propagation (5-60 minutes)
+3. Resume with Step 8: Run certbot for SSL
+4. Resume with Step 12: Update frontend and deploy
+
 ## Final Verification Summary
 
 **Sharingan Audit Results (Task 11):**
