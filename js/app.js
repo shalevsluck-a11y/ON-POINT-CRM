@@ -4145,7 +4145,7 @@ const App = (() => {
     _sendInviteWA,
     _sendInviteWAFromInput,
     _sendCredentialsWA,
-    _sendMagicLinkWA,
+    _sendLoginCodeWA,
     _sendUserWALink,
     _renderAdminUsersSection,
 
