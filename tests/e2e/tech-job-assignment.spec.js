@@ -6,11 +6,15 @@
  */
 const { test, expect } = require('@playwright/test');
 
-const URL = 'https://crm.onpointprodoors.com';
-const ADMIN_EMAIL = 'service@onpointprodoors.com';
-const ADMIN_PASS = 'OnPoint2024!';
+const URL = process.env.BASE_URL || 'https://crm.onpointprodoors.com';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'service@onpointprodoors.com';
+const ADMIN_PASS = process.env.ADMIN_PASSWORD || 'OnPoint2024!';
+const TECH_EMAIL = process.env.TECH_EMAIL;
+const TECH_PASS = process.env.TECH_PASSWORD;
 
 test('Admin can assign job and tech sees it in realtime', async ({ browser }) => {
+  test.skip(!TECH_EMAIL, 'TECH_EMAIL not set — skipping tech test');
+
   // Create two browser contexts - one for admin, one for tech
   const adminContext = await browser.newContext();
   const techContext = await browser.newContext();
@@ -19,16 +23,7 @@ test('Admin can assign job and tech sees it in realtime', async ({ browser }) =>
   const techPage = await techContext.newPage();
 
   // ══════════════════════════════════════════════════════════
-  // STEP 1: Get tech credentials from database
-  // ══════════════════════════════════════════════════════════
-
-  // For now, we'll need to manually set tech credentials
-  // TODO: Query database via Supabase API to get tech user
-  const TECH_EMAIL = 'tech@onpointprodoors.com';
-  const TECH_PASS = 'tech_password_here';  // Replace with actual
-
-  // ══════════════════════════════════════════════════════════
-  // STEP 2: Tech logs in and waits on dashboard
+  // STEP 1: Tech logs in and waits on dashboard
   // ══════════════════════════════════════════════════════════
 
   await techPage.goto(URL);
@@ -44,7 +39,7 @@ test('Admin can assign job and tech sees it in realtime', async ({ browser }) =>
   console.log(`[Tech] Initial job count: ${initialJobs}`);
 
   // ══════════════════════════════════════════════════════════
-  // STEP 3: Admin logs in
+  // STEP 2: Admin logs in
   // ══════════════════════════════════════════════════════════
 
   await adminPage.goto(URL);

@@ -6,17 +6,17 @@
  */
 const { test, expect } = require('@playwright/test');
 
-const URL = 'https://crm.onpointprodoors.com';
-const ADMIN_EMAIL = 'service@onpointprodoors.com';
-const ADMIN_PASS = 'OnPoint2024!';
-// Note: You'll need actual tech credentials for this test
-const TECH_EMAIL = 'tech@onpointprodoors.com';
-const TECH_PASS = 'tech_password_here';  // Replace with actual tech password
+const URL = process.env.BASE_URL || 'https://crm.onpointprodoors.com';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'service@onpointprodoors.com';
+const ADMIN_PASS = process.env.ADMIN_PASSWORD || 'OnPoint2024!';
+const TECH_EMAIL = process.env.TECH_EMAIL;
+const TECH_PASS = process.env.TECH_PASSWORD;
 
 // ══════════════════════════════════════════════════════════
 // TEST 1: Tech CANNOT see Google Sheets sync button
 // ══════════════════════════════════════════════════════════
 test('Tech cannot see Google Sheets sync button in header', async ({ page }) => {
+  test.skip(!TECH_EMAIL, 'TECH_EMAIL not set — skipping tech test');
   await page.goto(URL);
 
   // Log in as tech
