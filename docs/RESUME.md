@@ -300,6 +300,25 @@ When resuming in new session:
 - Verified 7 tables created: profiles, jobs, app_settings, app_config, push_subscriptions, notifications, job_zelle ✓
 - Database schema ready for data import
 
+### ✅ STEP 11: Data Imported and Verified
+- Created supabase/import-data.sql with proper dependency order ✓
+- Added missing schema columns: assigned_lead_source, owner_pct ✓
+- Import sequence:
+  1. auth.users (3 rows) ✓
+  2. profiles auto-created by trigger, then updated ✓
+  3. app_settings (1 row) ✓
+  4. jobs (9 rows) ✓
+  5. push_subscriptions (1 row) ✓
+  6. app_config (2 rows with self-hosted URLs) ✓
+- Verified row counts:
+  * profiles: 3 (matches cloud) ✓
+  * jobs: 9 (matches cloud) ✓
+  * app_settings: 1 (matches cloud) ✓
+  * push_subscriptions: 1 (matches cloud) ✓
+  * app_config: 2 (matches cloud) ✓
+- All data successfully migrated to self-hosted instance ✓
+- Ready to update frontend connection
+
 ## Final Verification Summary
 
 **Sharingan Audit Results (Task 11):**
