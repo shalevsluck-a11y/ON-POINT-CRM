@@ -62,7 +62,7 @@ const DB = (() => {
       const { data: settings, error } = await supa
         .from('app_settings')
         .select('*')
-        .eq('id', 1)
+        .eq('job_id', 1)
         .single();
       if (error) throw error;
       console.log('[DB._syncSettingsDown] ✓ app_settings fetched:', settings);
@@ -165,13 +165,13 @@ const DB = (() => {
       const { error } = await supa.from('jobs').update({
         status:     job.status,
         updated_at: new Date().toISOString(),
-      }).eq('id', job.jobId);
+      }).eq('job_id', job.jobId);
       if (error) throw error;
       return;
     }
 
     const row = _jobToDbRow(job);
-    console.log('[DB] _upsertJobRemote - Upserting row:', { id: row.id, customer_name: row.customer_name, source: row.source });
+    console.log('[DB] _upsertJobRemote - Upserting row:', { job_id: row.job_id, customer_name: row.customer_name, source: row.source });
     const { data, error } = await supa.from('jobs').upsert(row).select();
     if (error) {
       console.error('[DB] _upsertJobRemote - Upsert FAILED:', JSON.stringify(error, null, 2));
@@ -191,7 +191,7 @@ const DB = (() => {
 
   async function deleteJob(jobId) {
     Storage.deleteJob(jobId);
-    const { error } = await supa.from('jobs').delete().eq('id', jobId);
+    const { error } = await supa.from('jobs').delete().eq('job_id', jobId);
     if (error) console.warn('DB.deleteJob remote error:', error.message);
   }
 
@@ -217,7 +217,7 @@ const DB = (() => {
 
     if (Object.keys(row).length === 0) return; // nothing to persist (e.g. technicians-only update)
 
-    const { error } = await supa.from('app_settings').update(row).eq('id', 1);
+    const { error } = await supa.from('app_settings').update(row).eq('job_id', 1);
     if (error) throw new Error(error.message);
   }
 
@@ -232,13 +232,13 @@ const DB = (() => {
     if (profileData.zipCodes !== undefined) row.zip_codes            = profileData.zipCodes;
     if (profileData.isOwner  !== undefined) row.is_owner             = profileData.isOwner;
     if (Object.keys(row).length === 0) return;
-    const { error } = await supa.from('profiles').update(row).eq('id', id);
+    const { error } = await supa.from('profiles').update(row).eq('job_id', id);
     if (error) throw new Error(error.message);
   }
 
   async function deleteProfile(id) {
     if (!Auth.isAdmin()) throw new Error('Admin only');
-    const { error } = await supa.from('profiles').delete().eq('id', id);
+    const { error } = await supa.from('profiles').delete().eq('job_id', id);
     if (error) throw new Error(error.message);
   }
 
@@ -415,7 +415,7 @@ const DB = (() => {
   }
 
   async function markNotificationRead(id) {
-    await supa.from('notifications').update({ is_read: true }).eq('id', id);
+    await supa.from('notifications').update({ is_read: true }).eq('job_id', id);
   }
 
   async function markAllNotificationsRead() {
@@ -560,7 +560,7 @@ const DB = (() => {
 
   function _jobToDbRow(job) {
     const row = {
-      id:                   job.jobId,
+      job_id:               job.jobId,
       status:               job.status,
       customer_name:        job.customerName || '',
       phone:                job.phone || '',
