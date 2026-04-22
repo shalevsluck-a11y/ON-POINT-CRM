@@ -630,17 +630,26 @@ const App = (() => {
 
     const allowed = profile?.allowed_lead_sources || [];
 
-    // Get all lead sources
+    // Get all lead sources + always include "Direct" (owner's leads)
     const settings = DB.getSettings();
     const leadSources = settings.leadSources || [];
 
     const list = document.getElementById('dp-lead-sources-list');
-    list.innerHTML = leadSources.map(ls => `
+    // First add "Direct" option (stored as "my_lead" in database)
+    let html = `
+      <label class="checkbox-label" style="padding:12px;margin:4px 0;background:var(--color-surface-2);border-radius:8px">
+        <input type="checkbox" value="my_lead" ${allowed.includes('my_lead') ? 'checked' : ''}>
+        <span>Direct</span>
+      </label>
+    `;
+    // Then add all other lead sources
+    html += leadSources.map(ls => `
       <label class="checkbox-label" style="padding:12px;margin:4px 0;background:var(--color-surface-2);border-radius:8px">
         <input type="checkbox" value="${_esc(ls.name)}" ${allowed.includes(ls.name) ? 'checked' : ''}>
         <span>${_esc(ls.name)}</span>
       </label>
-    `).join('') || '<div class="empty-state-sm">No lead sources — add them in Settings first</div>';
+    `).join('');
+    list.innerHTML = html;
 
     modal.classList.remove('hidden');
   }
@@ -1193,7 +1202,6 @@ const App = (() => {
 
     if (!name)  { showToast('Enter customer name', 'warning'); return; }
     if (!phone) { showToast('Enter phone number', 'warning');  return; }
-    if (!techId){ showToast('Select a technician', 'warning'); return; }
 
     const settings = DB.getSettings();
     const tech = settings.technicians.find(t => t.id === techId);
@@ -2758,7 +2766,7 @@ const App = (() => {
     }
 
     btn.disabled    = true;
-    btn.textContent = 'Creating dispatcher…';
+    btn.textContent = 'Creating dispatcherï¿½';
 
     try {
       // Convert username to email format
@@ -2766,7 +2774,7 @@ const App = (() => {
 
       const createPromise = Auth.createUser(name, email, password, 'dispatcher', null, null);
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Failed to create dispatcher — request timed out. Please try again.')), 15000)
+        setTimeout(() => reject(new Error('Failed to create dispatcher ï¿½ request timed out. Please try again.')), 15000)
       );
       await Promise.race([createPromise, timeoutPromise]);
 
@@ -2782,7 +2790,7 @@ const App = (() => {
 
     } catch (e) {
       console.error('Create dispatcher error:', e);
-      errEl.textContent = e.message || 'Failed to create dispatcher — please try again';
+      errEl.textContent = e.message || 'Failed to create dispatcher ï¿½ please try again';
       errEl.classList.remove('hidden');
       btn.disabled    = false;
       btn.textContent = 'Create Dispatcher Account';
@@ -3886,17 +3894,26 @@ const App = (() => {
 
     const allowed = profile?.allowed_lead_sources || [];
 
-    // Get all lead sources
+    // Get all lead sources + always include "Direct" (owner's leads)
     const settings = DB.getSettings();
     const leadSources = settings.leadSources || [];
 
     const list = document.getElementById('dp-lead-sources-list');
-    list.innerHTML = leadSources.map(ls => `
+    // First add "Direct" option (stored as "my_lead" in database)
+    let html = `
+      <label class="checkbox-label" style="padding:12px;margin:4px 0;background:var(--color-surface-2);border-radius:8px">
+        <input type="checkbox" value="my_lead" ${allowed.includes('my_lead') ? 'checked' : ''}>
+        <span>Direct</span>
+      </label>
+    `;
+    // Then add all other lead sources
+    html += leadSources.map(ls => `
       <label class="checkbox-label" style="padding:12px;margin:4px 0;background:var(--color-surface-2);border-radius:8px">
         <input type="checkbox" value="${_esc(ls.name)}" ${allowed.includes(ls.name) ? 'checked' : ''}>
         <span>${_esc(ls.name)}</span>
       </label>
-    `).join('') || '<div class="empty-state-sm">No lead sources — add them in Settings first</div>';
+    `).join('');
+    list.innerHTML = html;
 
     modal.classList.remove('hidden');
   }
