@@ -336,6 +336,10 @@ const App = (() => {
     const viewEl = document.getElementById(`view-${viewName}`);
     if (!viewEl) { console.error('View not found:', viewName); return; }
     viewEl.classList.add('active');
+    // Initialize notification settings UI if settings view
+    if (viewName === 'settings' && typeof NotificationSettings !== 'undefined') {
+      setTimeout(() => NotificationSettings.showInSettings(), 100);
+    }
 
     // Update header
     const titleEl = document.getElementById('header-title');
