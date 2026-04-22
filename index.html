@@ -135,24 +135,19 @@
       <img src="assets/logo.jpg" alt="On Point Pro Doors" class="login-logo">
     </div>
     <h1 class="login-title">On Point Pro Doors</h1>
-    <p class="login-sub">Sign in to your account</p>
+    <p class="login-sub">Sign in with magic link</p>
 
     <div id="login-error" class="login-error hidden"></div>
 
     <form onsubmit="LoginScreen.submit();return false;" autocomplete="on">
     <div class="field-group">
-      <label class="field-label">Username</label>
-      <input type="text" id="login-email" class="field-input" placeholder="dispatcher1"
-             autocomplete="username" autocapitalize="none" autofocus>
-    </div>
-    <div class="field-group">
-      <label class="field-label">Password</label>
-      <input type="password" id="login-password" class="field-input" placeholder="Password"
-             autocomplete="current-password">
+      <label class="field-label">Email</label>
+      <input type="email" id="login-email" class="field-input" placeholder="your@email.com"
+             autocomplete="email" autocapitalize="none" autofocus>
     </div>
 
     <button type="submit" class="btn btn-primary btn-full" id="login-btn">
-      Sign In
+      Send Magic Link
     </button>
     </form>
 
@@ -884,7 +879,7 @@
   <div id="invite-modal" class="modal hidden">
     <div class="modal-handle"></div>
     <div class="modal-header">
-      <div class="modal-title">Create Dispatcher</div>
+      <div class="modal-title">Create User</div>
       <button class="modal-close" onclick="App.closeInviteModal()">&#x2715;</button>
     </div>
     <div class="modal-body" style="padding:0 20px 24px">
@@ -897,48 +892,47 @@
           <input type="text" id="invite-name" class="field-input" placeholder="John Doe"
                  autocomplete="off" autocapitalize="words">
         </div>
-        <input type="hidden" id="invite-role" value="dispatcher">
+        <div class="field-group">
+          <label class="field-label">Email Address <span style="color:var(--color-error)">*</span></label>
+          <input type="email" id="invite-email" class="field-input" placeholder="user@example.com"
+                 autocomplete="off">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Role <span style="color:var(--color-error)">*</span></label>
+          <select id="invite-role" class="field-input" onchange="App.toggleContractorFields()">
+            <option value="dispatcher">Dispatcher</option>
+            <option value="tech">Tech</option>
+            <option value="contractor">Contractor</option>
+          </select>
+        </div>
+        <div id="invite-payout-group" class="field-group hidden">
+          <label class="field-label">Payout %</label>
+          <input type="number" id="invite-payout" class="field-input" placeholder="50" min="0" max="100">
+        </div>
+        <div id="invite-lead-source-group" class="field-group hidden">
+          <label class="field-label">Assigned Lead Source</label>
+          <select id="invite-lead-source" class="field-input">
+            <option value="">Select lead source...</option>
+          </select>
+        </div>
         <button class="btn btn-primary btn-full" id="invite-submit-btn">
-          Create Dispatcher
+          Create Account
         </button>
-        <p style="font-size:12px;color:var(--color-text-muted);margin-top:10px;text-align:center">
-          Creates dispatcher account. Only you and dispatchers can access the app.
-        </p>
       </div>
 
       <!-- SUCCESS STATE (shown after account created) -->
       <div id="invite-success-body" class="hidden" style="padding:12px 0 4px">
         <div style="text-align:center;margin-bottom:16px">
           <div style="font-size:44px;margin-bottom:8px">✅</div>
-          <div style="font-size:17px;font-weight:700;color:var(--color-text);margin-bottom:4px">Account created!</div>
-          <div style="color:var(--color-text-muted);font-size:13px;margin-bottom:10px">Send these credentials to the user:</div>
-        </div>
-
-        <!-- Credentials (copyable) -->
-        <div class="field-group" style="margin-bottom:10px">
-          <label class="field-label" style="font-size:12px">Email</label>
-          <div style="display:flex;gap:8px">
-            <input type="text" id="invite-success-email" class="field-input" readonly
-                   style="font-size:13px;font-family:monospace;flex:1">
-            <button class="btn btn-secondary" style="padding:0 12px;white-space:nowrap"
-              onclick="navigator.clipboard.writeText(document.getElementById('invite-success-email').value).then(()=>App.showToast('Email copied','success'))">Copy</button>
-          </div>
-        </div>
-
-        <div class="field-group" style="margin-bottom:14px">
-          <label class="field-label" style="font-size:12px">Password</label>
-          <div style="display:flex;gap:8px">
-            <input type="text" id="invite-success-password" class="field-input" readonly
-                   style="font-size:13px;font-family:monospace;flex:1">
-            <button class="btn btn-secondary" style="padding:0 12px;white-space:nowrap"
-              onclick="navigator.clipboard.writeText(document.getElementById('invite-success-password').value).then(()=>App.showToast('Password copied','success'))">Copy</button>
-          </div>
+          <div style="font-size:17px;font-weight:700;color:var(--color-text);margin-bottom:4px" id="invite-success-name"></div>
+          <div style="color:var(--color-text-muted);font-size:13px;margin-bottom:4px" id="invite-success-email-display"></div>
+          <div style="color:var(--color-text-muted);font-size:13px;margin-bottom:10px">Send them the magic link to log in:</div>
         </div>
 
         <!-- WhatsApp button -->
-        <button onclick="App._sendCredentialsWA()"
+        <button onclick="App._sendMagicLinkWA()"
           style="width:100%;padding:16px;background:#25D366;border:none;border-radius:14px;color:#fff;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:10px;-webkit-tap-highlight-color:transparent">
-          📲 Send Credentials on WhatsApp
+          📲 Send Magic Link on WhatsApp
         </button>
 
         <button class="btn btn-secondary btn-full" onclick="App.closeInviteModal()">Done</button>
