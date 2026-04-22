@@ -132,17 +132,18 @@ const Auth = (() => {
 
   function _buildUser(authUser, profile) {
     return {
-      id:                authUser.id,
-      email:             authUser.email,
-      name:              profile?.name || authUser.email,
-      role:              profile?.role || 'tech',
-      color:             profile?.color || '#3B82F6',
-      phone:             profile?.phone || '',
-      zelleHandle:       profile?.zelle_handle || '',
-      zipCodes:          profile?.zip_codes || [],
-      techPercent:       profile?.default_tech_percent || 60,
-      isOwner:           profile?.is_owner || false,
+      id:                 authUser.id,
+      email:              authUser.email,
+      name:               profile?.name || authUser.email,
+      role:               profile?.role || 'tech',
+      color:              profile?.color || '#3B82F6',
+      phone:              profile?.phone || '',
+      zelleHandle:        profile?.zelle_handle || '',
+      zipCodes:           profile?.zip_codes || [],
+      techPercent:        profile?.default_tech_percent || 60,
+      isOwner:            profile?.is_owner || false,
       assignedLeadSource: profile?.assigned_lead_source || null,
+      allowedLeadSources: profile?.allowed_lead_sources || null,
     };
   }
 
