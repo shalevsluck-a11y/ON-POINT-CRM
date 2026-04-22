@@ -28,34 +28,17 @@ const Auth = (() => {
     const hash = window.location.hash;
     if (hash && hash.includes('token=')) {
       const token = hash.split('token=')[1].split('&')[0];
-      console.log('[Auth] NEW magic token found in URL - FORCE CLEARING EVERYTHING...');
+      console.log('[Auth] Magic token in URL:', token.substring(0, 10) + '...');
 
-      // CLEAR ALL old tokens first
-      localStorage.clear();
-      sessionStorage.clear();
-
-      // Unregister ALL service workers and clear ALL caches
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(registrations => {
-          registrations.forEach(reg => reg.unregister());
-        });
-      }
-      if ('caches' in window) {
-        caches.keys().then(keys => {
-          keys.forEach(key => caches.delete(key));
-        });
-      }
-
-      // Store NEW token in MULTIPLE locations
+      // Store token and mark for persistent session
       localStorage.setItem('magic_token', token);
       localStorage.setItem('onpoint-pwa-auth-magic_token', token);
       localStorage.setItem('onpoint-web-auth-magic_token', token);
-      sessionStorage.setItem('magic_token', token);
+      localStorage.setItem('stay_logged_in', 'true'); // PERMANENT SESSION
 
-      // Clear hash and force HARD reload
+      // Clear hash but DON'T reload - continue with login
       window.location.hash = '';
-      window.location.href = window.location.origin + '/?nocache=' + Date.now();
-      return; // Stop here, reload will restart init
+      console.log('[Auth] Token stored, continuing with login...');
     }
 
     // Check for stored magic token in MULTIPLE locations (PWA vs browser storage)

@@ -233,15 +233,30 @@ app.post('/auth/magic-session', async (req, res) => {
     console.log(`[MAGIC SESSION] Verifying token: ${magic_token.substring(0, 10)}...`);
 
     // Verify magic token and get profile
-    const { data: profile, error: profileError } = await supabaseAdmin
+    let { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('id, name, email, role')
+      .select('id, name, email, role, magic_token')
       .eq('magic_token', magic_token)
       .single();
 
     if (profileError || !profile) {
       console.error(`[MAGIC SESSION] Invalid token:`, profileError);
       return res.status(401).json({ error: 'Invalid magic token' });
+    }
+
+    // If profile doesn't have a magic_token, set it now (for old users)
+    if (!profile.magic_token) {
+      const newMagicToken = Math.random().toString(36).substring(2) +
+                           Math.random().toString(36).substring(2) +
+                           Date.now().toString(36);
+
+      await supabaseAdmin
+        .from('profiles')
+        .update({ magic_token: newMagicToken })
+        .eq('id', profile.id);
+
+      profile.magic_token = newMagicToken;
+      console.log(`[MAGIC SESSION] Generated magic token for existing user:`, profile.name);
     }
 
     console.log(`[MAGIC SESSION] Profile found:`, profile.name, profile.email);
