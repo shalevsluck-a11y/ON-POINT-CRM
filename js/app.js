@@ -2442,24 +2442,28 @@ const App = (() => {
     _setVal('s-apps-script-url', s.appsScriptUrl);
     _setVal('s-default-state',   s.defaultState);
 
-    // Load notification preferences (available to all users)
-    const notifPrefs = JSON.parse(localStorage.getItem('notificationPreferences') || '{}');
-    _setVal('s-notif-sound', notifPrefs.sound || 'chime');
+    // Load notification preferences from user profile
+    const notifPrefs = user?.notification_preferences || {};
+    const notifEnabled = document.getElementById('s-notif-enabled');
+    if (notifEnabled) notifEnabled.checked = notifPrefs.enabled !== false;
+
+    // Set selected sound radio button
+    const soundRadios = document.querySelectorAll('input[name="notif-sound"]');
+    const selectedSound = notifPrefs.sound || 'chime';
+    soundRadios.forEach(radio => {
+      radio.checked = radio.value === selectedSound;
+    });
+
+    // Load notification type preferences
     const notifNewJob = document.getElementById('s-notif-new-job');
-    const notifJobUpdate = document.getElementById('s-notif-job-update');
-    const notifJobReminder = document.getElementById('s-notif-job-reminder');
-    const notifMessages = document.getElementById('s-notif-messages');
     if (notifNewJob) notifNewJob.checked = notifPrefs.newJob !== false;
-    if (notifJobUpdate) notifJobUpdate.checked = notifPrefs.jobUpdate !== false;
-    if (notifJobReminder) notifJobReminder.checked = notifPrefs.jobReminder !== false;
-    if (notifMessages) notifMessages.checked = notifPrefs.messages !== false;
 
     // Zelle handle visible to admin only
     const zelleGroup = document.getElementById('s-zelle-group');
     if (zelleGroup) zelleGroup.classList.toggle('hidden', !Auth.canSeeZelleMemo());
 
     // Hide admin-only settings sections from tech/contractor
-    ['settings-tax-card','settings-tech-card','settings-sources-card',
+    ['settings-myinfo-card','settings-tax-card','settings-tech-card','settings-sources-card',
      'settings-data-card','settings-defaultstate-group'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.classList.toggle('hidden', !isAdmin);
@@ -2796,29 +2800,30 @@ const App = (() => {
   }
 
   async function _doSaveSettings() {
-    // Save notification preferences for all users (stored in localStorage)
+    // Build notification preferences object
+    const selectedSound = document.querySelector('input[name="notif-sound"]:checked')?.value || 'chime';
     const notifPrefs = {
-      sound: document.getElementById('s-notif-sound')?.value || 'chime',
+      enabled: document.getElementById('s-notif-enabled')?.checked !== false,
+      sound: selectedSound,
       newJob: document.getElementById('s-notif-new-job')?.checked !== false,
-      jobUpdate: document.getElementById('s-notif-job-update')?.checked !== false,
-      jobReminder: document.getElementById('s-notif-job-reminder')?.checked !== false,
-      messages: document.getElementById('s-notif-messages')?.checked !== false,
     };
-    localStorage.setItem('notificationPreferences', JSON.stringify(notifPrefs));
 
-    // Non-admin: save only their own profile (name + phone)
+    // Non-admin: save profile + notification preferences
     if (!Auth.isAdmin()) {
-      const name  = document.getElementById('s-owner-name')?.value?.trim()  || '';
-      const phone = document.getElementById('s-owner-phone')?.value?.trim() || '';
-      if (!name) { showToast('Name is required', 'warning'); return; }
       try {
-        await Auth.updateProfile({ name, phone });
+        await Auth.updateProfile({ notification_preferences: notifPrefs });
         showToast('Settings saved', 'success');
-        _updateHeaderUser();
       } catch (e) {
-        showToast('Failed to update profile: ' + (e.message || 'unknown error'), 'error');
+        showToast('Failed to save settings: ' + (e.message || 'unknown error'), 'error');
       }
       return;
+    }
+
+    // Admin: also save notification preferences
+    try {
+      await Auth.updateProfile({ notification_preferences: notifPrefs });
+    } catch (e) {
+      console.error('Failed to save admin notification preferences:', e);
     }
     const settings = {
       ownerName:     document.getElementById('s-owner-name')?.value?.trim()      || '',
