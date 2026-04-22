@@ -243,19 +243,28 @@ const DB = (() => {
     // Everyone sees all jobs (admin + dispatcher only)
     channel
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'jobs' }, payload => {
-        console.log('[Realtime] INSERT:', payload.new.job_id);
+        console.log('[Realtime] ✅ INSERT:', payload.new.job_id, payload.new.customer_name);
+        if (window.DebugPanel) {
+          DebugPanel.logRealtime('INSERT', { id: payload.new.job_id, customer: payload.new.customer_name });
+        }
         const job = _dbRowToJob(payload.new, {}, true, false);
         Storage.saveJob(job);
         if (onInsert) onInsert(job);
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'jobs' }, payload => {
-        console.log('[Realtime] UPDATE:', payload.new.job_id);
+        console.log('[Realtime] ✏️ UPDATE:', payload.new.job_id, payload.new.customer_name);
+        if (window.DebugPanel) {
+          DebugPanel.logRealtime('UPDATE', { id: payload.new.job_id, customer: payload.new.customer_name });
+        }
         const job = _dbRowToJob(payload.new, {}, true, false);
         Storage.saveJob(job);
         if (onUpdate) onUpdate(job);
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'jobs' }, payload => {
-        console.log('[Realtime] DELETE:', payload.old?.job_id);
+        console.log('[Realtime] ❌ DELETE:', payload.old?.job_id);
+        if (window.DebugPanel) {
+          DebugPanel.logRealtime('DELETE', { id: payload.old?.job_id });
+        }
         const jobId = payload.old?.job_id;
         if (jobId) {
           Storage.deleteJob(jobId);
@@ -336,7 +345,10 @@ const DB = (() => {
 
     // Subscribe with status callback for reconnection handling
     return channel.subscribe((status, err) => {
-      console.log('[Realtime] Jobs channel status:', status, err ? 'Error:' : '', err);
+      console.log('[Realtime] 📡 Jobs channel status:', status, err ? 'Error:' : '', err);
+      if (window.DebugPanel) {
+        DebugPanel.logRealtime('CHANNEL_STATUS', { status, error: err });
+      }
       if (status === 'SUBSCRIBED') {
         console.log('[Realtime] ✓ Successfully subscribed to jobs channel');
       } else if (status === 'CLOSED') {
