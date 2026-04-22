@@ -3079,26 +3079,17 @@ const App = (() => {
       return;
     }
 
-    // Get all contractors to show which one is assigned
-    const allUsers = await Auth.getUsersForAdmin().catch(() => []);
-    const contractors = allUsers.filter(u => u.role === 'contractor');
-
-    list.innerHTML = sources.map(s => {
-      const assignedContractor = contractors.find(c => c.assignedLeadSource === s.name);
-      const contractorText = assignedContractor ? assignedContractor.name : 'No contractor assigned';
-      return `
+    list.innerHTML = sources.map(s => `
       <div class="settings-list-item">
         <div class="settings-item-info">
-          <div class="settings-item-name">${_esc(s.name)} — ${_esc(contractorText)}</div>
-          <div class="settings-item-sub">Contractor: ${s.contractorPercent||0}%</div>
+          <div class="settings-item-name">${_esc(s.name)}</div>
         </div>
         <div class="settings-item-actions">
           <button class="btn-icon" onclick="App.showSourceModal('${s.id}')" title="Edit">&#9998;</button>
           <button class="btn-icon" onclick="App.deleteSource('${s.id}')" title="Delete" style="color:var(--color-error)">&#128465;</button>
         </div>
       </div>
-      `;
-    }).join('');
+    `).join('');
   }
 
   async function showSourceModal(sourceId) {
@@ -3109,24 +3100,6 @@ const App = (() => {
 
     document.getElementById('m-source-id').value   = source?.id   || '';
     document.getElementById('m-source-name').value = source?.name || '';
-    document.getElementById('m-source-pct').value  = source?.contractorPercent || '';
-
-    // Populate contractor dropdown
-    const allUsers = await Auth.getUsersForAdmin().catch(() => []);
-    const contractors = allUsers.filter(u => u.role === 'contractor');
-    const contractorSelect = document.getElementById('m-source-contractor');
-    if (contractorSelect) {
-      contractorSelect.innerHTML = '<option value="">No contractor assigned</option>' +
-        contractors.map(c => `<option value="${c.id}">${_esc(c.name)}</option>`).join('');
-
-      // Select the contractor currently assigned to this source
-      if (source) {
-        const assignedContractor = contractors.find(c => c.assignedLeadSource === source.name);
-        if (assignedContractor) {
-          contractorSelect.value = assignedContractor.id;
-        }
-      }
-    }
 
     showModal('modal-source');
   }
