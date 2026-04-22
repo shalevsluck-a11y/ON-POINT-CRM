@@ -199,14 +199,12 @@
 - Sounds.js uses real MP3 files ✅
 - No Web Audio API oscillator code ✅
 
-**❌ MANUAL STEPS REQUIRED (See BLOCKED.md):**
-1. Apply database migration: `037_add_closed_by_and_fix_notification_exclusion.sql`
-   - Via Supabase Dashboard SQL Editor
-   - Or via `supabase db push`
+**❌ ONE MANUAL STEP REQUIRED (See BLOCKED.md):**
+Run `supabase/migrations/038_diagnose_and_fix_triggers.sql` in Supabase SQL Editor
 
-2. Redeploy Edge Function: `send-push`
-   - Via `supabase functions deploy send-push`
-   - Or via Supabase Dashboard
+**THE BUG:** Trigger functions exist but triggers weren't attached to jobs table.
+**THE FIX:** Script 038 checks config, attaches triggers, adds closed_by column.
+**TIME:** 2 minutes
 
 **TESTING AFTER MANUAL STEPS:**
 - Job created by User A → User A gets nothing, others get popup ⏳
