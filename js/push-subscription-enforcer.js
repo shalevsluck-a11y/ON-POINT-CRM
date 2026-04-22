@@ -17,55 +17,81 @@ const PushSubscriptionEnforcer = (() => {
    */
   async function enforce() {
     // Prevent concurrent enforcement attempts
-    if (_isEnforcing) return;
+    if (_isEnforcing) {
+      console.log('[Push Enforcer] Already enforcing, skipping');
+      return;
+    }
 
     // Rate limit attempts (don't spam user)
     const now = Date.now();
-    if (now - _lastAttempt < RETRY_INTERVAL) return;
+    if (now - _lastAttempt < RETRY_INTERVAL) {
+      console.log('[Push Enforcer] Rate limited, skipping');
+      return;
+    }
     _lastAttempt = now;
 
     _isEnforcing = true;
 
     try {
-      console.log('[Push Enforcer] Starting enforcement check');
+      console.log('[Push Enforcer] ========== STARTING ENFORCEMENT ==========');
 
       // Check if push is supported
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
         console.warn('[Push Enforcer] Push not supported on this device');
+        console.warn('[Push Enforcer] serviceWorker:', 'serviceWorker' in navigator);
+        console.warn('[Push Enforcer] PushManager:', 'PushManager' in window);
         _isEnforcing = false;
         return;
       }
 
       // Check if user is logged in
-      if (!Auth || !Auth.getUser || !Auth.getUser()) {
-        console.log('[Push Enforcer] No user logged in, skipping');
+      const currentUser = Auth && Auth.getUser ? Auth.getUser() : null;
+      if (!currentUser) {
+        console.log('[Push Enforcer] No user logged in, skipping enforcement');
+        console.log('[Push Enforcer] Auth available:', !!Auth);
+        console.log('[Push Enforcer] Auth.getUser available:', Auth && !!Auth.getUser);
         _isEnforcing = false;
         return;
       }
+
+      console.log('[Push Enforcer] User logged in:', currentUser.name || currentUser.email || currentUser.id);
 
       // Check current permission state
       const permission = Notification.permission;
       console.log('[Push Enforcer] Current permission:', permission);
 
       if (permission === 'denied') {
+        console.log('[Push Enforcer] Permission DENIED - showing banner');
         showDeniedBanner();
         _isEnforcing = false;
         return;
       }
 
       if (permission === 'default') {
+        console.log('[Push Enforcer] Permission DEFAULT - showing modal');
         await showPermissionModal();
+        console.log('[Push Enforcer] Permission modal completed, new permission:', Notification.permission);
         _isEnforcing = false;
+
+        // Re-enforce immediately if permission was granted
+        if (Notification.permission === 'granted') {
+          console.log('[Push Enforcer] Permission just granted, re-running enforcement...');
+          _lastAttempt = 0; // Reset rate limit
+          setTimeout(() => enforce(), 100);
+        }
         return;
       }
 
       // Permission is 'granted' - ensure subscription exists
       if (permission === 'granted') {
+        console.log('[Push Enforcer] Permission GRANTED - ensuring subscription...');
         await ensureSubscribed();
         hideDeniedBanner();
         _isEnforcing = false;
         return;
       }
+
+      console.warn('[Push Enforcer] Unknown permission state:', permission);
 
     } catch (error) {
       console.error('[Push Enforcer] Error:', error);
@@ -133,30 +159,35 @@ const PushSubscriptionEnforcer = (() => {
 
       const btn = document.getElementById('enable-push-btn');
       btn.onclick = async () => {
+        console.log('[Push Enforcer] Enable button clicked');
         btn.disabled = true;
         btn.textContent = 'Requesting permission...';
 
         try {
+          console.log('[Push Enforcer] Calling Notification.requestPermission()...');
           const permission = await Notification.requestPermission();
           console.log('[Push Enforcer] Permission response:', permission);
 
           if (permission === 'granted') {
+            console.log('[Push Enforcer] Permission GRANTED! Creating subscription...');
             btn.textContent = 'Subscribing...';
             await ensureSubscribed();
+            console.log('[Push Enforcer] Subscription complete, closing modal');
             modal.remove();
             resolve();
           } else {
             // User denied - show persistent banner instead
+            console.log('[Push Enforcer] Permission NOT granted (denied or default), showing banner');
             modal.remove();
             showDeniedBanner();
             resolve();
           }
         } catch (error) {
-          console.error('[Push Enforcer] Permission request failed:', error);
+          console.error('[Push Enforcer] Permission request FAILED:', error);
+          console.error('[Push Enforcer] Error stack:', error.stack);
           btn.disabled = false;
-          btn.textContent = 'Enable Notifications';
           btn.style.background = '#ef4444';
-          btn.textContent = 'Try Again';
+          btn.textContent = 'Try Again - Error occurred';
         }
       };
     });
@@ -278,20 +309,30 @@ const PushSubscriptionEnforcer = (() => {
     const { endpoint, keys } = sub.toJSON ? sub.toJSON() : sub;
 
     console.log('[Push Enforcer] Saving subscription for user:', currentUser.id);
+    console.log('[Push Enforcer] Endpoint:', endpoint.substring(0, 50) + '...');
+    console.log('[Push Enforcer] Keys present:', !!keys.p256dh, !!keys.auth);
 
-    const { error } = await SupabaseClient.from('push_subscriptions').upsert({
+    const data = {
       user_id:  currentUser.id,
       endpoint,
       p256dh:   keys.p256dh,
       auth_key: keys.auth,
-    }, { onConflict: 'user_id,endpoint' });
+    };
+
+    console.log('[Push Enforcer] Upserting to push_subscriptions table...');
+
+    const { data: result, error } = await SupabaseClient.from('push_subscriptions').upsert(data, {
+      onConflict: 'user_id,endpoint'
+    }).select();
 
     if (error) {
-      console.error('[Push Enforcer] Failed to save subscription:', error);
+      console.error('[Push Enforcer] FAILED to save subscription:', error);
+      console.error('[Push Enforcer] Error details:', JSON.stringify(error, null, 2));
       throw error;
     }
 
-    console.log('[Push Enforcer] Subscription saved to database');
+    console.log('[Push Enforcer] ✅ Subscription saved to database successfully');
+    console.log('[Push Enforcer] Returned data:', result);
   }
 
   /**
@@ -309,23 +350,38 @@ const PushSubscriptionEnforcer = (() => {
    */
   function init() {
     console.log('[Push Enforcer] Initializing...');
+    console.log('[Push Enforcer] Current user:', Auth ? Auth.getUser() : 'Auth not available');
+    console.log('[Push Enforcer] Push supported:', 'serviceWorker' in navigator && 'PushManager' in window);
+    console.log('[Push Enforcer] Notification permission:', Notification.permission);
 
-    // Run enforcement immediately on init
-    setTimeout(() => enforce(), 1000);
+    // Run enforcement IMMEDIATELY - no delay
+    enforce().then(() => {
+      console.log('[Push Enforcer] Initial enforcement complete');
+    }).catch(err => {
+      console.error('[Push Enforcer] Initial enforcement failed:', err);
+    });
 
     // Re-enforce when page becomes visible (iOS kills service workers)
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
         console.log('[Push Enforcer] Page visible, re-enforcing...');
-        setTimeout(() => enforce(), 500);
+        enforce();
       }
     });
 
     // Re-enforce when window regains focus
     window.addEventListener('focus', () => {
       console.log('[Push Enforcer] Window focused, re-enforcing...');
-      setTimeout(() => enforce(), 500);
+      enforce();
     });
+
+    // Re-enforce every 30 seconds if permission is still default
+    setInterval(() => {
+      if (Notification.permission === 'default' && Auth && Auth.getUser()) {
+        console.log('[Push Enforcer] Periodic check - permission still default, re-enforcing...');
+        enforce();
+      }
+    }, 30000);
 
     console.log('[Push Enforcer] Initialized successfully');
   }
