@@ -3853,21 +3853,26 @@ const App = (() => {
 
   // Public boot entry point — sets up auth and wires session listener
   async function init() {
+    // Check for magic token FIRST, before showing any screens
+    const hash = window.location.hash;
+    const hasMagicToken = (hash && hash.includes('token=')) || localStorage.getItem('magic_token');
+
     // Safety net: if auth hangs >4s, force login screen so user is never stuck on blue screen.
-    // Must show login here — the 6s window.load timer can't, because _removeAppShell() removes
-    // the element from DOM and that timer returns early when it finds null.
-    setTimeout(() => {
-      const shell = document.getElementById('app-shell');
-      if (!shell) return; // auth already resolved normally — do nothing
-      const app   = document.getElementById('app');
-      const login = document.getElementById('login-screen');
-      const appVisible   = app   && !app.classList.contains('hidden');
-      const loginVisible = login && !login.classList.contains('hidden');
-      _removeAppShell();
-      if (!appVisible && !loginVisible) {
-        if (login) login.classList.remove('hidden');
-      }
-    }, 4000);
+    // SKIP this timer if we have a magic token - we want to wait for magic auth to complete
+    if (!hasMagicToken) {
+      setTimeout(() => {
+        const shell = document.getElementById('app-shell');
+        if (!shell) return; // auth already resolved normally — do nothing
+        const app   = document.getElementById('app');
+        const login = document.getElementById('login-screen');
+        const appVisible   = app   && !app.classList.contains('hidden');
+        const loginVisible = login && !login.classList.contains('hidden');
+        _removeAppShell();
+        if (!appVisible && !loginVisible) {
+          if (login) login.classList.remove('hidden');
+        }
+      }, 4000);
+    }
 
     // Detect invite link before Auth.init fires (hash cleared by Supabase after use)
     const isInviteFlow = window.location.hash.includes('type=invite') ||
@@ -3883,16 +3888,18 @@ const App = (() => {
           await _onAuthenticated();
         }
       } else {
+        // Only show login screen if we don't have a magic token
+        // (if we had a magic token, it failed to authenticate, and we should show login)
         _initialized = false;
         await _checkAndShowFirstSetup();
       }
     });
 
     if (currentUser) {
-      // Session already confirmed by getSession() — ensure the app is shown even if
-      // onAuthStateChange callback fires late (e.g., slow WebSocket connection)
+      // Session already confirmed - ensure the app is shown
       await _onAuthenticated();
     } else {
+      // No valid session found - show login screen
       await _checkAndShowFirstSetup();
     }
   }

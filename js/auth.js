@@ -21,6 +21,7 @@ const Auth = (() => {
     const hash = window.location.hash;
     if (hash && hash.includes('token=')) {
       const token = hash.split('token=')[1].split('&')[0];
+      console.log('[Auth] Magic token found in URL, storing...');
       window.location.hash = ''; // Clear the token from URL
       localStorage.setItem('magic_token', token);
     }
@@ -28,14 +29,18 @@ const Auth = (() => {
     // Check for stored magic token (password-less auth)
     const storedToken = localStorage.getItem('magic_token');
     if (storedToken) {
+      console.log('[Auth] Attempting magic token authentication...');
       try {
         await _loginWithMagicToken(storedToken);
         if (_currentUser) {
+          console.log('[Auth] Magic token auth SUCCESS - user:', _currentUser.name);
           if (_onAuthChange) _onAuthChange(_currentUser);
           return _currentUser;
+        } else {
+          console.warn('[Auth] Magic token auth failed - no user returned');
         }
       } catch (e) {
-        console.error('Magic token auth failed:', e.message);
+        console.error('[Auth] Magic token auth ERROR:', e.message);
         localStorage.removeItem('magic_token');
       }
     }
@@ -72,6 +77,8 @@ const Auth = (() => {
   }
 
   async function _loginWithMagicToken(token) {
+    console.log('[Auth] Querying profile for magic token:', token.substring(0, 8) + '...');
+
     // Get profile using magic token (password-less)
     const { data: profile, error } = await SupabaseClient
       .from('profiles')
@@ -79,9 +86,17 @@ const Auth = (() => {
       .eq('magic_token', token)
       .single();
 
-    if (error || !profile) {
-      throw new Error('Invalid magic link');
+    if (error) {
+      console.error('[Auth] Database error fetching profile:', error);
+      throw new Error('Database error: ' + error.message);
     }
+
+    if (!profile) {
+      console.error('[Auth] No profile found for magic token');
+      throw new Error('Invalid magic link - profile not found');
+    }
+
+    console.log('[Auth] Profile found:', profile.name, 'role:', profile.role);
 
     // Create fake auth user object for compatibility
     const fakeAuthUser = {
