@@ -248,8 +248,8 @@ const App = (() => {
 
   function _playNotificationSound() {
     try {
-      // Get user's selected notification sound (default: chime)
-      const sound = localStorage.getItem('notification_sound') || 'chime';
+      // Get user's selected notification sound (default: tritone)
+      const sound = localStorage.getItem('notif-sound') || 'tritone';
       if (sound !== 'none' && sound !== 'silent' && window.NotificationSounds) {
         window.NotificationSounds.play(sound);
       }
@@ -3266,15 +3266,24 @@ const App = (() => {
   }
 
   function _updatePushBanner() {
-    const banner = document.getElementById('push-permission-banner');
-    if (!banner) return;
+    const pushBanner = document.getElementById('push-permission-banner');
+    const iphoneBanner = document.getElementById('iphone-pwa-banner');
 
-    // Only show for tech/contractor who haven't granted permission
-    const user = Auth.getUser();
-    const isTechOrContractor = user?.role === 'tech' || user?.role === 'contractor';
     const hasPermission = 'Notification' in window && Notification.permission === 'granted';
 
-    banner.classList.toggle('hidden', !isTechOrContractor || hasPermission);
+    // Show push permission banner for ALL users who haven't granted permission
+    if (pushBanner) {
+      pushBanner.classList.toggle('hidden', hasPermission);
+    }
+
+    // Show iPhone PWA banner only on iOS devices that haven't installed as PWA
+    if (iphoneBanner) {
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                           window.navigator.standalone === true;
+      const shouldShowIOSBanner = isIOS && !isStandalone && !hasPermission;
+      iphoneBanner.classList.toggle('hidden', !shouldShowIOSBanner);
+    }
   }
 
   // ── TECHNICIANS ────────────────────────────────────────

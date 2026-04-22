@@ -223,16 +223,27 @@
     <!-- ==================== DASHBOARD ==================== -->
     <section id="view-dashboard" class="view active">
 
-      <!-- Push notification permission banner (tech/contractor only) -->
+      <!-- Push notification permission banner -->
       <div id="push-permission-banner" class="notification-banner hidden" onclick="App.requestPushPermission()">
         <div style="display:flex;align-items:center;gap:12px">
           <span style="font-size:24px">🔔</span>
           <div>
             <div style="font-weight:600;margin-bottom:2px">Enable Job Notifications</div>
-            <div style="font-size:13px;opacity:0.8">Tap to get notified when jobs are assigned to you</div>
+            <div style="font-size:13px;opacity:0.8">Tap to get notified when new jobs are created or closed</div>
           </div>
         </div>
         <button class="btn btn-primary" style="margin-left:auto;padding:8px 16px;font-size:14px">Enable</button>
+      </div>
+
+      <!-- iPhone PWA install banner (iOS only) -->
+      <div id="iphone-pwa-banner" class="notification-banner hidden" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-left-color: #667eea;">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span style="font-size:24px">📱</span>
+          <div>
+            <div style="font-weight:600;margin-bottom:2px">Install for iPhone Notifications</div>
+            <div style="font-size:13px;opacity:0.9">Tap <strong>Share ⬆️</strong> then <strong>Add to Home Screen</strong> to enable push notifications on iPhone</div>
+          </div>
+        </div>
       </div>
 
       <!-- Tech today section (visible for tech role only) -->
@@ -947,7 +958,6 @@
 <script defer src="js/cleanup.js"></script>
 <script defer src="js/login.js"></script>
 <!-- Live Data Enhancements -->
-<script defer src="js/debug-panel.js"></script>
 <script defer src="js/realtime-manager.js"></script>
 <script defer src="js/offline-queue.js"></script>
 <script defer src="js/optimistic-ui.js"></script>
