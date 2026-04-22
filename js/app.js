@@ -104,6 +104,13 @@ const App = (() => {
     // Always land on dashboard after login — never restore a previous session's screen
     navigate('dashboard');
 
+    // CRITICAL: Force sync from remote database to get fresh data
+    console.log('[App] Syncing jobs from remote database...');
+    await DB.syncJobsFromRemote();
+    renderDashboard();
+    renderJobList();
+    console.log('[App] Fresh data loaded from database');
+
     // Start notification bell + real-time banner toasts
     try { await Notifications.init(); } catch(e) { console.warn('Notifications.init error:', e.message); }
 
@@ -1365,14 +1372,42 @@ const App = (() => {
   // ══════════════════════════════════════════════════════════
 
   function openJobDetail(jobId) {
+    console.log('[App] Opening job:', jobId);
+
     const job = DB.getJobById(jobId);
-    if (!job) { showToast('Job not found', 'error'); return; }
+    if (!job) {
+      console.error('[App] Job not found:', jobId);
+      showToast('Job not found - refreshing data...', 'error');
+      // Sync from remote and try again
+      DB.syncJobsFromRemote().then(() => {
+        const retryJob = DB.getJobById(jobId);
+        if (retryJob) {
+          openJobDetail(jobId); // Recursive call after sync
+        } else {
+          navigate('jobs');
+          showToast('Job no longer exists', 'error');
+        }
+      });
+      return;
+    }
 
     _state.currentJobId = jobId;
     navigate('job-detail');
 
     const container = document.getElementById('job-detail-content');
-    container.innerHTML = _buildJobDetailHTML(job);
+    if (!container) {
+      console.error('[App] job-detail-content container not found');
+      navigate('jobs');
+      return;
+    }
+
+    try {
+      container.innerHTML = _buildJobDetailHTML(job);
+    } catch (error) {
+      console.error('[App] Error building job detail:', error);
+      showToast('Error loading job details', 'error');
+      navigate('jobs');
+    }
   }
 
   function _buildJobDetailHTML(job) {
@@ -3624,14 +3659,35 @@ const App = (() => {
     showConfirm({
       icon: '&#9888;',
       title: 'Clear ALL Data?',
-      message: 'This will permanently delete all jobs and settings. This cannot be undone.',
+      message: 'This will permanently delete all jobs and settings from your device. Jobs in the database will remain.',
       okLabel: 'Clear Everything',
-      onOk: () => {
-        Storage.clearAll(); // local cache clear only
-        showToast('Local cache cleared', 'warning');
-        _loadSettingsForm();
-        renderDashboard();
-        renderJobList();
+      onOk: async () => {
+        // Clear localStorage
+        Storage.clearAll();
+
+        // Clear IndexedDB if exists
+        if (window.OfflineQueue) {
+          try {
+            const db = indexedDB.open('offline_queue');
+            db.onsuccess = () => {
+              db.result.close();
+              indexedDB.deleteDatabase('offline_queue');
+            };
+          } catch (e) {
+            console.error('IndexedDB clear failed:', e);
+          }
+        }
+
+        // Clear service worker cache
+        if ('caches' in window) {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map(name => caches.delete(name)));
+        }
+
+        showToast('All local data cleared! Refreshing...', 'success');
+
+        // Hard reload to get fresh data
+        setTimeout(() => window.location.reload(true), 1000);
       }
     });
   }
