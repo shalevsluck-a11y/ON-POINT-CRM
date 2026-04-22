@@ -122,6 +122,20 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Step 5: Re-attach triggers to use the updated functions
+DROP TRIGGER IF EXISTS on_job_added ON jobs;
+CREATE TRIGGER on_job_added
+  AFTER INSERT ON jobs
+  FOR EACH ROW
+  EXECUTE FUNCTION notify_job_added();
+
+DROP TRIGGER IF EXISTS on_job_closed ON jobs;
+CREATE TRIGGER on_job_closed
+  AFTER UPDATE ON jobs
+  FOR EACH ROW
+  WHEN (NEW.status = 'closed' AND (OLD.status IS NULL OR OLD.status != 'closed'))
+  EXECUTE FUNCTION notify_job_closed();
+
 COMMENT ON FUNCTION notify_job_added() IS 'Sends push to all admin/dispatcher EXCEPT the creator';
 COMMENT ON FUNCTION notify_job_closed() IS 'Sends push to all admin/dispatcher EXCEPT who closed it';
 COMMENT ON COLUMN jobs.closed_by IS 'User who changed status to closed';
