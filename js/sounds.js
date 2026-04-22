@@ -35,98 +35,106 @@ const NotificationSounds = (() => {
     return gain;
   }
 
-  // SOUND 1: Chime (default) - Pleasant bell-like tone
+  // SOUND 1: iMessage style (default) - iconic iPhone message sound
+  // Two-tone ping: 1318hz→1760hz sweep, then 1760hz held
   function playChime() {
     const ctx = getContext();
     const now = ctx.currentTime;
 
-    // Three harmonics for a chime effect
-    const freqs = [800, 1200, 1600];
-    freqs.forEach((freq, i) => {
-      const osc = createOscillator(ctx, freq, 'sine');
-      const gain = createGain(ctx, now, 0.01, 0.05, 0.3, 0.4, 0.15 / (i + 1));
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.6);
-    });
-  }
-
-  // SOUND 2: Bell - Classic notification bell
-  function playBell() {
-    const ctx = getContext();
-    const now = ctx.currentTime;
-
-    // Bell harmonics
-    const freqs = [520, 1040, 1560, 2080];
-    freqs.forEach((freq, i) => {
-      const osc = createOscillator(ctx, freq, 'sine');
-      const gain = createGain(ctx, now, 0.005, 0.02, 0.2, 0.3, 0.2 / (i + 1));
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(now);
-      osc.stop(now + 0.5);
-    });
-  }
-
-  // SOUND 3: Pop - Short, punchy notification
-  function playPop() {
-    const ctx = getContext();
-    const now = ctx.currentTime;
-
-    const osc = createOscillator(ctx, 1200, 'sine');
+    const osc = createOscillator(ctx, 1318, 'sine');
     const gain = ctx.createGain();
 
-    // Quick attack and decay for "pop" effect
-    gain.gain.setValueAtTime(0.3, now);
-    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+    // Frequency sweep from 1318hz to 1760hz over 0.15s
+    osc.frequency.setValueAtTime(1318, now);
+    osc.frequency.linearRampToValueAtTime(1760, now + 0.15);
+    // Hold at 1760hz for 0.1s (total 0.25s)
 
-    // Frequency sweep down for pop effect
-    osc.frequency.setValueAtTime(1200, now);
-    osc.frequency.exponentialRampToValueAtTime(400, now + 0.08);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.15);
-  }
-
-  // SOUND 4: Ding - Clear single tone
-  function playDing() {
-    const ctx = getContext();
-    const now = ctx.currentTime;
-
-    const osc = createOscillator(ctx, 1000, 'sine');
-    const gain = createGain(ctx, now, 0.01, 0.1, 0.4, 0.5, 0.25);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start(now);
-    osc.stop(now + 0.7);
-  }
-
-  // SOUND 5: Swoosh - Smooth rising tone
-  function playSwoosh() {
-    const ctx = getContext();
-    const now = ctx.currentTime;
-
-    const osc = createOscillator(ctx, 400, 'sine');
-    const gain = ctx.createGain();
-
-    // Frequency sweep up for swoosh effect
-    osc.frequency.setValueAtTime(400, now);
-    osc.frequency.exponentialRampToValueAtTime(1200, now + 0.25);
-
-    // Gentle envelope
+    // Clean envelope - quick attack, smooth fadeout
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.2, now + 0.05);
-    gain.gain.linearRampToValueAtTime(0.2, now + 0.2);
+    gain.gain.linearRampToValueAtTime(0.3, now + 0.01);
+    gain.gain.setValueAtTime(0.3, now + 0.2);
     gain.gain.linearRampToValueAtTime(0, now + 0.35);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
     osc.start(now);
     osc.stop(now + 0.4);
+  }
+
+  // SOUND 2: WhatsApp style - double pop (880hz then 740hz)
+  function playBell() {
+    const ctx = getContext();
+    const now = ctx.currentTime;
+
+    // First pop: 880hz for 0.05s
+    const osc1 = createOscillator(ctx, 880, 'sine');
+    const gain1 = ctx.createGain();
+    gain1.gain.setValueAtTime(0, now);
+    gain1.gain.linearRampToValueAtTime(0.25, now + 0.005);
+    gain1.gain.linearRampToValueAtTime(0, now + 0.05);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.06);
+
+    // Second pop: 740hz for 0.05s (slight overlap)
+    const osc2 = createOscillator(ctx, 740, 'sine');
+    const gain2 = ctx.createGain();
+    gain2.gain.setValueAtTime(0, now + 0.045);
+    gain2.gain.linearRampToValueAtTime(0.25, now + 0.05);
+    gain2.gain.linearRampToValueAtTime(0, now + 0.1);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(now + 0.045);
+    osc2.stop(now + 0.11);
+  }
+
+  // SOUND 3: Telegram style - clean short pop at 1046hz
+  function playPop() {
+    const ctx = getContext();
+    const now = ctx.currentTime;
+
+    const osc = createOscillator(ctx, 1046, 'sine');
+    const gain = ctx.createGain();
+
+    // Very fast attack, moderate decay
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.3, now + 0.005);
+    gain.gain.linearRampToValueAtTime(0, now + 0.1);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.11);
+  }
+
+  // SOUND 4: Urgent alert - three quick beeps at 1400hz
+  function playDing() {
+    const ctx = getContext();
+    const now = ctx.currentTime;
+
+    // Three beeps, each 0.12s with 0.08s gaps
+    for (let i = 0; i < 3; i++) {
+      const startTime = now + (i * 0.2); // 0.12s beep + 0.08s gap = 0.2s interval
+      const osc = createOscillator(ctx, 1400, 'sine');
+      const gain = ctx.createGain();
+
+      // Sharp attack for urgency
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(0.3, startTime + 0.01);
+      gain.gain.setValueAtTime(0.3, startTime + 0.1);
+      gain.gain.linearRampToValueAtTime(0, startTime + 0.12);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(startTime);
+      osc.stop(startTime + 0.13);
+    }
+  }
+
+  // SOUND 5: Silent - no sound
+  function playSwoosh() {
+    // Silent option - do nothing
   }
 
   // Main play function
