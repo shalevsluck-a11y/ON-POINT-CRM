@@ -459,18 +459,31 @@ const Auth = (() => {
 
   async function removeUser(userId) {
     if (!isAdmin()) throw new Error('Admin only');
+    const { data: { session } } = await SupabaseClient.auth.getSession();
+    let res, json;
     try {
-      const { data, error } = await SupabaseClient.rpc('delete_user_profile', {
-        p_user_id: userId
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 30000);
+      res = await fetch(`${SUPABASE_URL}/functions/v1/remove-user`, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ userId }),
       });
-      if (error) throw new Error(error.message);
-
-      // Refresh users list
-      await _loadAllUsers();
-      return data;
+      clearTimeout(timer);
+      json = await res.json();
     } catch (e) {
-      throw new Error(e.message || 'Failed to remove user');
+      if (e.name === 'AbortError') throw new Error('Request timed out — check connection');
+      throw new Error('Network error — user could not be removed');
     }
+    if (!res.ok) throw new Error(json.error || 'Remove failed');
+
+    // Refresh users list
+    await _loadAllUsers();
+    return json;
   }
 
   // ──────────────────────────────────────────────────────────
