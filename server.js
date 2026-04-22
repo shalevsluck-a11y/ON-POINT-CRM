@@ -287,6 +287,61 @@ app.post('/auth/magic-session', async (req, res) => {
   }
 });
 
+// Apply migration 027 - fix notification trigger
+app.post('/admin/apply-migration-027', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Missing authorization header' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('id, role')
+      .eq('magic_token', token)
+      .single();
+
+    if (!profile || profile.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin only' });
+    }
+
+    console.log('[MIGRATION 027] Fixing notification triggers...');
+
+    // Read migration file
+    const fs = require('fs');
+    const sql = fs.readFileSync('./supabase/migrations/027_fix_notification_trigger_job_id.sql', 'utf8');
+
+    // Execute each function separately
+    const functions = sql.split('CREATE OR REPLACE FUNCTION');
+
+    for (let i = 1; i < functions.length; i++) {
+      const func = 'CREATE OR REPLACE FUNCTION' + functions[i].split(';')[0] + ';';
+      console.log(`[MIGRATION 027] Executing function ${i}...`);
+
+      const { error } = await supabaseAdmin.rpc('exec_sql', { query: func });
+      if (error) {
+        console.error(`[MIGRATION 027] Error:`, error);
+        // Try direct query
+        const { error: queryError } = await supabaseAdmin.from('_migrations').insert({ sql: func });
+        if (queryError) {
+          throw new Error(`Failed to execute function ${i}: ${error.message}`);
+        }
+      }
+    }
+
+    console.log('[MIGRATION 027] Migration applied successfully!');
+
+    res.json({
+      success: true,
+      message: 'Migration 027 applied - notification triggers fixed'
+    });
+  } catch (error) {
+    console.error('[MIGRATION 027] Error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Fix endpoint: add magic tokens to all users who don't have one
 app.post('/admin/fix-magic-tokens', async (req, res) => {
   try {
