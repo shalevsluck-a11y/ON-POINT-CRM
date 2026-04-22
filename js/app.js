@@ -307,8 +307,9 @@ const App = (() => {
       return;
     }
 
-    // Role guard: only admins can access settings
-    if (viewName === 'settings' && !Auth.isAdmin()) {
+    // Role guard: only admins and dispatchers can access settings
+    // Dispatcher sees only notification settings, admin sees everything
+    if (viewName === 'settings' && !Auth.isAdminOrDisp()) {
       showToast('You do not have permission to access Settings', 'error');
       navigate('dashboard');
       return;
@@ -1169,9 +1170,17 @@ const App = (() => {
       const user = Auth.getUser();
       allowedSourceNames = user?.allowedLeadSources || null;
 
+      console.log('[SOURCE FILTER] Dispatcher detected');
+      console.log('[SOURCE FILTER] User:', user);
+      console.log('[SOURCE FILTER] Allowed sources:', allowedSourceNames);
+      console.log('[SOURCE FILTER] All sources:', sources.map(s => s.name));
+
       if (allowedSourceNames && allowedSourceNames.length > 0) {
         // Filter to only show allowed sources
         filteredSources = sources.filter(s => allowedSourceNames.includes(s.name));
+        console.log('[SOURCE FILTER] Filtered to:', filteredSources.map(s => s.name));
+      } else {
+        console.log('[SOURCE FILTER] No allowed sources set - showing all (this is the bug!)');
       }
     }
 
