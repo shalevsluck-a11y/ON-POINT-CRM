@@ -2817,20 +2817,18 @@ const App = (() => {
       btn.textContent = 'Creating...';
 
     try {
-      // Create dispatcher directly in database (bypass Supabase auth - we use magic links)
-      const { data: profile, error: createError } = await SupabaseClient
-        .from('profiles')
-        .insert({
-          name: name,
-          role: 'dispatcher',
-          color: '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'),
-          is_owner: false
-        })
-        .select('id, magic_token')
-        .single();
+      // Create dispatcher using database function (bypasses RLS)
+      const color = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+      const { data: profiles, error: createError } = await SupabaseClient
+        .rpc('create_dispatcher_profile', {
+          p_name: name,
+          p_color: color
+        });
 
       if (createError) throw new Error(createError.message);
-      if (!profile) throw new Error('Failed to create profile');
+      if (!profiles || profiles.length === 0) throw new Error('Failed to create dispatcher');
+
+      const profile = profiles[0];
 
       const magicLink = profile?.magic_token
         ? `https://crm.onpointprodoors.com/#token=${profile.magic_token}`
