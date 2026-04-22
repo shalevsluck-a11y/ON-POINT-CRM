@@ -293,6 +293,63 @@ app.post('/auth/magic-session', async (req, res) => {
   }
 });
 
+// Fix endpoint: add magic tokens to all users who don't have one
+app.post('/admin/fix-magic-tokens', async (req, res) => {
+  try {
+    console.log('[FIX] Adding magic tokens to users...');
+
+    // Get all profiles
+    const { data: profiles, error } = await supabaseAdmin
+      .from('profiles')
+      .select('id, name, email, magic_token');
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    let updated = 0;
+    let skipped = 0;
+    const results = [];
+
+    for (const profile of profiles) {
+      if (profile.magic_token) {
+        skipped++;
+        continue;
+      }
+
+      // Generate magic token
+      const magicToken = Math.random().toString(36).substring(2) +
+                        Math.random().toString(36).substring(2) +
+                        Date.now().toString(36);
+
+      // Update profile
+      const { error: updateError } = await supabaseAdmin
+        .from('profiles')
+        .update({ magic_token: magicToken })
+        .eq('id', profile.id);
+
+      if (updateError) {
+        results.push({ name: profile.name, status: 'failed', error: updateError.message });
+      } else {
+        results.push({ name: profile.name, status: 'updated', token: magicToken.substring(0, 10) + '...' });
+        updated++;
+      }
+    }
+
+    console.log(`[FIX] Updated: ${updated}, Skipped: ${skipped}`);
+
+    res.json({
+      success: true,
+      total: profiles.length,
+      updated,
+      skipped,
+      results
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Debug endpoint: check for duplicate magic tokens
 app.get('/admin/debug-tokens', async (req, res) => {
   try {
