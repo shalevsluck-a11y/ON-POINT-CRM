@@ -1160,33 +1160,53 @@ const App = (() => {
     const settings = DB.getSettings();
     const sources  = settings.leadSources || [];
 
-    // Keep "My Lead" as first option
-    select.innerHTML = `<option value="my_lead">My Lead (Direct)</option>`;
-    sources.forEach(s => {
+    // Filter sources based on dispatcher permissions
+    let filteredSources = sources;
+    let allowedSourceNames = null;
+
+    if (Auth.isDispatcher()) {
+      const user = Auth.getUser();
+      allowedSourceNames = user?.allowedLeadSources || null;
+
+      if (allowedSourceNames && allowedSourceNames.length > 0) {
+        // Filter to only show allowed sources
+        filteredSources = sources.filter(s => allowedSourceNames.includes(s.name));
+      }
+    }
+
+    // Build dropdown with filtered sources
+    select.innerHTML = '';
+
+    // Add "My Lead" if allowed
+    if (!Auth.isDispatcher() || !allowedSourceNames || allowedSourceNames.includes('my_lead')) {
+      select.innerHTML = `<option value="my_lead">My Lead (Direct)</option>`;
+    }
+
+    filteredSources.forEach(s => {
       const opt = document.createElement('option');
       opt.value = s.id;
       opt.textContent = `${s.name} (${s.contractorPercent || 0}%)`;
       select.appendChild(opt);
     });
 
-    // Auto-select for dispatcher with only one allowed source
-    if (Auth.isDispatcher()) {
-      const user = Auth.getUser();
-      const allowedSources = user?.allowedLeadSources || null;
-      if (allowedSources && allowedSources.length === 1) {
-        // Find the matching source
-        const sourceName = allowedSources[0];
-        if (sourceName === 'my_lead') {
-          select.value = 'my_lead';
-        } else {
-          const source = sources.find(s => s.name === sourceName);
-          if (source) {
-            select.value = source.id;
-          }
+    // Auto-select and disable if dispatcher has only one allowed source
+    if (Auth.isDispatcher() && allowedSourceNames && allowedSourceNames.length === 1) {
+      const sourceName = allowedSourceNames[0];
+      if (sourceName === 'my_lead') {
+        select.value = 'my_lead';
+      } else {
+        const source = sources.find(s => s.name === sourceName);
+        if (source) {
+          select.value = source.id;
         }
-        // Disable the dropdown since they only have one choice
-        select.disabled = true;
       }
+      select.disabled = true;
+      select.style.opacity = '0.6';
+      select.style.cursor = 'not-allowed';
+    } else {
+      select.disabled = false;
+      select.style.opacity = '1';
+      select.style.cursor = '';
     }
   }
 
