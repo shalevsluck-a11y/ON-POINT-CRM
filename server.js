@@ -222,6 +222,62 @@ app.delete('/admin/delete-user/:id', async (req, res) => {
   }
 });
 
+// Exchange magic token for Supabase session
+app.post('/auth/magic-session', async (req, res) => {
+  try {
+    const { magic_token } = req.body;
+    if (!magic_token) {
+      return res.status(400).json({ error: 'Missing magic_token' });
+    }
+
+    console.log(`[MAGIC SESSION] Verifying token: ${magic_token.substring(0, 10)}...`);
+
+    // Verify magic token and get profile
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, name, email, role')
+      .eq('magic_token', magic_token)
+      .single();
+
+    if (profileError || !profile) {
+      console.error(`[MAGIC SESSION] Invalid token:`, profileError);
+      return res.status(401).json({ error: 'Invalid magic token' });
+    }
+
+    console.log(`[MAGIC SESSION] Profile found:`, profile.name, profile.email);
+
+    // Generate a session token for this user using admin API
+    // This creates a valid Supabase auth session
+    const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'magiclink',
+      email: profile.email,
+    });
+
+    if (sessionError) {
+      console.error(`[MAGIC SESSION] Session generation failed:`, sessionError);
+      return res.status(500).json({ error: 'Failed to generate session' });
+    }
+
+    console.log(`[MAGIC SESSION] Session created for:`, profile.email);
+
+    // Return the hashed token that client can use with verifyOtp
+    res.json({
+      success: true,
+      profile: {
+        id: profile.id,
+        name: profile.name,
+        email: profile.email,
+        role: profile.role
+      },
+      hashed_token: sessionData.properties.hashed_token,
+      email: profile.email
+    });
+  } catch (error) {
+    console.error(`[MAGIC SESSION] Error:`, error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Debug endpoint: check for duplicate magic tokens
 app.get('/admin/debug-tokens', async (req, res) => {
   try {
