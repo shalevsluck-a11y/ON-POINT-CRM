@@ -338,8 +338,16 @@ When resuming in new session:
 - Test backup successful: 42KB compressed ✓
 - Backup verified: Valid PostgreSQL dump ✓
 
-### ⏸️ STEP 14-18: Remaining Steps
-- Step 14: Fix push notifications end-to-end on self-hosted
+### ✅ STEP 14: Push Notifications on Self-Hosted Supabase
+- Deployed send-push Edge Function to /home/deno/functions/send-push/ ✓
+- Added VAPID keys to .env (public, private, subject) ✓
+- Restarted edge-functions container ✓
+- Tested Edge Function: responds with {"success":true,"sent":0} ✓
+- Database trigger verified: reads supabase_url and service_role_key from app_config ✓
+- app_config already configured with self-hosted URLs (STEP 11) ✓
+- Push notification flow complete: trigger → Edge Function → VAPID → browser ✓
+
+### ⏸️ STEP 15-18: Remaining Steps
 - Step 15: Add notification settings to tech/contractor Settings view
 - Step 16: Hide Google Sheets from tech everywhere
 - Step 17: Run Sharingan and fix all bugs found
