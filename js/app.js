@@ -222,26 +222,11 @@ const App = (() => {
 
   function _playNotificationSound() {
     try {
-      // Create audio context for notification chime
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const oscillator = audioContext.createOscillator();
-      const gainNode = audioContext.createGain();
-
-      oscillator.connect(gainNode);
-      gainNode.connect(audioContext.destination);
-
-      // Professional chime sound (C5 note)
-      oscillator.frequency.value = 523.25;
-      oscillator.type = 'sine';
-
-      // Fade in/out envelope
-      const now = audioContext.currentTime;
-      gainNode.gain.setValueAtTime(0, now);
-      gainNode.gain.linearRampToValueAtTime(0.3, now + 0.01);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
-
-      oscillator.start(now);
-      oscillator.stop(now + 0.3);
+      // Get user's selected notification sound (default: chime)
+      const sound = localStorage.getItem('notification_sound') || 'chime';
+      if (sound !== 'none' && sound !== 'silent' && window.NotificationSounds) {
+        window.NotificationSounds.play(sound);
+      }
     } catch (e) {
       console.warn('Could not play notification sound:', e);
     }
@@ -2637,22 +2622,33 @@ const App = (() => {
       const listEl = document.getElementById('admin-users-list');
       if (!listEl) return;
 
-      listEl.innerHTML = users.map(u => `
-        <div class="user-list-item">
-          <div class="user-item-avatar" style="background:${u.color||'#3B82F6'}">${_initials(u.name||u.id)}</div>
-          <div class="user-item-info">
-            <div class="user-item-name">${_esc(u.name || 'Unknown')}</div>
-            <div class="user-item-email">${_esc(u.email||'')}</div>
+      listEl.innerHTML = users.map(u => {
+        const magicLink = u.magic_token ? `https://crm.onpointprodoors.com/#token=${u.magic_token}` : '';
+        return `
+        <div class="user-list-item" style="flex-direction:column;align-items:stretch;padding:12px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="user-item-avatar" style="background:${u.color||'#3B82F6'}">${_initials(u.name||u.id)}</div>
+            <div class="user-item-info" style="flex:1">
+              <div class="user-item-name">${_esc(u.name || 'Unknown')}</div>
+              <div class="user-item-email">${_esc(u.email||'')}</div>
+            </div>
+            <div class="user-item-role" style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:12px;padding:4px 12px;background:${u.role==='admin'?'var(--color-primary)':'var(--color-surface-3)'};color:${u.role==='admin'?'#fff':'var(--color-text)'};border-radius:6px;font-weight:500;text-transform:capitalize">${u.role}</span>
+              ${u.role==='dispatcher' ? `<button class="btn-icon" onclick="App.showDispatcherPermissions('${u.id}')" title="Edit permissions">&#9998;</button>` : ''}
+              ${u.id !== currentUserId ? `<button class="btn-icon" style="color:var(--color-error);font-size:16px"
+                onclick="App._confirmRemoveUser(this.dataset.uid,this.dataset.uname)" title="Remove user"
+                data-uid="${_esc(u.id)}" data-uname="${_esc(u.name||u.email)}">&#128465;</button>` : ''}
+            </div>
           </div>
-          <div class="user-item-role" style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:12px;padding:4px 12px;background:${u.role==='admin'?'var(--color-primary)':'var(--color-surface-3)'};color:${u.role==='admin'?'#fff':'var(--color-text)'};border-radius:6px;font-weight:500;text-transform:capitalize">${u.role}</span>
-            ${u.role==='dispatcher' ? `<button class="btn-icon" onclick="App.showDispatcherPermissions('${u.id}')" title="Edit permissions">&#9998;</button>` : ''}
-            ${u.id !== currentUserId ? `<button class="btn-icon" style="color:var(--color-error);font-size:16px"
-              onclick="App._confirmRemoveUser(this.dataset.uid,this.dataset.uname)" title="Remove user"
-              data-uid="${_esc(u.id)}" data-uname="${_esc(u.name||u.email)}">&#128465;</button>` : ''}
+          ${magicLink ? `
+          <div style="margin-top:8px;padding:8px;background:var(--color-surface-2);border-radius:6px;display:flex;align-items:center;gap:8px">
+            <div style="flex:1;font-size:11px;color:var(--color-text-secondary);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${magicLink}</div>
+            <button class="btn-icon" onclick="navigator.clipboard.writeText('${magicLink}');App.showToast('Magic link copied!','success')" title="Copy magic link" style="font-size:14px">📋</button>
           </div>
+          ` : ''}
         </div>
-      `).join('') || '<div class="empty-state-sm">No users found</div>';
+        `;
+      }).join('') || '<div class="empty-state-sm">No users found</div>';
       _usersListFetchInProgress = false;
     } catch (e) {
       if (!isRetry) {
@@ -3857,50 +3853,44 @@ const App = (() => {
     const hash = window.location.hash;
     const hasMagicToken = (hash && hash.includes('token=')) || localStorage.getItem('magic_token');
 
-    // Safety net: if auth hangs >4s, force login screen so user is never stuck on blue screen.
-    // SKIP this timer if we have a magic token - we want to wait for magic auth to complete
-    if (!hasMagicToken) {
-      setTimeout(() => {
-        const shell = document.getElementById('app-shell');
-        if (!shell) return; // auth already resolved normally — do nothing
-        const app   = document.getElementById('app');
-        const login = document.getElementById('login-screen');
-        const appVisible   = app   && !app.classList.contains('hidden');
-        const loginVisible = login && !login.classList.contains('hidden');
-        _removeAppShell();
-        if (!appVisible && !loginVisible) {
-          if (login) login.classList.remove('hidden');
-        }
-      }, 4000);
-    }
-
-    // Detect invite link before Auth.init fires (hash cleared by Supabase after use)
-    const isInviteFlow = window.location.hash.includes('type=invite') ||
-                         window.location.hash.includes('type=recovery');
+    // NEVER show login screen if magic token exists - just wait for auth
+    // Remove app shell immediately to show clean loading state
+    _removeAppShell();
 
     const currentUser = await Auth.init(async (user) => {
       if (user) {
         if (_firstSetupInProgress) return; // setup screen handles completion
-        if (isInviteFlow) {
-          _removeAppShell();
-          SetPasswordScreen.show();
-        } else {
-          await _onAuthenticated();
-        }
+        console.log('[App] User authenticated, calling _onAuthenticated');
+        await _onAuthenticated();
       } else {
-        // Only show login screen if we don't have a magic token
-        // (if we had a magic token, it failed to authenticate, and we should show login)
-        _initialized = false;
-        await _checkAndShowFirstSetup();
+        // No user - show error message instead of login screen
+        console.error('[App] Authentication failed - no user returned');
+        document.body.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--color-bg);padding:20px">
+            <div style="max-width:400px;text-align:center">
+              <h1 style="color:var(--color-error);margin-bottom:16px">Access Denied</h1>
+              <p style="color:var(--color-text);margin-bottom:20px">Your magic link is invalid or expired. Please contact your administrator for a new link.</p>
+            </div>
+          </div>
+        `;
       }
     });
 
     if (currentUser) {
       // Session already confirmed - ensure the app is shown
+      console.log('[App] Current user exists, calling _onAuthenticated');
       await _onAuthenticated();
     } else {
-      // No valid session found - show login screen
-      await _checkAndShowFirstSetup();
+      // No valid session - show error
+      console.error('[App] No current user found');
+      document.body.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--color-bg);padding:20px">
+          <div style="max-width:400px;text-align:center">
+            <h1 style="color:var(--color-error);margin-bottom:16px">Access Denied</h1>
+            <p style="color:var(--color-text);margin-bottom:20px">Your magic link is invalid or expired. Please contact your administrator for a new link.</p>
+          </div>
+        </div>
+      `;
     }
   }
 
