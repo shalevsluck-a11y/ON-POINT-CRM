@@ -118,7 +118,7 @@ app.post('/admin/create-user', async (req, res) => {
     console.log(`[CREATE USER] Auth user created with ID: ${newUser.user.id}`);
 
     // Create profile with magic token
-    const { error: profileError } = await supabaseAdmin
+    const { error: createProfileError } = await supabaseAdmin
       .from('profiles')
       .upsert({
         id: newUser.user.id,
@@ -127,9 +127,9 @@ app.post('/admin/create-user', async (req, res) => {
         magic_token: magicToken
       });
 
-    if (profileError) {
-      console.error(`[CREATE USER] Profile creation failed:`, profileError);
-      return res.status(400).json({ error: 'Profile creation failed: ' + profileError.message });
+    if (createProfileError) {
+      console.error(`[CREATE USER] Profile creation failed:`, createProfileError);
+      return res.status(400).json({ error: 'Profile creation failed: ' + createProfileError.message });
     }
 
     console.log(`[CREATE USER] Profile created successfully`);
