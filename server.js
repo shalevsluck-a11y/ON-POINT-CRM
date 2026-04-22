@@ -222,6 +222,62 @@ app.delete('/admin/delete-user/:id', async (req, res) => {
   }
 });
 
+// Debug endpoint: check for duplicate magic tokens
+app.get('/admin/debug-tokens', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Missing authorization header' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('id, role')
+      .eq('magic_token', token)
+      .single();
+
+    if (!profile || profile.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin only' });
+    }
+
+    // Get all profiles with their magic tokens
+    const { data: allProfiles } = await supabaseAdmin
+      .from('profiles')
+      .select('id, name, email, magic_token')
+      .order('created_at', { ascending: false });
+
+    // Find duplicates
+    const tokenMap = {};
+    const duplicates = [];
+    allProfiles.forEach(p => {
+      if (p.magic_token) {
+        if (tokenMap[p.magic_token]) {
+          duplicates.push({
+            token: p.magic_token.substring(0, 10) + '...',
+            users: [tokenMap[p.magic_token], { id: p.id, name: p.name, email: p.email }]
+          });
+        } else {
+          tokenMap[p.magic_token] = { id: p.id, name: p.name, email: p.email };
+        }
+      }
+    });
+
+    res.json({
+      totalProfiles: allProfiles.length,
+      profilesWithTokens: allProfiles.filter(p => p.magic_token).length,
+      duplicates: duplicates.length > 0 ? duplicates : 'None',
+      recentUsers: allProfiles.slice(0, 10).map(p => ({
+        name: p.name,
+        email: p.email,
+        tokenPrefix: p.magic_token ? p.magic_token.substring(0, 10) + '...' : 'null'
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // SPA fallback — all routes serve index.html
 app.get('*', (req, res) => {
   res.set('Cache-Control', 'no-cache, must-revalidate');
