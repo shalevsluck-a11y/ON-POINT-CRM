@@ -256,16 +256,18 @@ When resuming in new session:
 - DNS note: api.onpointprodoors.com needs A record → 187.77.8.155 (manual step)
 - Ready to get SSL certificate
 
-### ⏸️ STEP 8: SSL Certificate (BLOCKED - DNS Required)
-- Attempted: certbot --nginx -d api.onpointprodoors.com
-- Result: NXDOMAIN - DNS record does not exist
-- **MANUAL STEP REQUIRED**: Configure DNS before proceeding
-  1. Add A record: api.onpointprodoors.com → 187.77.8.155
-  2. Wait for DNS propagation (can take 5-60 minutes)
-  3. Run: `certbot --nginx -d api.onpointprodoors.com --non-interactive --agree-tos --email service@onpointprodoors.com`
-- Status: Paused until DNS configured
-- Note: Can proceed with Steps 9-13 (data migration) without SSL
-- SSL only required for external client connections
+### ✅ STEP 8: SSL Certificate Installed
+- DNS configured: api.onpointprodoors.com → 187.77.8.155 ✓
+- DNS propagation verified ✓
+- Executed: certbot --nginx -d api.onpointprodoors.com ✓
+- Certificate obtained from Let's Encrypt ✓
+- Certificate saved: /etc/letsencrypt/live/api.onpointprodoors.com/fullchain.pem ✓
+- Private key saved: /etc/letsencrypt/live/api.onpointprodoors.com/privkey.pem ✓
+- Certificate expires: 2026-07-21 ✓
+- Nginx configuration updated automatically ✓
+- Auto-renewal scheduled ✓
+- HTTPS verified: https://api.onpointprodoors.com/rest/v1/ returns 401 (expected) ✓
+- Ready to update frontend connection
 
 ### ✅ STEP 9: Data Export from Supabase Cloud
 - Connected to cloud instance: https://nmmpemjcnncjfpooytpv.supabase.co ✓
