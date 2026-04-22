@@ -3849,49 +3849,76 @@ const App = (() => {
 
   // Public boot entry point — sets up auth and wires session listener
   async function init() {
-    // Check for magic token FIRST, before showing any screens
-    const hash = window.location.hash;
-    const hasMagicToken = (hash && hash.includes('token=')) || localStorage.getItem('magic_token');
-
-    // NEVER show login screen if magic token exists - just wait for auth
-    // Remove app shell immediately to show clean loading state
+    // Remove app shell immediately
     _removeAppShell();
 
     const currentUser = await Auth.init(async (user) => {
       if (user) {
-        if (_firstSetupInProgress) return; // setup screen handles completion
+        if (_firstSetupInProgress) return;
         console.log('[App] User authenticated, calling _onAuthenticated');
         await _onAuthenticated();
       } else {
-        // No user - show error message instead of login screen
-        console.error('[App] Authentication failed - no user returned');
-        document.body.innerHTML = `
-          <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--color-bg);padding:20px">
-            <div style="max-width:400px;text-align:center">
-              <h1 style="color:var(--color-error);margin-bottom:16px">Access Denied</h1>
-              <p style="color:var(--color-text);margin-bottom:20px">Your magic link is invalid or expired. Please contact your administrator for a new link.</p>
-            </div>
-          </div>
-        `;
+        // No user - show magic link input instead of error
+        console.warn('[App] No user - showing magic link input');
+        _showMagicLinkInput();
       }
     });
 
     if (currentUser) {
-      // Session already confirmed - ensure the app is shown
       console.log('[App] Current user exists, calling _onAuthenticated');
       await _onAuthenticated();
     } else {
-      // No valid session - show error
-      console.error('[App] No current user found');
-      document.body.innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--color-bg);padding:20px">
-          <div style="max-width:400px;text-align:center">
-            <h1 style="color:var(--color-error);margin-bottom:16px">Access Denied</h1>
-            <p style="color:var(--color-text);margin-bottom:20px">Your magic link is invalid or expired. Please contact your administrator for a new link.</p>
-          </div>
-        </div>
-      `;
+      // Show magic link input
+      _showMagicLinkInput();
     }
+  }
+
+  function _showMagicLinkInput() {
+    document.body.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#1a1a2e;padding:20px">
+        <div style="max-width:400px;width:100%;text-align:center">
+          <img src="assets/logo.jpg" alt="Logo" style="width:120px;height:120px;border-radius:50%;margin-bottom:24px;box-shadow:0 4px 12px rgba(0,0,0,0.3)">
+          <h1 style="color:#fff;margin-bottom:12px;font-size:24px">Welcome to On Point CRM</h1>
+          <p style="color:#aaa;margin-bottom:32px;font-size:14px">Paste your magic link below to continue</p>
+          <input type="text" id="magic-link-input" placeholder="Paste your magic link here"
+            style="width:100%;padding:14px;border:2px solid #333;border-radius:8px;background:#16213e;color:#fff;font-size:14px;margin-bottom:16px;box-sizing:border-box"
+            autocomplete="off" autocapitalize="off">
+          <button id="magic-link-btn"
+            style="width:100%;padding:14px;background:#0066ff;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer">
+            Continue
+          </button>
+          <p style="color:#666;margin-top:24px;font-size:12px">Don't have a link? Contact your administrator</p>
+        </div>
+      </div>
+    `;
+
+    const input = document.getElementById('magic-link-input');
+    const btn = document.getElementById('magic-link-btn');
+
+    const processLink = () => {
+      const link = input.value.trim();
+      if (!link) return;
+
+      // Extract token from magic link URL
+      const match = link.match(/token=([a-f0-9]+)/);
+      if (match && match[1]) {
+        const token = match[1];
+        console.log('[App] Magic token extracted from pasted link');
+        // Store in all locations
+        localStorage.setItem('magic_token', token);
+        localStorage.setItem('onpoint-pwa-auth-magic_token', token);
+        localStorage.setItem('onpoint-web-auth-magic_token', token);
+        sessionStorage.setItem('magic_token', token);
+        // Reload to trigger auth
+        window.location.reload();
+      } else {
+        alert('Invalid magic link. Please paste the full link you received.');
+      }
+    };
+
+    btn.onclick = processLink;
+    input.onkeypress = (e) => { if (e.key === 'Enter') processLink(); };
+    input.focus();
   }
 
   let _setupCheckInProgress = false;
