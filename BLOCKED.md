@@ -1,37 +1,35 @@
 # Manual Actions Required
 
-## Database Migration Needed
+## ⚡ QUICK FIX - Run This ONE Script
 
-**File:** `supabase/migrations/037_add_closed_by_and_fix_notification_exclusion.sql`
+**THE BUG:** Push notification triggers exist but aren't attached to the jobs table.
 
-This migration adds critical functionality to exclude the creator/closer from receiving their own notifications.
+**THE FIX:** Run the diagnostic + fix script in Supabase SQL Editor.
 
-### What it does:
-1. Adds `closed_by` column to `jobs` table
-2. Creates trigger to auto-set `closed_by` when status changes to closed
-3. Updates `notify_job_added()` to exclude the creator from push notifications
-4. Updates `notify_job_closed()` to exclude the closer from push notifications
+### Steps (2 minutes):
 
-### How to apply:
-
-**Option 1: Supabase Dashboard (Recommended)**
 1. Go to https://supabase.com/dashboard
 2. Open your project
-3. Navigate to SQL Editor
-4. Copy the entire contents of `supabase/migrations/037_add_closed_by_and_fix_notification_exclusion.sql`
-5. Paste into SQL Editor
-6. Click "Run"
+3. Click "SQL Editor" in left sidebar
+4. Click "New Query"
+5. Copy the entire contents of **`supabase/migrations/038_diagnose_and_fix_triggers.sql`**
+6. Paste into SQL Editor
+7. Click "Run" (or press Ctrl+Enter)
+8. Check the output messages:
+   - Should show "App config rows: 2"
+   - Should show "Supabase URL configured: true"
+   - Should show "Service role key configured: true"
+   - Should show triggers on_job_added and on_job_closed attached
+9. Done!
 
-**Option 2: Supabase CLI**
-```bash
-supabase db push
-```
+### What This Script Does:
+1. ✅ Checks if app_config has required values
+2. ✅ Verifies trigger functions exist
+3. ✅ Ensures triggers are attached to jobs table
+4. ✅ Adds closed_by column if missing
+5. ✅ Configures everything automatically
 
-**Option 3: Direct PostgreSQL Connection**
-If you have psql or can connect to the database:
-```bash
-psql "YOUR_DATABASE_CONNECTION_STRING" < supabase/migrations/037_add_closed_by_and_fix_notification_exclusion.sql
-```
+**After running this script, creating a job will trigger push notifications to all other users.**
 
 ---
 
