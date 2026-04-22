@@ -150,20 +150,22 @@ const Auth = (() => {
   // LOGIN with automatic retry
   // ──────────────────────────────────────────────────────────
 
-  async function login(email, password) {
+  async function login(email, password, onRetry) {
     let lastError = null;
     const maxRetries = 3;
-    const retryDelays = [0, 3000, 6000]; // 0ms, 3s, 6s
+    const retryDelays = [0, 3000, 3000]; // 0ms, 3s, 3s
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         if (attempt > 0) {
+          // Notify UI of retry
+          if (onRetry) onRetry(attempt);
           // Wait before retry
           await new Promise(resolve => setTimeout(resolve, retryDelays[attempt]));
         }
 
         const loginTimeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Login timed out')), 10000)
+          setTimeout(() => reject(new Error('CONNECTION_TIMEOUT')), 15000)
         );
         const loginAttempt = SupabaseClient.auth.signInWithPassword({ email, password }).then(({ data, error }) => {
           if (error) throw error;
@@ -182,7 +184,7 @@ const Auth = (() => {
       }
     }
 
-    throw new Error(lastError?.message || 'Login failed after 3 attempts — check your connection');
+    throw new Error(lastError?.message || 'CONNECTION_ERROR');
   }
 
   // ──────────────────────────────────────────────────────────
