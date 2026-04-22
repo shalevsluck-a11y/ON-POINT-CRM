@@ -152,8 +152,8 @@ const Auth = (() => {
 
   async function login(email, password, onRetry) {
     let lastError = null;
-    const maxRetries = 3;
-    const retryDelays = [0, 3000, 3000]; // 0ms, 3s, 3s
+    const maxRetries = 2;
+    const retryDelays = [0, 2000]; // 0ms, 2s
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
@@ -165,7 +165,7 @@ const Auth = (() => {
         }
 
         const loginTimeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('CONNECTION_TIMEOUT')), 15000)
+          setTimeout(() => reject(new Error('CONNECTION_TIMEOUT')), 5000)
         );
         const loginAttempt = SupabaseClient.auth.signInWithPassword({ email, password }).then(({ data, error }) => {
           if (error) throw error;
