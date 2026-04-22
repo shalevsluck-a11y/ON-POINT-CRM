@@ -2796,12 +2796,8 @@ const App = (() => {
   }
 
   async function submitInvite() {
-    alert('Function called!');
     try {
-      showToast('Starting...', 'info');
-
       if (!Auth.isAdmin()) {
-        alert('Not admin!');
         showToast('Not authorized', 'error');
         return;
       }
