@@ -22,11 +22,21 @@ const Auth = (() => {
     if (hash && hash.includes('token=')) {
       const token = hash.split('token=')[1].split('&')[0];
       window.location.hash = ''; // Clear the token from URL
+      localStorage.setItem('magic_token', token);
+    }
+
+    // Check for stored magic token (password-less auth)
+    const storedToken = localStorage.getItem('magic_token');
+    if (storedToken) {
       try {
-        await _loginWithMagicToken(token);
-        return _currentUser;
+        await _loginWithMagicToken(storedToken);
+        if (_currentUser) {
+          if (_onAuthChange) _onAuthChange(_currentUser);
+          return _currentUser;
+        }
       } catch (e) {
-        console.error('Magic link login failed:', e.message);
+        console.error('Magic token auth failed:', e.message);
+        localStorage.removeItem('magic_token');
       }
     }
 
@@ -62,59 +72,42 @@ const Auth = (() => {
   }
 
   async function _loginWithMagicToken(token) {
-    // Store token permanently
-    localStorage.setItem('magic_token', token);
-
-    // Query magic_tokens table to join with auth.users to get email
-    const { data, error } = await SupabaseClient
-      .from('magic_tokens')
-      .select('user_id, expires_at')
-      .eq('token', token)
+    // Get profile using magic token (password-less)
+    const { data: profile, error } = await SupabaseClient
+      .from('profiles')
+      .select('*')
+      .eq('magic_token', token)
       .single();
 
-    if (error || !data) {
-      localStorage.removeItem('magic_token');
+    if (error || !profile) {
       throw new Error('Invalid magic link');
     }
 
-    // Check expiry
-    if (new Date(data.expires_at) < new Date()) {
-      localStorage.removeItem('magic_token');
-      throw new Error('Magic link expired');
-    }
+    // Create fake auth user object for compatibility
+    const fakeAuthUser = {
+      id: profile.id,
+      email: `${profile.name}@magic.local`,
+      user_metadata: { name: profile.name }
+    };
 
-    // Get profile to find email
-    const { data: profile } = await SupabaseClient
-      .from('profiles')
-      .select('*')
-      .eq('id', data.user_id)
-      .single();
+    // Build user object directly without Supabase auth
+    _currentUser = {
+      id: profile.id,
+      email: fakeAuthUser.email,
+      name: profile.name || fakeAuthUser.email,
+      role: profile.role || 'tech',
+      color: profile.color || '#3B82F6',
+      phone: profile.phone || '',
+      zelleHandle: profile.zelle_handle || '',
+      zipCodes: profile.zip_codes || [],
+      techPercent: profile.default_tech_percent || 60,
+      isOwner: profile.is_owner || false,
+      assignedLeadSource: profile.assigned_lead_source || null,
+      allowedLeadSources: profile.allowed_lead_sources || null,
+      isMagicAuth: true
+    };
 
-    if (!profile) {
-      localStorage.removeItem('magic_token');
-      throw new Error('User not found');
-    }
-
-    // Use the token as the password (first 20 chars)
-    const magicPassword = token.substring(0, 20);
-
-    // Try to login - this will work if admin set the password to match the token
-    try {
-      // Construct email from username
-      const username = profile.name.toLowerCase();
-      const email = username.includes('@') ? username : `${username}@onpointprodoors.com`;
-
-      await login(email, magicPassword);
-    } catch (e) {
-      // If login fails, user needs to login manually once
-      // Store their info so we can show instructions
-      localStorage.setItem('magic_link_pending', JSON.stringify({
-        name: profile.name,
-        token: token,
-        password: magicPassword
-      }));
-      throw new Error('First time setup - please contact admin to activate your magic link');
-    }
+    return _currentUser;
   }
 
   // ──────────────────────────────────────────────────────────
