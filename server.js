@@ -235,37 +235,32 @@ app.post('/auth/magic-session', async (req, res) => {
     // Verify magic token and get profile
     let { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('id, name, email, role, magic_token')
+      .select('id, name, role, magic_token')
       .eq('magic_token', magic_token)
       .single();
 
     if (profileError || !profile) {
       console.error(`[MAGIC SESSION] Invalid token:`, profileError);
-      return res.status(401).json({ error: 'Invalid magic token' });
+      return res.status(401).json({ error: 'Invalid login code' });
     }
 
-    // If profile doesn't have a magic_token, set it now (for old users)
-    if (!profile.magic_token) {
-      const newMagicToken = Math.random().toString(36).substring(2) +
-                           Math.random().toString(36).substring(2) +
-                           Date.now().toString(36);
+    console.log(`[MAGIC SESSION] Profile found:`, profile.name);
 
-      await supabaseAdmin
-        .from('profiles')
-        .update({ magic_token: newMagicToken })
-        .eq('id', profile.id);
+    // Get email from auth.users table
+    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(profile.id);
 
-      profile.magic_token = newMagicToken;
-      console.log(`[MAGIC SESSION] Generated magic token for existing user:`, profile.name);
+    if (authError || !authUser || !authUser.user) {
+      console.error(`[MAGIC SESSION] Failed to get auth user:`, authError);
+      return res.status(500).json({ error: 'Failed to get user data' });
     }
 
-    console.log(`[MAGIC SESSION] Profile found:`, profile.name, profile.email);
+    const email = authUser.user.email;
+    console.log(`[MAGIC SESSION] Auth user email:`, email);
 
     // Generate a session token for this user using admin API
-    // This creates a valid Supabase auth session
     const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
-      email: profile.email,
+      email: email,
     });
 
     if (sessionError) {
@@ -273,7 +268,7 @@ app.post('/auth/magic-session', async (req, res) => {
       return res.status(500).json({ error: 'Failed to generate session' });
     }
 
-    console.log(`[MAGIC SESSION] Session created for:`, profile.email);
+    console.log(`[MAGIC SESSION] Session created for:`, email);
 
     // Return the hashed token that client can use with verifyOtp
     res.json({
@@ -281,11 +276,10 @@ app.post('/auth/magic-session', async (req, res) => {
       profile: {
         id: profile.id,
         name: profile.name,
-        email: profile.email,
         role: profile.role
       },
       hashed_token: sessionData.properties.hashed_token,
-      email: profile.email
+      email: email
     });
   } catch (error) {
     console.error(`[MAGIC SESSION] Error:`, error);
