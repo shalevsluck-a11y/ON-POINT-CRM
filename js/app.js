@@ -2816,13 +2816,24 @@ const App = (() => {
       );
       await Promise.race([createPromise, timeoutPromise]);
 
-      _lastInvite = { name, email: username, password };
+      // Get the magic token for the new user
+      const { data: profile } = await SupabaseClient
+        .from('profiles')
+        .select('magic_token')
+        .eq('name', name)
+        .single();
+
+      const magicLink = profile?.magic_token
+        ? `https://crm.onpointprodoors.com/#token=${profile.magic_token}`
+        : `https://crm.onpointprodoors.com`;
+
+      _lastInvite = { name, email: username, magicLink };
       _renderAdminUsersSection().catch(() => {});
 
       document.getElementById('invite-form-body').classList.add('hidden');
       document.getElementById('invite-success-body').classList.remove('hidden');
-      document.getElementById('invite-success-email').value = username;
-      document.getElementById('invite-success-password').value = password;
+      document.getElementById('invite-success-email').value = 'MAGIC LINK (send this):';
+      document.getElementById('invite-success-password').value = magicLink;
       btn.disabled = false;
       btn.textContent = 'Create Dispatcher Account';
 
