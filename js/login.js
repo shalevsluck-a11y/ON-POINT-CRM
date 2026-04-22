@@ -19,15 +19,18 @@ const LoginScreen = (() => {
   }
 
   async function submit() {
-    const email    = document.getElementById('login-email')?.value?.trim();
+    const username = document.getElementById('login-email')?.value?.trim();
     const password = document.getElementById('login-password')?.value;
     const btn      = document.getElementById('login-btn');
     const errEl    = document.getElementById('login-error');
 
-    if (!email || !password) {
-      _showError('Please enter your email and password.');
+    if (!username || !password) {
+      _showError('Please enter your username and password.');
       return;
     }
+
+    // Convert username to email format if it doesn't contain @
+    const email = username.includes('@') ? username : `${username}@onpointprodoors.com`;
 
     btn.disabled    = true;
     btn.textContent = 'Signing in…';
@@ -59,7 +62,7 @@ const LoginScreen = (() => {
   function _friendlyError(msg) {
     if (!msg) return 'Something went wrong. Please try again.';
     if (msg.includes('Invalid login credentials'))
-      return 'Incorrect email or password.';
+      return 'Incorrect username or password.';
     if (msg.includes('Email not confirmed'))
       return 'Please verify your email first.';
     if (msg.includes('Too many requests'))
