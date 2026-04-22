@@ -19,12 +19,12 @@ const LoginScreen = (() => {
   }
 
   async function submit() {
-    const code = document.getElementById('login-email')?.value?.trim()?.toUpperCase();
+    let input = document.getElementById('login-email')?.value?.trim();
     const btn   = document.getElementById('login-btn');
     const errEl = document.getElementById('login-error');
 
-    if (!code) {
-      _showError('Please enter your login code.');
+    if (!input) {
+      _showError('Please enter your login code or paste your login link.');
       return;
     }
 
@@ -33,8 +33,17 @@ const LoginScreen = (() => {
     errEl.classList.add('hidden');
 
     try {
-      // Store code and mark for permanent session
-      localStorage.setItem('magic_token', code);
+      let token = input;
+
+      // If input is a full URL with #token=, extract just the token
+      if (input.includes('#token=')) {
+        token = input.split('#token=')[1].split('&')[0];
+      } else if (input.includes('token=') && input.includes('http')) {
+        token = input.split('token=')[1].split('&')[0];
+      }
+
+      // Store token/code and mark for permanent session
+      localStorage.setItem('magic_token', token);
       localStorage.setItem('stay_logged_in', 'true');
 
       // Show success and reload to trigger auth
