@@ -1,5 +1,7 @@
 -- Update get_users_for_admin to include magic_token so admin can see/share magic links
 
+DROP FUNCTION IF EXISTS get_users_for_admin();
+
 CREATE OR REPLACE FUNCTION get_users_for_admin()
 RETURNS TABLE (
   id              UUID,
