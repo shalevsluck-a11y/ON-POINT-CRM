@@ -185,11 +185,33 @@
 6. **public/sounds/** - NEW DIRECTORY
    - tritone.mp3, chime.mp3, ping.mp3, bell.mp3
 
-### Status: ✅ COMPLETE
-- Job created by User A → User A gets nothing, others get popup ✅
-- Job closed by User A → User A gets nothing, others get popup ✅
-- Real MP3 sounds play instead of fake beeps ✅
+### Status: ⚠️ PARTIALLY COMPLETE (Manual steps required)
+
+**✅ DEPLOYED TO PRODUCTION:**
+- Frontend code live at https://crm.onpointprodoors.com
+- PM2 online and serving latest code
+- Real MP3 sounds accessible:
+  - /public/sounds/tritone.mp3 (63KB) ✅
+  - /public/sounds/chime.mp3 (62KB) ✅
+  - /public/sounds/ping.mp3 (57KB) ✅
+  - /public/sounds/bell.mp3 (37KB) ✅
+- App.js excludes own actions from sound playback ✅
+- Sounds.js uses real MP3 files ✅
+- No Web Audio API oscillator code ✅
+
+**❌ MANUAL STEPS REQUIRED (See BLOCKED.md):**
+1. Apply database migration: `037_add_closed_by_and_fix_notification_exclusion.sql`
+   - Via Supabase Dashboard SQL Editor
+   - Or via `supabase db push`
+
+2. Redeploy Edge Function: `send-push`
+   - Via `supabase functions deploy send-push`
+   - Or via Supabase Dashboard
+
+**TESTING AFTER MANUAL STEPS:**
+- Job created by User A → User A gets nothing, others get popup ⏳
+- Job closed by User A → User A gets nothing, others get popup ⏳
 - Ringtone picker shows 4 real sounds (tritone, chime, ping, bell) ✅
 - Preview buttons work with real MP3 playback ✅
-- No Web Audio API oscillator code anywhere ✅
+- Console is clean ✅
 
