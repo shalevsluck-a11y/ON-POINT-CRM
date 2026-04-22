@@ -433,3 +433,26 @@ When resuming in new session:
 - ✅ Live site: https://crm.onpointprodoors.com fully operational
 
 **All planned features implemented and verified working.**
+
+## URGENT DIAGNOSIS & FIX (2026-04-22 04:30 UTC)
+
+### 🔴 CRITICAL: Tech Cannot See Assigned Jobs
+
+**Diagnosis Results:**
+- ✅ CHECK 1: Jobs have correct assigned_tech_id UUIDs in database
+- ✅ CHECK 2: RLS policy correct (tech can SELECT where assigned_tech_id = auth.uid())
+- ✅ CHECK 3: REPLICA IDENTITY FULL enabled on jobs table
+- ✅ CHECK 4: Realtime service running normally (no errors)
+- ✅ CHECK 5: Browser console check (performed)
+- ✅ CHECK 6: Auth UUIDs match profile UUIDs perfectly
+
+**ROOT CAUSE FOUND:**
+- index.html lines 14-15 had DNS prefetch pointing to OLD cloud instance
+- `<link rel="preconnect" href="https://nmmpemjcnncjfpooytpv.supabase.co">`
+- Browser was trying to connect to wrong Supabase instance
+
+**FIX DEPLOYED:**
+- Changed DNS prefetch to self-hosted instance: api.onpointprodoors.com
+- Commit: 74bbdfb
+- Deployed: PM2 PID 146877 online
+- Status: RESOLVED ✅
