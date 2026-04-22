@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Clear Cache - On Point CRM</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 500px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      text-align: center;
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+      font-size: 28px;
+    }
+    .status {
+      font-size: 18px;
+      margin: 20px 0;
+      padding: 15px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+    .loading { background: #fff3cd; color: #856404; }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+    button {
+      background: #667eea;
+      color: white;
+      border: none;
+      padding: 15px 40px;
+      font-size: 18px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      margin-top: 20px;
+      transition: all 0.3s;
+    }
+    button:hover { background: #5568d3; transform: translateY(-2px); }
+    button:active { transform: translateY(0); }
+    .log {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 20px;
+      text-align: left;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .log div { margin: 5px 0; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🧹 Clear Cache & Reload</h1>
+    <div id="status" class="status loading">Starting...</div>
+    <div id="log" class="log"></div>
+    <button id="reloadBtn" onclick="window.location.href='/'">Go to CRM</button>
+  </div>
+
+  <script>
+    const status = document.getElementById('status');
+    const logDiv = document.getElementById('log');
+    const reloadBtn = document.getElementById('reloadBtn');
+
+    function log(msg) {
+      console.log(msg);
+      const div = document.createElement('div');
+      div.textContent = msg;
+      logDiv.appendChild(div);
+      logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    async function clearEverything() {
+      try {
+        log('🗑️ Clearing all storage...');
+
+        // 1. Unregister ALL service workers
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          log(`Found ${registrations.length} service worker(s)`);
+          for (let reg of registrations) {
+            await reg.unregister();
+            log('✓ Unregistered service worker: ' + reg.scope);
+          }
+        }
+
+        // 2. Clear ALL caches
+        if ('caches' in window) {
+          const cacheNames = await caches.keys();
+          log(`Found ${cacheNames.length} cache(s)`);
+          for (let name of cacheNames) {
+            await caches.delete(name);
+            log('✓ Deleted cache: ' + name);
+          }
+        }
+
+        // 3. Clear localStorage
+        const lsCount = localStorage.length;
+        localStorage.clear();
+        log(`✓ Cleared localStorage (${lsCount} items)`);
+
+        // 4. Clear sessionStorage
+        const ssCount = sessionStorage.length;
+        sessionStorage.clear();
+        log(`✓ Cleared sessionStorage (${ssCount} items)`);
+
+        // 5. Clear IndexedDB
+        if ('indexedDB' in window) {
+          const dbs = await indexedDB.databases();
+          log(`Found ${dbs.length} IndexedDB database(s)`);
+          for (let db of dbs) {
+            indexedDB.deleteDatabase(db.name);
+            log('✓ Deleted database: ' + db.name);
+          }
+        }
+
+        status.className = 'status success';
+        status.textContent = '✅ All caches cleared! Click button to reload CRM';
+        log('');
+        log('🎉 DONE! Now click "Go to CRM" button');
+
+      } catch (e) {
+        status.className = 'status error';
+        status.textContent = '❌ Error: ' + e.message;
+        log('❌ ERROR: ' + e.message);
+      }
+    }
+
+    // Auto-run on load
+    clearEverything();
+  </script>
+</body>
+</html>
