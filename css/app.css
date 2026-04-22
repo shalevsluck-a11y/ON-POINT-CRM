@@ -910,3 +910,24 @@ select.field-input option { background: var(--color-surface); color: var(--color
   padding: 12px 0 8px;
   margin-top: 8px;
 }
+
+/* ── NOTIFICATION BANNER ────────────────────────────────── */
+.notification-banner {
+  background: linear-gradient(135deg, var(--color-primary), #2563EB);
+  border-radius: 12px;
+  padding: 16px;
+  margin: 16px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.notification-banner:active {
+  transform: scale(0.98);
+}
+
+.notification-banner.hidden {
+  display: none;
+}
