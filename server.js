@@ -301,7 +301,7 @@ app.post('/admin/fix-magic-tokens', async (req, res) => {
     // Get all profiles
     const { data: profiles, error } = await supabaseAdmin
       .from('profiles')
-      .select('id, name, email, magic_token');
+      .select('id, name, magic_token');
 
     if (error) {
       return res.status(500).json({ error: error.message });
