@@ -165,7 +165,7 @@ const DB = (() => {
       const { error } = await supa.from('jobs').update({
         status:     job.status,
         updated_at: new Date().toISOString(),
-      }).eq('job_id', job.jobId);
+      }).eq('id', job.jobId);
       if (error) throw error;
       return;
     }
@@ -191,7 +191,7 @@ const DB = (() => {
 
   async function deleteJob(jobId) {
     Storage.deleteJob(jobId);
-    const { error } = await supa.from('jobs').delete().eq('job_id', jobId);
+    const { error } = await supa.from('jobs').delete().eq('id', jobId);
     if (error) console.warn('DB.deleteJob remote error:', error.message);
   }
 
