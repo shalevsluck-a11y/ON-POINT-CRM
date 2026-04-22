@@ -9,11 +9,11 @@
     "bump-cache": "node -e \"const fs=require('fs');const v='v'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'-'+Date.now().toString(36).slice(-4);const f=fs.readFileSync('sw.js','utf8').replace(/CACHE_VERSION = '[^']+'/,\\`CACHE_VERSION = '\\${v}'\\`);fs.writeFileSync('sw.js',f);console.log('Cache version:',v);\""
   },
   "dependencies": {
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "@supabase/supabase-js": "^2.104.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
-    "@supabase/supabase-js": "^2.104.0",
     "playwright": "^1.59.1",
     "sharp": "^0.33.0"
   }
