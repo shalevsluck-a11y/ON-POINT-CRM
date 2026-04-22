@@ -1,10 +1,19 @@
 const express = require('express');
 const path    = require('path');
+const { createClient } = require('@supabase/supabase-js');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
+// Supabase admin client
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL || 'https://api.onpointprodoors.com',
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  { auth: { persistSession: false } }
+);
+
 app.disable('x-powered-by');
+app.use(express.json());
 
 app.use((_req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -49,6 +58,156 @@ app.use(express.static(path.join(__dirname), {
     }
   },
 }));
+
+// Admin endpoints
+app.post('/admin/create-user', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Missing authorization header' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    if (userError || !user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Check if requesting user is admin
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile || profile.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin only' });
+    }
+
+    const { name, email, role } = req.body;
+    if (!name || !email || !role) {
+      return res.status(400).json({ error: 'Name, email, and role are required' });
+    }
+
+    // Generate random temporary password
+    const tempPassword = Math.random().toString(36) + Math.random().toString(36);
+
+    // Create user
+    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password: tempPassword,
+      email_confirm: true,
+      user_metadata: { name }
+    });
+
+    if (createError) {
+      return res.status(400).json({ error: createError.message });
+    }
+
+    // Create profile
+    await supabaseAdmin
+      .from('profiles')
+      .upsert({
+        id: newUser.user.id,
+        name,
+        role
+      });
+
+    // Generate magic link
+    const { data: magicLinkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'magiclink',
+      email: email,
+      options: {
+        redirectTo: 'https://crm.onpointprodoors.com'
+      }
+    });
+
+    if (linkError) {
+      return res.status(400).json({ error: linkError.message });
+    }
+
+    res.json({
+      success: true,
+      userId: newUser.user.id,
+      name,
+      email,
+      magicLink: magicLinkData.properties.action_link
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/admin/delete-user/:id', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Missing authorization header' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    if (userError || !user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Check if requesting user is admin
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile || profile.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin only' });
+    }
+
+    const userId = req.params.id;
+    if (!userId) {
+      return res.status(400).json({ error: 'Missing userId' });
+    }
+
+    // NULL out jobs.assigned_tech_id
+    await supabaseAdmin
+      .from('jobs')
+      .update({ assigned_tech_id: null })
+      .eq('assigned_tech_id', userId);
+
+    // NULL out jobs.created_by
+    await supabaseAdmin
+      .from('jobs')
+      .update({ created_by: null })
+      .eq('created_by', userId);
+
+    // Delete notifications
+    await supabaseAdmin
+      .from('notifications')
+      .delete()
+      .eq('user_id', userId);
+
+    // Delete push_subscriptions
+    await supabaseAdmin
+      .from('push_subscriptions')
+      .delete()
+      .eq('user_id', userId);
+
+    // Delete profile
+    await supabaseAdmin
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
+
+    // Delete auth user
+    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+    if (deleteError) {
+      return res.status(400).json({ error: deleteError.message });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // SPA fallback — all routes serve index.html
 app.get('*', (req, res) => {
