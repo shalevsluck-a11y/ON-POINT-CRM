@@ -356,8 +356,15 @@ When resuming in new session:
 - Preferences saved to localStorage ✓
 - No additional work required ✓
 
-### ⏸️ STEP 16-18: Remaining Steps
-- Step 16: Hide Google Sheets from tech everywhere
+### ✅ STEP 16: Google Sheets Hidden from Tech
+- Already implemented in Task 6 (PHASE 2A) ✓
+- Sync button hidden from tech/contractor (line 183 of app.js) ✓
+- Sync settings card hidden from tech/contractor (line 2470 of app.js) ✓
+- Uses Auth.isAdminOrDisp() check - only admin/dispatcher can see ✓
+- Verified: Both hiding points active ✓
+- No additional work required ✓
+
+### ⏸️ STEP 17-18: Remaining Steps
 - Step 17: Run Sharingan and fix all bugs found
 - Step 18: Final verification with Playwright tests
 
