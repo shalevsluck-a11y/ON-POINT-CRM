@@ -2717,28 +2717,22 @@ const App = (() => {
     }
 
     btn.disabled    = true;
-    btn.textContent = 'Creating account\u2026';
+    btn.textContent = 'Creating dispatcher…';
 
     try {
       // Add 15 second hard timeout to prevent infinite loading
-      const createPromise = Auth.createUser(name, email, password, role, assignedLeadSource, payoutPct);
+      const createPromise = Auth.inviteUser(name, 'dispatcher', email);
       const timeoutPromise = new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Failed to create account â€” request timed out. Please try again.')), 15000)
       );
       const result = await Promise.race([createPromise, timeoutPromise]);
-      const { email: loginEmail = email } = result || {};
+      const { setupLink, loginEmail } = result || {};
 
-      _lastInvite = { name, email: loginEmail, password };
+      _lastInvite = { name, setupLink, loginEmail };
       _renderAdminUsersSection().catch(() => {});
 
-      document.getElementById('invite-form-body').classList.add('hidden');
-      document.getElementById('invite-success-body').classList.remove('hidden');
-
-      const emailEl = document.getElementById('invite-success-email');
-      if (emailEl) emailEl.value = loginEmail;
-
-      const passwordEl = document.getElementById('invite-success-password');
-      if (passwordEl) passwordEl.value = password;
+      showToast(`Dispatcher ${name} created successfully`, 'success');
+      closeInviteModal();
 
     } catch (e) {
       console.error('Create user error:', e);
