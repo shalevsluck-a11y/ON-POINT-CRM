@@ -2774,30 +2774,27 @@ const App = (() => {
   }
 
   async function submitInvite() {
-    console.log('[Invite] submitInvite called');
-    if (!Auth.isAdmin()) {
-      console.error('[Invite] Not admin');
-      showToast('Not authorized', 'error');
-      return;
-    }
-    const name  = document.getElementById('invite-name')?.value?.trim();
-    const errEl = document.getElementById('invite-error');
-    const btn   = document.getElementById('invite-submit-btn');
+    try {
+      showToast('Starting...', 'info');
 
-    console.log('[Invite] Name:', name);
+      if (!Auth.isAdmin()) {
+        showToast('Not authorized', 'error');
+        return;
+      }
 
-    errEl.classList.add('hidden');
+      const name  = document.getElementById('invite-name')?.value?.trim();
+      const errEl = document.getElementById('invite-error');
+      const btn   = document.getElementById('invite-submit-btn');
 
-    if (!name) {
-      console.error('[Invite] Name required');
-      errEl.textContent = 'Name is required.';
-      errEl.classList.remove('hidden');
-      return;
-    }
+      if (!name) {
+        errEl.textContent = 'Name is required.';
+        errEl.classList.remove('hidden');
+        return;
+      }
 
-    btn.disabled    = true;
-    btn.textContent = 'Creating...';
-    console.log('[Invite] Creating dispatcher for:', name);
+      errEl.classList.add('hidden');
+      btn.disabled    = true;
+      btn.textContent = 'Creating...';
 
     try {
       // Auto-generate username from name (no input needed)
@@ -2836,12 +2833,22 @@ const App = (() => {
 
     } catch (e) {
       console.error('Create dispatcher error:', e);
-      errEl.textContent = e.message || 'Failed - please try again';
-      errEl.classList.remove('hidden');
-      btn.disabled    = false;
-      btn.textContent = 'Create Dispatcher';
+      showToast('Error: ' + (e.message || 'Unknown error'), 'error');
+      const errEl = document.getElementById('invite-error');
+      const btn   = document.getElementById('invite-submit-btn');
+      if (errEl) {
+        errEl.textContent = e.message || 'Failed - please try again';
+        errEl.classList.remove('hidden');
+      }
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Create Dispatcher';
+      }
     }
+  } catch (outerError) {
+    showToast('Critical error: ' + outerError.message, 'error');
   }
+}
 
 
   async function _confirmRemoveUser(userId, userName) {
