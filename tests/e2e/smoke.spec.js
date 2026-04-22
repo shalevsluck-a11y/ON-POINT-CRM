@@ -8,16 +8,27 @@ test.describe('Smoke — no auth required', () => {
   test('app loads and shows auth screen', async ({ page }) => {
     await page.goto(BASE);
     await expect(page).toHaveTitle(/On Point/i);
-    // Either login or first-setup screen must be visible
+    // Either login, setup, or magic link screen must be visible
     const loginVisible = await page.locator('#login-screen').isVisible().catch(() => false);
     const setupVisible = await page.locator('#setup-screen').isVisible().catch(() => false);
-    expect(loginVisible || setupVisible).toBe(true);
+    const magicLinkVisible = await page.locator('#magic-link-input').isVisible().catch(() => false);
+    expect(loginVisible || setupVisible || magicLinkVisible).toBe(true);
   });
 
   test('app screen is hidden until authenticated', async ({ page }) => {
     await page.goto(BASE);
+    // When magic link screen is shown, #app doesn't exist in the DOM
+    // When login-screen is shown, #app exists but is hidden
     const app = page.locator('#app');
-    await expect(app).toHaveClass(/hidden/);
+    const appExists = await app.count() > 0;
+
+    if (appExists) {
+      // If #app exists, it should be hidden
+      await expect(app).toHaveClass(/hidden/);
+    } else {
+      // If #app doesn't exist, magic link screen should be visible
+      await expect(page.locator('#magic-link-input')).toBeVisible();
+    }
   });
 
   test('PWA manifest is reachable', async ({ request }) => {
