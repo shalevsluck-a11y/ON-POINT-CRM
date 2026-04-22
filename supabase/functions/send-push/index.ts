@@ -85,24 +85,31 @@ serve(async (req) => {
       });
     }
 
-    const callerClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    // Check if this is a service role key (from database trigger) or user JWT
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const isServiceRole = authHeader.replace('Bearer ', '') === serviceRoleKey;
 
-    const { data: { user } } = await callerClient.auth.getUser();
-    if (!user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    // If not service role, verify it's an admin/dispatcher user
+    if (!isServiceRole) {
+      const callerClient = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } }
+      );
 
-    const { data: profile } = await callerClient.from('profiles').select('role').eq('id', user.id).single();
-    if (!['admin', 'dispatcher'].includes(profile?.role)) {
-      return new Response(JSON.stringify({ error: 'Admin/dispatcher only' }), {
-        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      const { data: { user } } = await callerClient.auth.getUser();
+      if (!user) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { data: profile } = await callerClient.from('profiles').select('role').eq('id', user.id).single();
+      if (!['admin', 'dispatcher'].includes(profile?.role)) {
+        return new Response(JSON.stringify({ error: 'Admin/dispatcher only' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     const { title, body, jobId, targetUserId } = await req.json();
