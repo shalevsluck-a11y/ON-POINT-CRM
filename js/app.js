@@ -2821,25 +2821,20 @@ const App = (() => {
       btn.textContent = 'Creating...';
 
     try {
-      // Auto-generate username from name (no input needed)
-      const username = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + '-' + Math.random().toString(36).substring(2, 6);
-      const email = `${username}@onpointprodoors.com`;
-
-      // Auto-generate random password (not shown - they use magic link only)
-      const password = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-
-      const createPromise = Auth.createUser(name, email, password, 'dispatcher', null, null);
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Failed to create dispatcher � request timed out. Please try again.')), 15000)
-      );
-      await Promise.race([createPromise, timeoutPromise]);
-
-      // Get the magic token for the new user
-      const { data: profile } = await SupabaseClient
+      // Create dispatcher directly in database (bypass Supabase auth - we use magic links)
+      const { data: profile, error: createError } = await SupabaseClient
         .from('profiles')
-        .select('magic_token')
-        .eq('name', name)
+        .insert({
+          name: name,
+          role: 'dispatcher',
+          color: '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0'),
+          is_owner: false
+        })
+        .select('id, magic_token')
         .single();
+
+      if (createError) throw new Error(createError.message);
+      if (!profile) throw new Error('Failed to create profile');
 
       const magicLink = profile?.magic_token
         ? `https://crm.onpointprodoors.com/#token=${profile.magic_token}`
