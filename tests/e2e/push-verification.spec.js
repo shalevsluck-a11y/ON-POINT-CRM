@@ -265,7 +265,7 @@ test('TEST 5 — PushManager module integration', async ({ browser }) => {
   try {
     await login(page, ADMIN_EMAIL, ADMIN_PASS);
 
-    // Check if push-manager.js is loaded
+    // Check if push manager module is loaded (consolidated into auth.js)
     const pushManagerLoaded = await page.evaluate(() => {
       return typeof window.PushManager !== 'undefined' ||
              typeof window.subscribeToPush === 'function';
@@ -273,11 +273,11 @@ test('TEST 5 — PushManager module integration', async ({ browser }) => {
 
     console.log('TEST 5a: Push manager module loaded:', pushManagerLoaded);
 
-    // Verify VAPID public key exists
+    // Verify VAPID public key exists (consolidated into auth.js)
     const hasVapidKey = await page.evaluate(async () => {
       try {
-        // Check if VAPID key is defined in push-manager.js
-        const response = await fetch('/js/push-manager.js');
+        // Check if VAPID key is defined in auth.js
+        const response = await fetch('/js/auth.js');
         if (!response.ok) return false;
 
         const content = await response.text();
@@ -290,10 +290,10 @@ test('TEST 5 — PushManager module integration', async ({ browser }) => {
     console.log('TEST 5b: VAPID public key configured:', hasVapidKey);
     expect(hasVapidKey, 'VAPID public key should be configured').toBe(true);
 
-    // Check if urlBase64ToUint8Array utility exists
+    // Check if urlBase64ToUint8Array utility exists (consolidated into auth.js)
     const hasUtilFunction = await page.evaluate(async () => {
       try {
-        const response = await fetch('/js/push-manager.js');
+        const response = await fetch('/js/auth.js');
         if (!response.ok) return false;
 
         const content = await response.text();
