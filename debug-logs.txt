@@ -1,0 +1,12 @@
+[2026-04-22T17:52:02.638Z] [LOG] Initializing Supabase client: {isPWA: false, storageKey: onpoint-web-auth}
+[2026-04-22T17:52:02.640Z] [LOG] [Realtime] Client configured with URL: https://api.onpointprodoors.com
+[2026-04-22T17:52:02.686Z] [LOG] [Auth] Mode: Browser
+[2026-04-22T17:52:02.688Z] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o
+[2026-04-22T17:52:02.689Z] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o
+[2026-04-22T17:52:02.689Z] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o
+[2026-04-22T17:52:02.689Z] [VERBOSE] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o
+[2026-04-22T17:52:02.693Z] [LOG] [OfflineQueue] Object store created
+[2026-04-22T17:52:02.694Z] [LOG] [OfflineQueue] Database opened
+[2026-04-22T17:52:02.695Z] [WARNING] [App] No user - showing magic link input
+[2026-04-22T17:52:02.706Z] [WARNING] [App] No user - showing magic link input
+[2026-04-22T17:52:02.794Z] [INFO] Autofocus processing was blocked because a document already has a focused element.
