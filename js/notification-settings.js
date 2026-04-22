@@ -5,14 +5,13 @@
 const NotificationSettings = (() => {
 
   const SOUNDS = [
-    { id: 'chime', name: 'Chime', file: '/assets/sounds/chime.mp3' },
-    { id: 'bell', name: 'Bell', file: '/assets/sounds/bell.mp3' },
-    { id: 'alert', name: 'Alert', file: '/assets/sounds/alert.mp3' },
-    { id: 'tone', name: 'Digital Tone', file: '/assets/sounds/tone.mp3' }
+    { id: 'tritone', name: 'Tri-tone' },
+    { id: 'chime', name: 'Chime' },
+    { id: 'ping', name: 'Ping' },
+    { id: 'radial', name: 'Radial' }
   ];
 
-  let _currentSound = 'chime'; // default
-  let _audioPreview = null;
+  let _currentSound = 'tritone'; // default
 
   // ──────────────────────────────────────────────────────────
   // INIT - Load saved preference
@@ -23,19 +22,14 @@ const NotificationSettings = (() => {
     if (saved && SOUNDS.find(s => s.id === saved)) {
       _currentSound = saved;
     } else {
-      _currentSound = 'chime';
+      _currentSound = 'tritone';
       localStorage.setItem('notif-sound', _currentSound);
     }
   }
 
   // ──────────────────────────────────────────────────────────
-  // GET CURRENT SOUND FILE
+  // GET CURRENT SOUND ID
   // ──────────────────────────────────────────────────────────
-
-  function getCurrentSoundFile() {
-    const sound = SOUNDS.find(s => s.id === _currentSound);
-    return sound ? sound.file : SOUNDS[0].file;
-  }
 
   function getCurrentSoundId() {
     return _currentSound;
@@ -49,15 +43,12 @@ const NotificationSettings = (() => {
     const sound = SOUNDS.find(s => s.id === soundId);
     if (!sound) return;
 
-    // Stop any currently playing preview
-    if (_audioPreview) {
-      _audioPreview.pause();
-      _audioPreview.currentTime = 0;
+    // Use NotificationSounds module
+    if (typeof NotificationSounds !== 'undefined') {
+      NotificationSounds.play(soundId);
+    } else {
+      console.warn('[Notification Settings] NotificationSounds not loaded');
     }
-
-    _audioPreview = new Audio(sound.file);
-    _audioPreview.volume = 0.7;
-    _audioPreview.play().catch(e => console.warn('Preview play failed:', e));
   }
 
   // ──────────────────────────────────────────────────────────
@@ -166,7 +157,6 @@ const NotificationSettings = (() => {
 
   return {
     init,
-    getCurrentSoundFile,
     getCurrentSoundId,
     playPreview,
     selectSound,
