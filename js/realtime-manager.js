@@ -22,7 +22,7 @@ const RealtimeManager = (() => {
   let _heartbeatInterval = null;
   let _reconnectTimeout = null;
   let _presenceChannel = null;
-  let _onlineUsers = new Set();
+  let _onlineUsers = new Map(); // Map<user_id, {name, role}>
   let _statusCallbacks = [];
 
   // ──────────────────────────────────────────────────────────
@@ -143,7 +143,7 @@ const RealtimeManager = (() => {
 
         Object.values(state).forEach(presences => {
           presences.forEach(presence => {
-            _onlineUsers.add(presence.user_id);
+            _onlineUsers.set(presence.user_id, { name: presence.name, role: presence.role });
           });
         });
 
@@ -152,7 +152,7 @@ const RealtimeManager = (() => {
       })
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
         newPresences.forEach(presence => {
-          _onlineUsers.add(presence.user_id);
+          _onlineUsers.set(presence.user_id, { name: presence.name, role: presence.role });
           console.log('[RealtimeManager] User joined:', presence.name);
         });
         _updatePresenceUI();
@@ -274,17 +274,17 @@ const RealtimeManager = (() => {
   // ──────────────────────────────────────────────────────────
 
   function showOnlineUsers() {
-    const users = Array.from(_onlineUsers);
+    const users = Array.from(_onlineUsers.values());
     const count = users.length;
 
     let userListHTML = '';
     if (count === 0) {
       userListHTML = '<p style="color:#999;text-align:center;padding:20px">No users online</p>';
     } else {
-      userListHTML = users.map(username => `
+      userListHTML = users.map(user => `
         <div style="padding:12px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:10px">
           <div style="width:8px;height:8px;background:#10b981;border-radius:50%"></div>
-          <span style="font-weight:500">${username}</span>
+          <span style="font-weight:500">${user.name}</span>
         </div>
       `).join('');
     }
