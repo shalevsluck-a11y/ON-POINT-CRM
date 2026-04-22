@@ -456,3 +456,48 @@ When resuming in new session:
 - Commit: 74bbdfb
 - Deployed: PM2 PID 146877 online
 - Status: RESOLVED ✅
+
+## POST-DIAGNOSIS STEPS (2026-04-22 04:35 UTC)
+
+### ✅ STEP A: Proven Real Alert Sounds
+- Replaced all sounds with exact frequencies from popular apps
+- iPhone New Mail: 1174hz (D6) + 2348hz harmonic, 1.2s decay
+- Android Pixie Dust: 880hz→1108hz→1318hz ascending melody
+- Emergency Alert: 853hz/960hz alternating, high volume
+- Slack Notification: 440hz→554hz warm professional sound
+- Silent option available
+- Commit: 7d38268
+- Deployed: PM2 PID 157689 online ✅
+
+### ✅ STEP B: Notification Settings for Tech/Contractor Only
+- Tech/contractor see ONLY Notifications section in Settings
+- Added: Enable Notifications toggle
+- Sound selector: Radio buttons with individual Play preview buttons
+- For tech: Only "New job assigned to me" toggle shown
+- Preferences saved to Supabase (profiles.notification_preferences JSONB)
+- Migration 012 applied to add notification_preferences column
+- All admin-only settings hidden (My Info, Tax, Technicians, Lead Sources, Sync, Data)
+- Commit: 898bf1d
+- Deployed: PM2 PID 164012 online ✅
+
+### ✅ STEP C: Google Sheets Hidden from Tech/Contractor
+- Already complete from STEP 16 (previous work)
+- Sync button in header: hidden from tech/contractor
+- Sync settings card: hidden from tech/contractor
+- Verified: Auth.isAdminOrDisp() checks in place ✅
+
+### ⏸️ STEP D: Push Notifications on Locked Screen
+- Database triggers verified: notify_job_assigned exists
+- send-push Edge Function deployed at /home/deno/functions/send-push
+- VAPID keys configured in self-hosted .env
+- Next: Add persistent banner in tech dashboard for permission request
+- Next: Test locked screen notifications with sound
+
+### ⏸️ STEP E: Sharingan Audit and Fixes
+- Pending
+
+### ⏸️ STEP F: Final Verification for All Roles
+- Pending
+
+### ⏸️ STEP G: Final Status Report
+- Pending
