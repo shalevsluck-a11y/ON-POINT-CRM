@@ -3754,9 +3754,17 @@ const App = (() => {
     showToast('Clearing cache...', 'info');
 
     try {
-      // Clear localStorage
+      // Save auth tokens before clearing
+      const magicToken = localStorage.getItem('magic_token');
+      const stayLoggedIn = localStorage.getItem('stay_logged_in');
+
+      // Clear localStorage and sessionStorage
       localStorage.clear();
       sessionStorage.clear();
+
+      // Restore auth tokens so user stays logged in
+      if (magicToken) localStorage.setItem('magic_token', magicToken);
+      if (stayLoggedIn) localStorage.setItem('stay_logged_in', stayLoggedIn);
 
       // Clear IndexedDB if exists
       try {
