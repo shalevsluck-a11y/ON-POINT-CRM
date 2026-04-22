@@ -89,7 +89,12 @@ app.post('/admin/create-user', async (req, res) => {
       return res.status(400).json({ error: 'Name, email, and role are required' });
     }
 
-    // Generate random temporary password
+    // Generate unique magic token for custom auth
+    const magicToken = Math.random().toString(36).substring(2) +
+                       Math.random().toString(36).substring(2) +
+                       Date.now().toString(36);
+
+    // Generate random temporary password for Supabase auth
     const tempPassword = Math.random().toString(36) + Math.random().toString(36);
 
     // Create user
@@ -104,34 +109,25 @@ app.post('/admin/create-user', async (req, res) => {
       return res.status(400).json({ error: createError.message });
     }
 
-    // Create profile
+    // Create profile with magic token
     await supabaseAdmin
       .from('profiles')
       .upsert({
         id: newUser.user.id,
         name,
-        role
+        role,
+        magic_token: magicToken
       });
 
-    // Generate magic link
-    const { data: magicLinkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
-      email: email,
-      options: {
-        redirectTo: 'https://crm.onpointprodoors.com'
-      }
-    });
-
-    if (linkError) {
-      return res.status(400).json({ error: linkError.message });
-    }
+    // Build magic link using custom token format
+    const magicLink = `https://crm.onpointprodoors.com/#token=${magicToken}`;
 
     res.json({
       success: true,
       userId: newUser.user.id,
       name,
       email,
-      magicLink: magicLinkData.properties.action_link
+      magicLink: magicLink
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
