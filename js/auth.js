@@ -561,7 +561,7 @@ const Auth = (() => {
    */
   async function subscribeToPush() {
     // VAPID public key for web push (from environment)
-    const VAPID_PUBLIC_KEY = 'BH0-zYhwG6C6thFpljmd7EZQH_Y_JehctoTEmMQPpXviMQEhp7TW_NyiPY24DdESCw4JFxpIC1AB2Ze6le6QZAI';
+    const VAPID_PUBLIC_KEY = 'BNThACyKMai6hck9NCqpLf_Qdyx_qhpcqGCeOI-_qr1ZS-FyfSx1woTtR9ERYjXBtn8bT5u3am_dBvSADIy_oLc';
 
     if (!('serviceWorker' in navigator)) {
       console.warn('Push: Service workers not supported');
