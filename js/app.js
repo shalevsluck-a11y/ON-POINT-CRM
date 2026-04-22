@@ -614,6 +614,59 @@ const App = (() => {
       const avgPayout   = paidJobs.length > 0 ? totalPayout / paidJobs.length : 0;
       const estVsActual = techJobs.filter(j => j.estimatedTotal && j.jobTotal)
         .map(j => ({ est: parseFloat(j.estimatedTotal), actual: parseFloat(j.jobTotal) }));
+  async function showDispatcherPermissions(userId) {
+    if (!Auth.isAdmin()) return;
+    const modal = document.getElementById('dispatcher-permissions-modal');
+    if (!modal) return;
+
+    document.getElementById('dp-user-id').value = userId;
+
+    // Get current user's permissions
+    const { data: profile } = await SupabaseClient
+      .from('profiles')
+      .select('allowed_lead_sources')
+      .eq('id', userId)
+      .single();
+
+    const allowed = profile?.allowed_lead_sources || [];
+
+    // Get all lead sources
+    const settings = DB.getSettings();
+    const leadSources = settings.leadSources || [];
+
+    const list = document.getElementById('dp-lead-sources-list');
+    list.innerHTML = leadSources.map(ls => `
+      <label class="checkbox-label" style="padding:12px;margin:4px 0;background:var(--color-surface-2);border-radius:8px">
+        <input type="checkbox" value="${_esc(ls.name)}" ${allowed.includes(ls.name) ? 'checked' : ''}>
+        <span>${_esc(ls.name)}</span>
+      </label>
+    `).join('') || '<div class="empty-state-sm">No lead sources — add them in Settings first</div>';
+
+    modal.classList.remove('hidden');
+  }
+
+  async function saveDispatcherPermissions() {
+    if (!Auth.isAdmin()) return;
+    const userId = document.getElementById('dp-user-id')?.value;
+    if (!userId) return;
+
+    const checkboxes = document.querySelectorAll('#dp-lead-sources-list input[type="checkbox"]:checked');
+    const allowedSources = Array.from(checkboxes).map(cb => cb.value);
+
+    try {
+      await SupabaseClient
+        .from('profiles')
+        .update({ allowed_lead_sources: allowedSources })
+        .eq('id', userId);
+
+      showToast('Permissions updated', 'success');
+      closeModal();
+      _renderAdminUsersSection();
+    } catch (e) {
+      showToast('Failed to update permissions: ' + (e.message || 'unknown error'), 'error');
+    }
+  }
+
 
       return { tech, techJobs, paidJobs, totalPayout, avgPayout, estVsActual };
     });
@@ -3808,6 +3861,59 @@ const App = (() => {
     SetupScreen.hide();
     await _onAuthenticated();
   }
+  async function showDispatcherPermissions(userId) {
+    if (!Auth.isAdmin()) return;
+    const modal = document.getElementById('dispatcher-permissions-modal');
+    if (!modal) return;
+
+    document.getElementById('dp-user-id').value = userId;
+
+    // Get current user's permissions
+    const { data: profile } = await SupabaseClient
+      .from('profiles')
+      .select('allowed_lead_sources')
+      .eq('id', userId)
+      .single();
+
+    const allowed = profile?.allowed_lead_sources || [];
+
+    // Get all lead sources
+    const settings = DB.getSettings();
+    const leadSources = settings.leadSources || [];
+
+    const list = document.getElementById('dp-lead-sources-list');
+    list.innerHTML = leadSources.map(ls => `
+      <label class="checkbox-label" style="padding:12px;margin:4px 0;background:var(--color-surface-2);border-radius:8px">
+        <input type="checkbox" value="${_esc(ls.name)}" ${allowed.includes(ls.name) ? 'checked' : ''}>
+        <span>${_esc(ls.name)}</span>
+      </label>
+    `).join('') || '<div class="empty-state-sm">No lead sources — add them in Settings first</div>';
+
+    modal.classList.remove('hidden');
+  }
+
+  async function saveDispatcherPermissions() {
+    if (!Auth.isAdmin()) return;
+    const userId = document.getElementById('dp-user-id')?.value;
+    if (!userId) return;
+
+    const checkboxes = document.querySelectorAll('#dp-lead-sources-list input[type="checkbox"]:checked');
+    const allowedSources = Array.from(checkboxes).map(cb => cb.value);
+
+    try {
+      await SupabaseClient
+        .from('profiles')
+        .update({ allowed_lead_sources: allowedSources })
+        .eq('id', userId);
+
+      showToast('Permissions updated', 'success');
+      closeModal();
+      _renderAdminUsersSection();
+    } catch (e) {
+      showToast('Failed to update permissions: ' + (e.message || 'unknown error'), 'error');
+    }
+  }
+
 
   return {
     init,
@@ -3872,58 +3978,6 @@ const App = (() => {
     navigateToJob,
     toggleDetailSection,
     exportJobPDF,
-  async function showDispatcherPermissions(userId) {
-    if (!Auth.isAdmin()) return;
-    const modal = document.getElementById('dispatcher-permissions-modal');
-    if (!modal) return;
-
-    document.getElementById('dp-user-id').value = userId;
-
-    // Get current user's permissions
-    const { data: profile } = await SupabaseClient
-      .from('profiles')
-      .select('allowed_lead_sources')
-      .eq('id', userId)
-      .single();
-
-    const allowed = profile?.allowed_lead_sources || [];
-
-    // Get all lead sources
-    const settings = DB.getSettings();
-    const leadSources = settings.leadSources || [];
-
-    const list = document.getElementById('dp-lead-sources-list');
-    list.innerHTML = leadSources.map(ls => `
-      <label class="checkbox-label" style="padding:12px;margin:4px 0;background:var(--color-surface-2);border-radius:8px">
-        <input type="checkbox" value="${_esc(ls.name)}" ${allowed.includes(ls.name) ? 'checked' : ''}>
-        <span>${_esc(ls.name)}</span>
-      </label>
-    `).join('') || '<div class="empty-state-sm">No lead sources — add them in Settings first</div>';
-
-    modal.classList.remove('hidden');
-  }
-
-  async function saveDispatcherPermissions() {
-    if (!Auth.isAdmin()) return;
-    const userId = document.getElementById('dp-user-id')?.value;
-    if (!userId) return;
-
-    const checkboxes = document.querySelectorAll('#dp-lead-sources-list input[type="checkbox"]:checked');
-    const allowedSources = Array.from(checkboxes).map(cb => cb.value);
-
-    try {
-      await SupabaseClient
-        .from('profiles')
-        .update({ allowed_lead_sources: allowedSources })
-        .eq('id', userId);
-
-      showToast('Permissions updated', 'success');
-      closeModal();
-      _renderAdminUsersSection();
-    } catch (e) {
-      showToast('Failed to update permissions: ' + (e.message || 'unknown error'), 'error');
-    }
-  }
 
 
     // Admin invite
