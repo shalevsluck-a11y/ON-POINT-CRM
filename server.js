@@ -41,9 +41,11 @@ app.use(express.static(path.join(__dirname), {
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
       return;
     }
-    // HTML and JS: must-revalidate so phones always get fresh code after a deploy
+    // HTML and JS: never cache, always fetch fresh
     if (filePath.endsWith('.html') || filePath.endsWith('.js')) {
-      res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
       return;
     }
     // CSS: 1-day TTL — SW fetches fresh copies on load anyway
