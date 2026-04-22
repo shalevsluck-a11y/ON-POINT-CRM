@@ -149,6 +149,18 @@ const App = (() => {
     const settings = DB.getSettings();
     if (settings.appsScriptUrl) setTimeout(() => SyncManager.syncAll(), 3000);
 
+    // Background polling: refresh jobs every 10 seconds to ensure realtime sync
+    setInterval(async () => {
+      try {
+        await DB.syncJobsFromRemote();
+        renderDashboard();
+        renderJobList();
+        if (_jobsViewMode === 'kanban' && _state.currentView === 'jobs') renderKanban();
+      } catch (e) {
+        console.warn('Background sync error:', e.message);
+      }
+    }, 10000);
+
   }
 
   function _updateHeaderUser() {

@@ -550,6 +550,11 @@ const DB = (() => {
     return row;
   }
 
+  // Public sync function for background polling
+  async function syncJobsFromRemote() {
+    await _syncJobsDown();
+  }
+
   return {
     init,
     // Jobs
@@ -562,6 +567,7 @@ const DB = (() => {
     searchJobs,
     detectReturningCustomer,
     subscribeToJobs,
+    syncJobsFromRemote,
     // Settings
     getSettings,
     saveSettings,
