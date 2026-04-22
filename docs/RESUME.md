@@ -267,6 +267,21 @@ When resuming in new session:
 - Note: Can proceed with Steps 9-13 (data migration) without SSL
 - SSL only required for external client connections
 
+### ✅ STEP 9: Data Export from Supabase Cloud
+- Connected to cloud instance: https://nmmpemjcnncjfpooytpv.supabase.co ✓
+- Exported all tables using Supabase MCP execute_sql ✓
+- Data summary:
+  * profiles: 3 rows (mami, solomon, gere) ✓
+  * jobs: 9 rows ✓
+  * app_settings: 1 row ✓
+  * push_subscriptions: 1 row ✓
+  * app_config: 2 rows ✓
+  * job_zelle: 0 rows (empty table)
+  * notifications: 0 rows (empty table)
+- Created supabase/data-export.sql with INSERT statements ✓
+- File includes import instructions and row count verification ✓
+- Ready to apply migrations to self-hosted instance
+
 ## Final Verification Summary
 
 **Sharingan Audit Results (Task 11):**
