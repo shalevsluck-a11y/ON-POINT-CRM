@@ -1237,7 +1237,13 @@ const App = (() => {
 
     const settings = DB.getSettings();
     const tech = settings.technicians.find(t => t.id === techId);
-    const source = document.getElementById('f-source')?.value || 'my_lead';
+    const sourceValue = document.getElementById('f-source')?.value || 'my_lead';
+    // Convert source ID to name for permissions matching
+    let source = sourceValue;
+    if (sourceValue !== 'my_lead') {
+      const leadSource = settings.leadSources?.find(ls => ls.id === sourceValue);
+      source = leadSource ? leadSource.name : sourceValue;
+    }
     const state  = document.getElementById('f-state')?.value  || settings.defaultState || 'NY';
 
     // Financial fields removed from new job form - set when closing job
