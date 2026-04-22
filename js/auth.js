@@ -17,85 +17,107 @@ const Auth = (() => {
   async function init(onAuthChange) {
     _onAuthChange = onAuthChange;
 
-    // Detect PWA mode
-    const isPWA = window.navigator.standalone === true ||
-                  window.matchMedia('(display-mode: standalone)').matches ||
-                  window.matchMedia('(display-mode: fullscreen)').matches;
+    console.log('[Auth] Init started...');
 
-    console.log('[Auth] Mode:', isPWA ? 'PWA' : 'Browser');
+    // CRITICAL FIX: Set a 3-second timeout for the ENTIRE auth init
+    // This prevents the app from hanging on loading screen if auth is slow
+    const authInitPromise = (async () => {
+      // Detect PWA mode
+      const isPWA = window.navigator.standalone === true ||
+                    window.matchMedia('(display-mode: standalone)').matches ||
+                    window.matchMedia('(display-mode: fullscreen)').matches;
 
-    // Check for magic link token in URL hash
-    const hash = window.location.hash;
-    if (hash && hash.includes('token=')) {
-      const token = hash.split('token=')[1].split('&')[0];
-      console.log('[Auth] Magic token in URL:', token.substring(0, 10) + '...');
+      console.log('[Auth] Mode:', isPWA ? 'PWA' : 'Browser');
 
-      // Store token and mark for persistent session
-      localStorage.setItem('magic_token', token);
-      localStorage.setItem('onpoint-pwa-auth-magic_token', token);
-      localStorage.setItem('onpoint-web-auth-magic_token', token);
-      localStorage.setItem('stay_logged_in', 'true'); // PERMANENT SESSION
+      // Check for magic link token in URL hash
+      const hash = window.location.hash;
+      if (hash && hash.includes('token=')) {
+        const token = hash.split('token=')[1].split('&')[0];
+        console.log('[Auth] Magic token in URL:', token.substring(0, 10) + '...');
 
-      // Clear hash but DON'T reload - continue with login
-      window.location.hash = '';
-      console.log('[Auth] Token stored, continuing with login...');
-    }
+        // Store token and mark for persistent session
+        localStorage.setItem('magic_token', token);
+        localStorage.setItem('onpoint-pwa-auth-magic_token', token);
+        localStorage.setItem('onpoint-web-auth-magic_token', token);
+        localStorage.setItem('stay_logged_in', 'true'); // PERMANENT SESSION
 
-    // Check for stored magic token in MULTIPLE locations (PWA vs browser storage)
-    let storedToken = localStorage.getItem('magic_token') ||
-                      localStorage.getItem('onpoint-pwa-auth-magic_token') ||
-                      localStorage.getItem('onpoint-web-auth-magic_token') ||
-                      sessionStorage.getItem('magic_token');
-
-    if (storedToken) {
-      console.log('[Auth] Found magic token in storage, attempting authentication...');
-      try {
-        await _loginWithMagicToken(storedToken);
-        if (_currentUser) {
-          console.log('[Auth] Magic token auth SUCCESS - user:', _currentUser.name);
-          if (_onAuthChange) _onAuthChange(_currentUser);
-          return _currentUser;
-        } else {
-          console.warn('[Auth] Magic token auth failed - no user returned');
-        }
-      } catch (e) {
-        console.error('[Auth] Magic token auth ERROR:', e.message);
-        // Clear from ALL storage locations
-        localStorage.removeItem('magic_token');
-        localStorage.removeItem('onpoint-pwa-auth-magic_token');
-        localStorage.removeItem('onpoint-web-auth-magic_token');
-        sessionStorage.removeItem('magic_token');
+        // Clear hash but DON'T reload - continue with login
+        window.location.hash = '';
+        console.log('[Auth] Token stored, continuing with login...');
       }
-    }
 
-    // Listen for auth state changes
-    SupabaseClient.auth.onAuthStateChange(async (event, session) => {
-      try {
-        if (session?.user) {
-          await _loadProfile(session.user);
-          _consecutiveRefreshFailures = 0;
-        } else {
+      // Check for stored magic token in MULTIPLE locations (PWA vs browser storage)
+      let storedToken = localStorage.getItem('magic_token') ||
+                        localStorage.getItem('onpoint-pwa-auth-magic_token') ||
+                        localStorage.getItem('onpoint-web-auth-magic_token') ||
+                        sessionStorage.getItem('magic_token');
+
+      if (storedToken) {
+        console.log('[Auth] Found magic token in storage, attempting authentication...');
+        try {
+          await _loginWithMagicToken(storedToken);
+          if (_currentUser) {
+            console.log('[Auth] Magic token auth SUCCESS - user:', _currentUser.name);
+            return _currentUser;
+          } else {
+            console.warn('[Auth] Magic token auth failed - no user returned');
+          }
+        } catch (e) {
+          console.error('[Auth] Magic token auth ERROR:', e.message);
+          // Clear from ALL storage locations
+          localStorage.removeItem('magic_token');
+          localStorage.removeItem('onpoint-pwa-auth-magic_token');
+          localStorage.removeItem('onpoint-web-auth-magic_token');
+          sessionStorage.removeItem('magic_token');
+        }
+      }
+
+      // Listen for auth state changes
+      SupabaseClient.auth.onAuthStateChange(async (event, session) => {
+        try {
+          if (session?.user) {
+            await _loadProfile(session.user);
+            _consecutiveRefreshFailures = 0;
+          } else {
+            _currentUser = null;
+          }
+        } catch (e) {
+          console.error('Auth state change: profile load failed:', e.message);
           _currentUser = null;
         }
+        if (_onAuthChange) _onAuthChange(_currentUser);
+      });
+
+      // Check for existing session
+      try {
+        const { data: { session } } = await SupabaseClient.auth.getSession();
+        if (session?.user) {
+          await _loadProfile(session.user);
+          _startSessionHealthCheck();
+        }
       } catch (e) {
-        console.error('Auth state change: profile load failed:', e.message);
-        _currentUser = null;
+        console.error('Auth.init: getSession failed:', e.message);
       }
-      if (_onAuthChange) _onAuthChange(_currentUser);
+
+      return _currentUser;
+    })();
+
+    // Race between auth init and 3-second timeout
+    const timeoutPromise = new Promise((resolve) => {
+      setTimeout(() => {
+        console.warn('[Auth] Init timeout after 3s - showing login screen');
+        resolve(null);
+      }, 3000);
     });
 
-    // Check for existing session
     try {
-      const { data: { session } } = await SupabaseClient.auth.getSession();
-      if (session?.user) {
-        await _loadProfile(session.user);
-        _startSessionHealthCheck();
-      }
+      await Promise.race([authInitPromise, timeoutPromise]);
     } catch (e) {
-      console.error('Auth.init: getSession failed:', e.message);
+      console.error('[Auth] Init crashed:', e);
     }
 
     // CRITICAL: Always call onAuthChange at end of init to show login screen if no user
+    console.log('[Auth] Init complete, current user:', _currentUser?.name || 'none');
     if (_onAuthChange) {
       _onAuthChange(_currentUser);
     }
