@@ -262,38 +262,48 @@ const DB = (() => {
           }
         });
     } else if (Auth.isTech() || Auth.isContractor()) {
-      // Tech/contractor only see jobs assigned to them or from their lead source
+      // Tech/contractor see jobs assigned to them
+      // Use wildcard event to catch all changes, then filter client-side
+      // This ensures we catch jobs being newly assigned (assigned_tech_id changes from null to user.id)
       channel
         .on('postgres_changes', {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
-          table: 'jobs',
-          filter: `assigned_tech_id=eq.${user.id}`
+          table: 'jobs'
         }, payload => {
-          const job = _dbRowToJob(payload.new, {}, false, true);
-          Storage.saveJob(job);
-          if (onInsert) onInsert(job);
-        })
-        .on('postgres_changes', {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'jobs',
-          filter: `assigned_tech_id=eq.${user.id}`
-        }, payload => {
-          const job = _dbRowToJob(payload.new, {}, false, true);
-          Storage.saveJob(job);
-          if (onUpdate) onUpdate(job);
-        })
-        .on('postgres_changes', {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'jobs',
-          filter: `assigned_tech_id=eq.${user.id}`
-        }, payload => {
-          const jobId = payload.old?.job_id;
-          if (jobId) {
-            Storage.deleteJob(jobId);
-            if (onDelete) onDelete(jobId);
+          const newRow = payload.new;
+          const oldRow = payload.old;
+          const isAssignedToMe = newRow?.assigned_tech_id === user.id;
+          const wasAssignedToMe = oldRow?.assigned_tech_id === user.id;
+
+          if (payload.eventType === 'INSERT' && isAssignedToMe) {
+            console.log('[Realtime] Tech INSERT: job', newRow.job_id, 'assigned to me');
+            const job = _dbRowToJob(newRow, {}, false, true);
+            Storage.saveJob(job);
+            if (onInsert) onInsert(job);
+          } else if (payload.eventType === 'UPDATE') {
+            if (isAssignedToMe && !wasAssignedToMe) {
+              // Job newly assigned to me
+              console.log('[Realtime] Tech UPDATE: job', newRow.job_id, 'newly assigned to me');
+              const job = _dbRowToJob(newRow, {}, false, true);
+              Storage.saveJob(job);
+              if (onInsert) onInsert(job); // Treat as new job for tech
+            } else if (isAssignedToMe && wasAssignedToMe) {
+              // Job still assigned to me, updated
+              console.log('[Realtime] Tech UPDATE: job', newRow.job_id, 'updated');
+              const job = _dbRowToJob(newRow, {}, false, true);
+              Storage.saveJob(job);
+              if (onUpdate) onUpdate(job);
+            } else if (!isAssignedToMe && wasAssignedToMe) {
+              // Job unassigned from me
+              console.log('[Realtime] Tech UPDATE: job', oldRow.job_id, 'unassigned from me');
+              Storage.deleteJob(oldRow.job_id);
+              if (onDelete) onDelete(oldRow.job_id);
+            }
+          } else if (payload.eventType === 'DELETE' && wasAssignedToMe) {
+            console.log('[Realtime] Tech DELETE: job', oldRow.job_id);
+            Storage.deleteJob(oldRow.job_id);
+            if (onDelete) onDelete(oldRow.job_id);
           }
         });
 
