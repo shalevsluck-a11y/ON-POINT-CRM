@@ -2762,7 +2762,80 @@ const App = (() => {
     // Load notification preferences from user profile
     const notifPrefs = user?.notification_preferences || {};
     const notifEnabled = document.getElementById('s-notif-enabled');
-    if (notifEnabled) notifEnabled.checked = notifPrefs.enabled !== false;
+    if (notifEnabled) {
+      notifEnabled.checked = notifPrefs.enabled !== false;
+
+      // Add event listener to handle permission request when toggled
+      notifEnabled.onclick = async function(e) {
+        if (!this.checked) {
+          // User is turning OFF notifications - allow it
+          return;
+        }
+
+        // User is turning ON notifications - request permission first
+        e.preventDefault(); // Prevent default toggle until we handle permission
+
+        if (!('Notification' in window)) {
+          showToast('Notifications not supported in this browser', 'warning');
+          this.checked = false;
+          return;
+        }
+
+        const currentPermission = Notification.permission;
+
+        // Check if granted already
+        if (currentPermission === 'granted') {
+          this.checked = true;
+          // Ensure subscription exists
+          if (window.PushSubscriptionEnforcer) {
+            await PushSubscriptionEnforcer.enforce();
+          }
+          showToast('Notifications are enabled', 'success');
+          return;
+        }
+
+        // Check if denied
+        if (currentPermission === 'denied') {
+          this.checked = false;
+          showToast('Notifications are blocked. Go to your phone Settings and allow notifications for this site.', 'warning', 5000);
+          return;
+        }
+
+        // Permission is 'default' - need to request
+        // iOS-specific handling
+        const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+        const isPWA = window.navigator.standalone === true;
+
+        if (isIOS && !isPWA) {
+          // Running in Safari browser, not installed as PWA
+          this.checked = false;
+          showToast('To enable notifications you must first add this app to your home screen. Tap the Share button then Add to Home Screen. Then open from your home screen and try again.', 'warning', 8000);
+          return;
+        }
+
+        // Request permission
+        try {
+          const permission = await Notification.requestPermission();
+
+          if (permission === 'granted') {
+            this.checked = true;
+            // Register push subscription
+            if (window.PushSubscriptionEnforcer) {
+              await PushSubscriptionEnforcer.enforce();
+            }
+            showToast('Notifications enabled!', 'success');
+          } else {
+            // User clicked "Block"
+            this.checked = false;
+            showToast('You blocked notifications. To enable later go to your phone Settings.', 'warning', 5000);
+          }
+        } catch (err) {
+          console.error('[Notifications] Permission request failed:', err);
+          this.checked = false;
+          showToast('Failed to enable notifications: ' + (err.message || 'unknown error'), 'error');
+        }
+      };
+    }
 
     // Set selected sound radio button
     const soundRadios = document.querySelectorAll('input[name="notif-sound"]');
