@@ -124,9 +124,10 @@ serve(async (req) => {
       });
     }
 
-    const vapidPublic  = Deno.env.get('VAPID_PUBLIC_KEY')!;
-    const vapidPrivate = Deno.env.get('VAPID_PRIVATE_KEY')!;
-    const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:admin@onpointdoors.com';
+    // VAPID keys - TODO: Move to secrets via Supabase Dashboard
+    const vapidPublic  = Deno.env.get('VAPID_PUBLIC_KEY') || 'BGNE39yvpaok-a8Iqxe9Pf-7sfnQMq282TWZ0WvKcahkIJSdOFGGQq8od2yeB5CzYa3F0TQcdt0-GyvhV3SjAXo';
+    const vapidPrivate = Deno.env.get('VAPID_PRIVATE_KEY') || 'Z1ssH21_TN-iHGCFgCt9s9RLW1yUnbphJbMkh34MgFI';
+    const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:service@onpointprodoors.com';
     const payload = JSON.stringify({ title, body, jobId });
 
     let sent = 0;
