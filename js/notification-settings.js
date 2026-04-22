@@ -8,7 +8,7 @@ const NotificationSettings = (() => {
     { id: 'tritone', name: 'Tri-tone' },
     { id: 'chime', name: 'Chime' },
     { id: 'ping', name: 'Ping' },
-    { id: 'radial', name: 'Radial' }
+    { id: 'bell', name: 'Bell' }
   ];
 
   let _currentSound = 'tritone'; // default
