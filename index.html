@@ -892,29 +892,6 @@
           <input type="text" id="invite-name" class="field-input" placeholder="John Doe"
                  autocomplete="off" autocapitalize="words">
         </div>
-        <div class="field-group">
-          <label class="field-label">Email Address <span style="color:var(--color-error)">*</span></label>
-          <input type="email" id="invite-email" class="field-input" placeholder="user@example.com"
-                 autocomplete="off">
-        </div>
-        <div class="field-group">
-          <label class="field-label">Role <span style="color:var(--color-error)">*</span></label>
-          <select id="invite-role" class="field-input" onchange="App.toggleContractorFields()">
-            <option value="dispatcher">Dispatcher</option>
-            <option value="tech">Tech</option>
-            <option value="contractor">Contractor</option>
-          </select>
-        </div>
-        <div id="invite-payout-group" class="field-group hidden">
-          <label class="field-label">Payout %</label>
-          <input type="number" id="invite-payout" class="field-input" placeholder="50" min="0" max="100">
-        </div>
-        <div id="invite-lead-source-group" class="field-group hidden">
-          <label class="field-label">Assigned Lead Source</label>
-          <select id="invite-lead-source" class="field-input">
-            <option value="">Select lead source...</option>
-          </select>
-        </div>
         <button class="btn btn-primary btn-full" id="invite-submit-btn">
           Create Account
         </button>
@@ -924,15 +901,13 @@
       <div id="invite-success-body" class="hidden" style="padding:12px 0 4px">
         <div style="text-align:center;margin-bottom:16px">
           <div style="font-size:44px;margin-bottom:8px">✅</div>
-          <div style="font-size:17px;font-weight:700;color:var(--color-text);margin-bottom:4px" id="invite-success-name"></div>
-          <div style="color:var(--color-text-muted);font-size:13px;margin-bottom:4px" id="invite-success-email-display"></div>
-          <div style="color:var(--color-text-muted);font-size:13px;margin-bottom:10px">Send them the magic link to log in:</div>
+          <div style="font-size:17px;font-weight:700;color:var(--color-text);margin-bottom:10px" id="invite-success-name"></div>
         </div>
 
         <!-- WhatsApp button -->
         <button onclick="App._sendMagicLinkWA()"
           style="width:100%;padding:16px;background:#25D366;border:none;border-radius:14px;color:#fff;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:10px;-webkit-tap-highlight-color:transparent">
-          📲 Send Magic Link on WhatsApp
+          📲 Send Login Link on WhatsApp
         </button>
 
         <button class="btn btn-secondary btn-full" onclick="App.closeInviteModal()">Done</button>
