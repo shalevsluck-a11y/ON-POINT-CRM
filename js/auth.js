@@ -28,14 +28,22 @@ const Auth = (() => {
     const hash = window.location.hash;
     if (hash && hash.includes('token=')) {
       const token = hash.split('token=')[1].split('&')[0];
-      console.log('[Auth] Magic token found in URL, storing in ALL storage locations...');
-      window.location.hash = ''; // Clear the token from URL
+      console.log('[Auth] NEW magic token found in URL - clearing old session and reloading...');
 
-      // Store in MULTIPLE locations so PWA and browser both can access it
+      // CLEAR ALL old tokens first
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // Store NEW token in MULTIPLE locations
       localStorage.setItem('magic_token', token);
       localStorage.setItem('onpoint-pwa-auth-magic_token', token);
       localStorage.setItem('onpoint-web-auth-magic_token', token);
       sessionStorage.setItem('magic_token', token);
+
+      // Clear hash and force reload to use new token
+      window.location.hash = '';
+      window.location.reload();
+      return; // Stop here, reload will restart init
     }
 
     // Check for stored magic token in MULTIPLE locations (PWA vs browser storage)
@@ -97,7 +105,8 @@ const Auth = (() => {
   }
 
   async function _loginWithMagicToken(token) {
-    console.log('[Auth] Querying profile for magic token:', token.substring(0, 8) + '...');
+    console.log('[Auth] Querying profile for magic token:', token.substring(0, 15) + '...');
+    console.log('[Auth] Full token length:', token.length);
 
     // Get profile using magic token (password-less)
     const { data: profile, error } = await SupabaseClient
@@ -116,7 +125,8 @@ const Auth = (() => {
       throw new Error('Invalid magic link - profile not found');
     }
 
-    console.log('[Auth] Profile found:', profile.name, 'role:', profile.role);
+    console.log('[Auth] Profile found - ID:', profile.id, 'Name:', profile.name, 'Email:', profile.email, 'Role:', profile.role);
+    console.log('[Auth] Profile magic_token prefix:', profile.magic_token ? profile.magic_token.substring(0, 15) + '...' : 'null');
 
     // Create fake auth user object for compatibility
     const fakeAuthUser = {
