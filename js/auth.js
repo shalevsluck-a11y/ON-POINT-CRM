@@ -483,8 +483,6 @@ const Auth = (() => {
     }
     if (!res.ok) throw new Error(json.error || 'Remove failed');
 
-    // Refresh users list
-    await _loadAllUsers();
     return json;
   }
 

@@ -2826,7 +2826,6 @@ const App = (() => {
       };
 
       // Refresh users list
-      await Auth.loadAllUsers();
       _renderAdminUsersSection().catch(() => {});
 
       // Show success screen
