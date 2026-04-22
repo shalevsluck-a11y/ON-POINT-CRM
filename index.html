@@ -511,7 +511,7 @@
     <section id="view-settings" class="view">
 
       <!-- My Info -->
-      <div class="settings-card">
+      <div class="settings-card" id="settings-myinfo-card">
         <div class="settings-section-title">My Info</div>
         <div class="field-group">
           <label class="field-label">My Name</label>
@@ -594,43 +594,61 @@
 
       <!-- Notifications -->
       <div class="settings-card" id="settings-notifications-card">
-        <div class="settings-section-title">Notifications</div>
+        <div class="settings-section-title">NOTIFICATIONS</div>
+
+        <div class="field-group">
+          <label class="checkbox-label" style="margin-bottom:16px">
+            <input type="checkbox" id="s-notif-enabled" checked>
+            <span>Enable Notifications</span>
+          </label>
+        </div>
 
         <div class="field-group">
           <label class="field-label">Notification Sound</label>
-          <select id="s-notif-sound" class="field-input">
-            <option value="chime">iMessage (Default)</option>
-            <option value="bell">WhatsApp</option>
-            <option value="pop">Telegram</option>
-            <option value="ding">Urgent Alert</option>
-            <option value="swoosh">Silent</option>
-            <option value="none">Silent</option>
-          </select>
-          <button class="btn btn-secondary" onclick="App.testNotificationSound()" style="margin-top:8px;width:100%">
-            Test Sound
-          </button>
-        </div>
-
-        <div class="field-group" style="margin-top:16px">
-          <label class="field-label">Notification Types</label>
-          <div style="display:flex;flex-direction:column;gap:8px">
-            <label class="checkbox-label">
-              <input type="checkbox" id="s-notif-new-job" checked>
-              <span>New job assigned to me</span>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px">
+            <label class="checkbox-label" style="justify-content:space-between">
+              <span style="display:flex;align-items:center">
+                <input type="radio" name="notif-sound" value="chime" checked style="margin-right:8px">
+                <span>iPhone New Mail</span>
+              </span>
+              <button class="btn btn-secondary" onclick="NotificationSounds.play('chime');event.stopPropagation()" style="padding:4px 12px;font-size:12px">▶ Play</button>
             </label>
-            <label class="checkbox-label">
-              <input type="checkbox" id="s-notif-job-update" checked>
-              <span>Job status updates</span>
+            <label class="checkbox-label" style="justify-content:space-between">
+              <span style="display:flex;align-items:center">
+                <input type="radio" name="notif-sound" value="bell" style="margin-right:8px">
+                <span>Android Default</span>
+              </span>
+              <button class="btn btn-secondary" onclick="NotificationSounds.play('bell');event.stopPropagation()" style="padding:4px 12px;font-size:12px">▶ Play</button>
             </label>
-            <label class="checkbox-label">
-              <input type="checkbox" id="s-notif-job-reminder" checked>
-              <span>Job reminders</span>
+            <label class="checkbox-label" style="justify-content:space-between">
+              <span style="display:flex;align-items:center">
+                <input type="radio" name="notif-sound" value="pop" style="margin-right:8px">
+                <span>Emergency Alert</span>
+              </span>
+              <button class="btn btn-secondary" onclick="NotificationSounds.play('pop');event.stopPropagation()" style="padding:4px 12px;font-size:12px">▶ Play</button>
             </label>
-            <label class="checkbox-label">
-              <input type="checkbox" id="s-notif-messages" checked>
-              <span>Messages and mentions</span>
+            <label class="checkbox-label" style="justify-content:space-between">
+              <span style="display:flex;align-items:center">
+                <input type="radio" name="notif-sound" value="ding" style="margin-right:8px">
+                <span>Slack Notification</span>
+              </span>
+              <button class="btn btn-secondary" onclick="NotificationSounds.play('ding');event.stopPropagation()" style="padding:4px 12px;font-size:12px">▶ Play</button>
+            </label>
+            <label class="checkbox-label" style="justify-content:space-between">
+              <span style="display:flex;align-items:center">
+                <input type="radio" name="notif-sound" value="none" style="margin-right:8px">
+                <span>Silent</span>
+              </span>
+              <button class="btn btn-secondary" onclick="void(0);event.stopPropagation()" style="padding:4px 12px;font-size:12px;opacity:0.3">▶ Play</button>
             </label>
           </div>
+        </div>
+
+        <div class="field-group" style="margin-top:16px" id="s-notif-types-tech">
+          <label class="checkbox-label">
+            <input type="checkbox" id="s-notif-new-job" checked>
+            <span>New job assigned to me</span>
+          </label>
         </div>
 
         <div class="field-group" style="margin-top:16px">
