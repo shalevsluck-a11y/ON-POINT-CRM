@@ -2834,7 +2834,7 @@ const App = (() => {
         ? `https://crm.onpointprodoors.com/#token=${profile.magic_token}`
         : `https://crm.onpointprodoors.com`;
 
-      _lastInvite = { name, email: username, magicLink };
+      _lastInvite = { name, magicLink };
       _renderAdminUsersSection().catch(() => {});
 
       document.getElementById('invite-form-body').classList.add('hidden');
