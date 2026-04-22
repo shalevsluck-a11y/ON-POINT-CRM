@@ -113,6 +113,16 @@ const App = (() => {
     // Start background overdue-job checker (admin/dispatcher only)
     Reminders.init();
 
+    // Initialize live data enhancements
+    if (window.RealtimeManager) {
+      RealtimeManager.init();
+      console.log('[App] RealtimeManager initialized');
+    }
+    if (window.OfflineQueue) {
+      await OfflineQueue.init();
+      console.log('[App] OfflineQueue initialized');
+    }
+
     // Subscribe to live job changes from other sessions
     _jobsChannel = DB.subscribeToJobs(
       (newJob) => {
@@ -4041,6 +4051,27 @@ const App = (() => {
   }
 
 
+  // ══════════════════════════════════════════════════════════
+  // RECONNECT - Re-subscribe to realtime channels
+  // ══════════════════════════════════════════════════════════
+
+  async function onReconnect() {
+    console.log('[App] Reconnecting - re-subscribing to channels...');
+
+    // Re-sync data from server
+    await DB.syncJobsFromRemote();
+    renderDashboard();
+    renderJobList();
+
+    // Channels should auto-reconnect via Supabase client
+    // Just sync any queued offline operations
+    if (window.OfflineQueue) {
+      await OfflineQueue.sync();
+    }
+
+    console.log('[App] Reconnection complete');
+  }
+
   return {
     init,
 
@@ -4051,6 +4082,7 @@ const App = (() => {
 
     navigate,
     goBack,
+    onReconnect,
 
     // Dashboard
     renderDashboard,
