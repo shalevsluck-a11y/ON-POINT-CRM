@@ -2774,14 +2774,22 @@ const App = (() => {
   }
 
   async function submitInvite() {
-    if (!Auth.isAdmin()) { showToast('Not authorized', 'error'); return; }
+    console.log('[Invite] submitInvite called');
+    if (!Auth.isAdmin()) {
+      console.error('[Invite] Not admin');
+      showToast('Not authorized', 'error');
+      return;
+    }
     const name  = document.getElementById('invite-name')?.value?.trim();
     const errEl = document.getElementById('invite-error');
     const btn   = document.getElementById('invite-submit-btn');
 
+    console.log('[Invite] Name:', name);
+
     errEl.classList.add('hidden');
 
     if (!name) {
+      console.error('[Invite] Name required');
       errEl.textContent = 'Name is required.';
       errEl.classList.remove('hidden');
       return;
@@ -2789,6 +2797,7 @@ const App = (() => {
 
     btn.disabled    = true;
     btn.textContent = 'Creating...';
+    console.log('[Invite] Creating dispatcher for:', name);
 
     try {
       // Auto-generate username from name (no input needed)
