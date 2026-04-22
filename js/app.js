@@ -3810,7 +3810,6 @@ const App = (() => {
     const techPayout = parseFloat(job.techPayout) || parseFloat(job.contractorFee) || 0;
     if (techPayout > 0) lines.push('', `Your cut: $${techPayout.toFixed(2)}`);
 
-    lines.push('', `Questions? Call ${ownerPhone}`);
     return lines.join('\n');
   }
 
