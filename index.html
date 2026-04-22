@@ -173,7 +173,13 @@
     <div class="header-right">
       <!-- Offline Queue Status -->
       <div id="offline-queue-status" style="display:none;margin-right:12px"></div>
-      <!-- Dark mode removed per user request -->
+      <!-- Online Users -->
+      <div id="online-users" style="margin-right:12px;font-size:12px;color:#666;display:flex;align-items:center;gap:6px">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/>
+        </svg>
+        <span id="online-count">0 online</span>
+      </div>
       <!-- Notification Bell -->
       <div class="notif-bell-wrap">
         <button id="notif-bell" class="btn-icon" onclick="Notifications.toggleDropdown()" title="Notifications" aria-label="Notifications">
