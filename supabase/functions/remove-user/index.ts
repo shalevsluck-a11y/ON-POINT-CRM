@@ -1,89 +1,68 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+﻿import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Missing authorization' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { auth: { persistSession: false } }
+    )
 
-    const callerClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) throw new Error('Missing authorization header')
 
-    const { data: { user }, error: userErr } = await callerClient.auth.getUser();
-    if (userErr || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token)
+    if (userError || !user) throw new Error('Unauthorized')
 
-    const { data: profile } = await callerClient
+    // Check if requesting user is admin
+    const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('role')
       .eq('id', user.id)
-      .single();
+      .single()
 
-    if (profile?.role !== 'admin') {
-      return new Response(JSON.stringify({ error: 'Admin only' }), {
-        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    if (!profile || profile.role !== 'admin') {
+      throw new Error('Admin only')
     }
 
-    const { userId } = await req.json();
+    const { userId } = await req.json()
+    if (!userId) throw new Error('Missing userId')
 
-    if (!userId) {
-      return new Response(JSON.stringify({ error: 'userId required' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    // Unassign all jobs from this user
+    await supabaseAdmin
+      .from('jobs')
+      .update({ assigned_tech_id: null })
+      .eq('assigned_tech_id', userId)
 
-    // Prevent admin from removing themselves
-    if (userId === user.id) {
-      return new Response(JSON.stringify({ error: 'Cannot remove your own account' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    // Delete profile
+    await supabaseAdmin
+      .from('profiles')
+      .delete()
+      .eq('id', userId)
 
-    const adminClient = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
+    // Delete user from auth
+    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId)
+    if (deleteError) throw deleteError
 
-    // NULL out FK references before deleting to avoid constraint violations
-    await adminClient.from('jobs').update({ assigned_tech_id: null }).eq('assigned_tech_id', userId);
-    await adminClient.from('jobs').update({ created_by: null }).eq('created_by', userId);
-
-    // Delete from auth.users — cascade removes profile row via FK
-    const { error: deleteErr } = await adminClient.auth.admin.deleteUser(userId);
-    if (deleteErr) {
-      return new Response(JSON.stringify({ error: deleteErr.message }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-
-  } catch (e) {
-    return new Response(JSON.stringify({ error: e.message }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return new Response(
+      JSON.stringify({ success: true }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    )
   }
-});
+})
