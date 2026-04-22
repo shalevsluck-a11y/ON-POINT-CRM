@@ -269,12 +269,56 @@ const RealtimeManager = (() => {
     _attemptReconnect();
   }
 
+  // ──────────────────────────────────────────────────────────
+  // SHOW ONLINE USERS - Modal popup
+  // ──────────────────────────────────────────────────────────
+
+  function showOnlineUsers() {
+    const users = Array.from(_onlineUsers);
+    const count = users.length;
+
+    let userListHTML = '';
+    if (count === 0) {
+      userListHTML = '<p style="color:#999;text-align:center;padding:20px">No users online</p>';
+    } else {
+      userListHTML = users.map(username => `
+        <div style="padding:12px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:10px">
+          <div style="width:8px;height:8px;background:#10b981;border-radius:50%"></div>
+          <span style="font-weight:500">${username}</span>
+        </div>
+      `).join('');
+    }
+
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:10000';
+
+    modal.innerHTML = `
+      <div style="background:white;border-radius:12px;max-width:400px;width:90%;max-height:80vh;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3)">
+        <div style="padding:20px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center">
+          <h2 style="margin:0;font-size:18px">Online Users (${count})</h2>
+          <button onclick="this.closest('[data-modal]').remove()" style="border:none;background:none;font-size:24px;cursor:pointer;padding:0;color:#999">&times;</button>
+        </div>
+        <div style="max-height:400px;overflow-y:auto">
+          ${userListHTML}
+        </div>
+      </div>
+    `;
+
+    modal.setAttribute('data-modal', 'true');
+    modal.onclick = (e) => {
+      if (e.target === modal) modal.remove();
+    };
+
+    document.body.appendChild(modal);
+  }
+
   return {
     init,
     onStatusChange,
     getStatus,
     getOnlineUsers,
-    forceReconnect
+    forceReconnect,
+    showOnlineUsers
   };
 
 })();
