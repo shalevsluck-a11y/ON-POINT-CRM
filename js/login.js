@@ -9,7 +9,7 @@ const LoginScreen = (() => {
     document.getElementById('app').classList.add('hidden');
     // Always reset the button so it can be clicked even if a prior attempt never cleared it
     const btn = document.getElementById('login-btn');
-    if (btn) { btn.disabled = false; btn.textContent = 'Sign In'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Send Magic Link'; }
     document.getElementById('login-email')?.focus();
   }
 
@@ -19,36 +19,49 @@ const LoginScreen = (() => {
   }
 
   async function submit() {
-    const username = document.getElementById('login-email')?.value?.trim();
-    const password = document.getElementById('login-password')?.value;
-    const btn      = document.getElementById('login-btn');
-    const errEl    = document.getElementById('login-error');
+    const email = document.getElementById('login-email')?.value?.trim();
+    const btn   = document.getElementById('login-btn');
+    const errEl = document.getElementById('login-error');
 
-    if (!username || !password) {
-      _showError('Please enter your username and password.');
+    if (!email) {
+      _showError('Please enter your email address.');
       return;
     }
 
-    // Convert username to email format if it doesn't contain @
-    const email = username.includes('@') ? username : `${username}@onpointprodoors.com`;
+    // Validate email format
+    if (!email.includes('@')) {
+      _showError('Please enter a valid email address.');
+      return;
+    }
 
     btn.disabled    = true;
-    btn.textContent = 'Signing in…';
+    btn.textContent = 'Sending…';
     errEl.classList.add('hidden');
 
     try {
-      await Auth.login(email, password, (attempt) => {
-        // Show "Connecting..." during retries
-        btn.textContent = `Connecting... (${attempt}/3)`;
+      // Send magic link via Supabase auth
+      const { error } = await SupabaseClient.auth.signInWithOtp({
+        email: email,
+        options: {
+          emailRedirectTo: 'https://crm.onpointprodoors.com'
+        }
       });
-      // onAuthChange in app.js will handle navigation.
-      // Re-enable the button so it's ready if this screen is ever shown again.
-      btn.disabled    = false;
-      btn.textContent = 'Sign In';
+
+      if (error) throw error;
+
+      // Show success message
+      errEl.textContent = '✅ Magic link sent! Check your email and click the link to log in.';
+      errEl.style.color = '#10b981';
+      errEl.classList.remove('hidden');
+      btn.textContent = 'Magic Link Sent';
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.textContent = 'Send Magic Link';
+      }, 5000);
     } catch (e) {
       _showError(_friendlyError(e.message));
       btn.disabled    = false;
-      btn.textContent = 'Sign In';
+      btn.textContent = 'Send Magic Link';
     }
   }
 
@@ -73,11 +86,8 @@ const LoginScreen = (() => {
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('login-password')?.addEventListener('keydown', e => {
-      if (e.key === 'Enter') submit();
-    });
     document.getElementById('login-email')?.addEventListener('keydown', e => {
-      if (e.key === 'Enter') document.getElementById('login-password')?.focus();
+      if (e.key === 'Enter') submit();
     });
   });
 

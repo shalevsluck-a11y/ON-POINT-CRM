@@ -424,14 +424,14 @@ const Auth = (() => {
     return json; // { success, userId, setupLink, loginEmail }
   }
 
-  async function createUser(name, email, password, role, assignedLeadSource = null, payoutPct = null) {
+  async function createUser(name, email, role, assignedLeadSource = null, payoutPct = null) {
     if (!isAdmin()) throw new Error('Admin only');
     const { data: { session } } = await SupabaseClient.auth.getSession();
     let res, json;
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 30000);
-      const body = { name, email, password, role };
+      const body = { name, email, role };
       if (assignedLeadSource) body.assigned_lead_source = assignedLeadSource;
       if (payoutPct !== null && payoutPct !== undefined && payoutPct !== '') body.payout_pct = parseFloat(payoutPct);
       res = await fetch(`${SUPABASE_URL}/functions/v1/create-user`, {
@@ -454,7 +454,7 @@ const Auth = (() => {
       console.error('Create user error:', errorMsg, 'Full response:', json);
       throw new Error(errorMsg);
     }
-    return json; // { success, userId, email, name }
+    return json; // { success, userId, name, email, magicLink }
   }
 
   async function removeUser(userId) {

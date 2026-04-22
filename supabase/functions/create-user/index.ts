@@ -36,15 +36,18 @@ serve(async (req) => {
       throw new Error('Admin only')
     }
 
-    const { name, email, password, role } = await req.json()
-    if (!name || !email || !password || !role) {
-      throw new Error('Name, email, password, and role are required')
+    const { name, email, role, assigned_lead_source, payout_pct } = await req.json()
+    if (!name || !email || !role) {
+      throw new Error('Name, email, and role are required')
     }
 
-    // Create user with email and password
+    // Generate random temporary password (never shown to anyone)
+    const tempPassword = crypto.randomUUID() + crypto.randomUUID()
+
+    // Create user with email and temporary password
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
-      password,
+      password: tempPassword,
       email_confirm: true,
       user_metadata: { name }
     })
@@ -52,19 +55,36 @@ serve(async (req) => {
     if (createError) throw createError
 
     // Create profile
+    const profileData: any = {
+      id: newUser.user.id,
+      name,
+      role
+    }
+    if (assigned_lead_source) profileData.assigned_lead_source = assigned_lead_source
+    if (payout_pct !== null && payout_pct !== undefined) profileData.payout_pct = payout_pct
+
     await supabaseAdmin
       .from('profiles')
-      .upsert({
-        id: newUser.user.id,
-        name,
-        role
-      })
+      .upsert(profileData)
+
+    // Generate magic link
+    const { data: magicLinkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'magiclink',
+      email: email,
+      options: {
+        redirectTo: 'https://crm.onpointprodoors.com'
+      }
+    })
+
+    if (linkError) throw linkError
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         success: true,
         userId: newUser.user.id,
-        email
+        name,
+        email,
+        magicLink: magicLinkData.properties.action_link
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
