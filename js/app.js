@@ -2668,18 +2668,9 @@ const App = (() => {
     const modal = document.getElementById('invite-modal');
     if (!modal) return;
 
-    // Clear form fields
+    // Clear name field
     const nameInput = document.getElementById('invite-name');
     if (nameInput) nameInput.value = '';
-
-    const emailInput = document.getElementById('invite-email');
-    if (emailInput) emailInput.value = '';
-
-    const roleInput = document.getElementById('invite-role');
-    if (roleInput) roleInput.value = 'dispatcher';
-
-    const payoutInput = document.getElementById('invite-payout');
-    if (payoutInput) payoutInput.value = '';
 
     // Reset UI state
     const errEl = document.getElementById('invite-error');
@@ -2704,19 +2695,6 @@ const App = (() => {
       newBtn.addEventListener('touchend', submitInvite);
     }
 
-    // Populate lead sources dropdown
-    const settings = DB.getSettings();
-    const leadSources = settings.leadSources || [];
-    const leadSourceSelect = document.getElementById('invite-lead-source');
-    if (leadSourceSelect) {
-      leadSourceSelect.innerHTML = '<option value="">Select lead source...</option>' +
-        leadSources.map(ls => `<option value="${_esc(ls.name)}">${_esc(ls.name)}</option>`).join('');
-    }
-
-    // Hide contractor/tech fields by default
-    document.getElementById('invite-lead-source-group')?.classList.add('hidden');
-    document.getElementById('invite-payout-group')?.classList.add('hidden');
-
     modal.classList.remove('hidden');
   }
 
@@ -2736,29 +2714,23 @@ const App = (() => {
     document.getElementById('invite-modal')?.classList.add('hidden');
   }
 
-  function _buildMagicLinkWAMsg(name, magicLink) {
-    return [
-      `Hi ${name}! Your OnPoint Pro Doors CRM account is ready.`,
-      '',
-      `Tap this link to log in instantly — no password needed:`,
-      magicLink || 'Link not available — contact admin',
-      '',
-      `The link works once. After logging in you will always use magic links to sign in.`,
-      '',
-      `App link: https://crm.onpointprodoors.com`,
-      `Add it to your home screen: tap Share then Add to Home Screen`,
-      '',
-      `Questions? Call (929) 429-2429`,
-      `- On Point Pro Doors`,
-    ].join('\n');
-  }
-
   function _sendMagicLinkWA() {
     if (!_lastInvite || !_lastInvite.magicLink) {
       showToast('No magic link available', 'warning');
       return;
     }
-    const msg = _buildMagicLinkWAMsg(_lastInvite.name, _lastInvite.magicLink);
+    const msg = [
+      `Hi ${_lastInvite.name}! You have been added to OnPoint Pro Doors CRM.`,
+      '',
+      `Tap this link to log in instantly:`,
+      _lastInvite.magicLink,
+      '',
+      `Save the app to your home screen:`,
+      `1. Open https://crm.onpointprodoors.com in Safari`,
+      `2. Tap Share then Add to Home Screen`,
+      '',
+      `Questions? Call (929) 429-2429`,
+    ].join('\n');
     _openWAWithMsg('', msg);
   }
 
@@ -2815,21 +2787,11 @@ const App = (() => {
     }
 
     const name  = document.getElementById('invite-name')?.value?.trim();
-    const email = document.getElementById('invite-email')?.value?.trim();
-    const role  = document.getElementById('invite-role')?.value;
-    const payout = document.getElementById('invite-payout')?.value?.trim();
-    const leadSource = document.getElementById('invite-lead-source')?.value;
-
     const errEl = document.getElementById('invite-error');
     const btn   = document.getElementById('invite-submit-btn');
 
     if (!name) {
       errEl.textContent = 'Name is required.';
-      errEl.classList.remove('hidden');
-      return;
-    }
-    if (!email) {
-      errEl.textContent = 'Email is required.';
       errEl.classList.remove('hidden');
       return;
     }
@@ -2839,13 +2801,18 @@ const App = (() => {
     btn.textContent = 'Creating...';
 
     try {
+      // Auto-generate email: name.randomnumber@onpointprodoors.com
+      const randomNum = Math.floor(1000 + Math.random() * 9000);
+      const email = `${name.toLowerCase().replace(/\s+/g, '.')}.${randomNum}@onpointprodoors.com`;
+
       // Create user via Edge Function (generates magic link)
+      // Role is always 'dispatcher', no payout or lead source
       const result = await Auth.createUser(
         name,
         email,
-        role,
-        leadSource || null,
-        payout ? parseFloat(payout) : null
+        'dispatcher',
+        null,
+        null
       );
 
       if (!result.success || !result.magicLink) {
@@ -2855,7 +2822,6 @@ const App = (() => {
       // Save for WhatsApp message
       _lastInvite = {
         name,
-        email,
         magicLink: result.magicLink
       };
 
@@ -2867,7 +2833,6 @@ const App = (() => {
       document.getElementById('invite-form-body').classList.add('hidden');
       document.getElementById('invite-success-body').classList.remove('hidden');
       document.getElementById('invite-success-name').textContent = name;
-      document.getElementById('invite-success-email-display').textContent = email;
 
       btn.disabled = false;
       btn.textContent = 'Create Account';
