@@ -2500,7 +2500,7 @@ const App = (() => {
     container.innerHTML = `<div class="settings-card">
       <div class="settings-section-title" style="display:flex;justify-content:space-between;align-items:center">
         <span>Users</span>
-        <button class="btn btn-primary" style="padding:6px 14px;font-size:13px" onclick="App.showInviteModal()">+ Create User</button>
+        <button class="btn btn-primary" style="padding:6px 14px;font-size:13px" onclick="App.showInviteModal()">+ Create Dispatcher</button>
       </div>
       <div id="admin-users-list">
         <div class="user-list-item" style="opacity:0.5;pointer-events:none">
@@ -2546,15 +2546,7 @@ const App = (() => {
             <div class="user-item-email">${_esc(u.email||'')}</div>
           </div>
           <div class="user-item-role" style="display:flex;align-items:center;gap:6px">
-            <select class="field-input" style="font-size:12px;padding:4px 8px;height:32px"
-                    onchange="App._changeUserRole('${u.id}', this.value)">
-              <option value="admin"      ${u.role==='admin'      ?'selected':''}>Admin</option>
-              <option value="dispatcher" ${u.role==='dispatcher' ?'selected':''}>Dispatcher</option>
-              <option value="tech"       ${u.role==='tech'       ?'selected':''}>Tech</option>
-              <option value="contractor" ${u.role==='contractor' ?'selected':''}>Contractor</option>
-            </select>
-            ${u.phone ? `<button class="btn-icon" style="color:#25D366;font-size:18px" title="Send app link on WhatsApp"
-              onclick="App._sendUserWALink('${u.id}')">&#128241;</button>` : ''}
+            <span style="font-size:12px;padding:4px 12px;background:${u.role==='admin'?'var(--color-primary)':'var(--color-surface-3)'};color:${u.role==='admin'?'#fff':'var(--color-text)'};border-radius:6px;font-weight:500;text-transform:capitalize">${u.role}</span>
             ${u.id !== currentUserId ? `<button class="btn-icon" style="color:var(--color-error);font-size:16px"
               onclick="App._confirmRemoveUser(this.dataset.uid,this.dataset.uname)" title="Remove user"
               data-uid="${_esc(u.id)}" data-uname="${_esc(u.name||u.email)}">&#128465;</button>` : ''}
@@ -2984,8 +2976,7 @@ const App = (() => {
   }
 
   function showTechModal(techId) {
-    // New technicians are added via the Invite User flow, not the tech modal
-    if (!techId) { showInviteModal(); return; }
+    // Tech profiles are for job assignment only (not user accounts)
     const settings = DB.getSettings();
     const tech = techId ? settings.technicians.find(t => t.id === techId) : null;
     const title = document.getElementById('tech-modal-title');
@@ -3018,10 +3009,10 @@ const App = (() => {
     const pct = parseFloat(document.getElementById('m-tech-pct')?.value) || 0;
     if (pct < 0 || pct > 100) { showToast('Payout % must be 0-100', 'warning'); return; }
 
-    const existingId = document.getElementById('m-tech-id')?.value;
-    if (!existingId) {
-      showToast('To add a technician, use the Invite User button above', 'warning');
-      return;
+    let techId = document.getElementById('m-tech-id')?.value;
+    if (!techId) {
+      // Create new tech profile (no user account, just profile for job assignment)
+      techId = DB.generateId();
     }
 
     const zipsRaw  = document.getElementById('m-tech-zips')?.value || '';
@@ -3032,19 +3023,11 @@ const App = (() => {
     const color    = document.getElementById('m-tech-color')?.value          || '#3B82F6';
 
     try {
-      const saveTimeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Save timed out — check connection and try again')), 10000)
-      );
-      await Promise.race([
-        DB.updateTechProfile(existingId, { name, phone, color, percent: pct, zelle, zipCodes, isOwner }),
-        saveTimeout,
-      ]);
-
       const settings = DB.getSettings();
       const techs = [...(settings.technicians || [])];
-      if (isOwner) techs.forEach(t => { if (t.id !== existingId) t.isOwner = false; });
-      const idx = techs.findIndex(t => t.id === existingId);
-      const updated = { id: existingId, name, phone, color, percent: pct, zelle, zipCodes, isOwner };
+      if (isOwner) techs.forEach(t => { if (t.id !== techId) t.isOwner = false; });
+      const idx = techs.findIndex(t => t.id === techId);
+      const updated = { id: techId, name, phone, color, percent: pct, zelle, zipCodes, isOwner };
       if (idx >= 0) techs[idx] = updated; else techs.push(updated);
       Storage.saveSettings({ ...settings, technicians: techs });
 
