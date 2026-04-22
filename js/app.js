@@ -2776,35 +2776,27 @@ const App = (() => {
   async function submitInvite() {
     if (!Auth.isAdmin()) { showToast('Not authorized', 'error'); return; }
     const name  = document.getElementById('invite-name')?.value?.trim();
-    const username = document.getElementById('invite-email')?.value?.trim();
-    const password = document.getElementById('invite-password')?.value;
     const errEl = document.getElementById('invite-error');
     const btn   = document.getElementById('invite-submit-btn');
 
     errEl.classList.add('hidden');
 
     if (!name) {
-      errEl.textContent = 'Full name is required.';
-      errEl.classList.remove('hidden');
-      return;
-    }
-    if (!username) {
-      errEl.textContent = 'Username is required.';
-      errEl.classList.remove('hidden');
-      return;
-    }
-    if (!password || password.length < 6) {
-      errEl.textContent = 'Password must be at least 6 characters.';
+      errEl.textContent = 'Name is required.';
       errEl.classList.remove('hidden');
       return;
     }
 
     btn.disabled    = true;
-    btn.textContent = 'Creating dispatcher�';
+    btn.textContent = 'Creating...';
 
     try {
-      // Convert username to email format
+      // Auto-generate username from name (no input needed)
+      const username = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + '-' + Math.random().toString(36).substring(2, 6);
       const email = `${username}@onpointprodoors.com`;
+
+      // Auto-generate random password (not shown - they use magic link only)
+      const password = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 
       const createPromise = Auth.createUser(name, email, password, 'dispatcher', null, null);
       const timeoutPromise = new Promise((_, reject) =>
@@ -2831,14 +2823,14 @@ const App = (() => {
       document.getElementById('invite-success-email').value = 'MAGIC LINK (send this):';
       document.getElementById('invite-success-password').value = magicLink;
       btn.disabled = false;
-      btn.textContent = 'Create Dispatcher Account';
+      btn.textContent = 'Create Dispatcher';
 
     } catch (e) {
       console.error('Create dispatcher error:', e);
-      errEl.textContent = e.message || 'Failed to create dispatcher � please try again';
+      errEl.textContent = e.message || 'Failed - please try again';
       errEl.classList.remove('hidden');
       btn.disabled    = false;
-      btn.textContent = 'Create Dispatcher Account';
+      btn.textContent = 'Create Dispatcher';
     }
   }
 
