@@ -1,0 +1,59 @@
+[2026-04-22T17:57:44.668Z] [TEST] Starting automated testing...
+[2026-04-22T17:57:44.798Z] [TEST] === TESTING DISPATCHER VIEW ===
+[2026-04-22T17:57:44.970Z] [CONSOLE] [DISPATCHER] Initializing Supabase client: {isPWA: false, storageKey: onpoint-web-auth}
+[2026-04-22T17:57:44.972Z] [CONSOLE] [DISPATCHER] [Realtime] Client configured with URL: https://api.onpointprodoors.com
+[2026-04-22T17:57:45.011Z] [CONSOLE] [DISPATCHER] [Auth] Mode: Browser
+[2026-04-22T17:57:45.015Z] [CONSOLE] [DISPATCHER] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o
+[2026-04-22T17:57:45.016Z] [CONSOLE] [DISPATCHER] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o
+[2026-04-22T17:57:45.016Z] [CONSOLE] [DISPATCHER] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o
+[2026-04-22T17:57:45.016Z] [CONSOLE] [DISPATCHER] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o
+[2026-04-22T17:57:45.020Z] [CONSOLE] [DISPATCHER] [OfflineQueue] Object store created
+[2026-04-22T17:57:45.021Z] [CONSOLE] [DISPATCHER] [App] No user - showing magic link input
+[2026-04-22T17:57:45.034Z] [CONSOLE] [DISPATCHER] [App] No user - showing magic link input
+[2026-04-22T17:57:45.036Z] [CONSOLE] [DISPATCHER] [OfflineQueue] Database opened
+[2026-04-22T17:57:45.515Z] [INFO] Loaded app homepage
+[2026-04-22T17:57:45.611Z] [ERROR] Not logged in after 30 seconds
+[2026-04-22T17:57:45.612Z] [FAIL] TEST: Dispatcher - Login Status - ❌ FAIL - User not logged in
+[2026-04-22T17:57:45.612Z] [INFO] 
+================================================================================
+
+[2026-04-22T17:57:45.698Z] [TEST] === TESTING ADMIN VIEW ===
+[2026-04-22T17:57:45.848Z] [CONSOLE] [ADMIN] Initializing Supabase client: {isPWA: false, storageKey: onpoint-web-auth}
+[2026-04-22T17:57:45.851Z] [CONSOLE] [ADMIN] [Realtime] Client configured with URL: https://api.onpointprodoors.com
+[2026-04-22T17:57:45.904Z] [CONSOLE] [ADMIN] [Auth] Mode: Browser
+[2026-04-22T17:57:45.906Z] [CONSOLE] [ADMIN] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o
+[2026-04-22T17:57:45.906Z] [CONSOLE] [ADMIN] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o
+[2026-04-22T17:57:45.906Z] [CONSOLE] [ADMIN] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o
+[2026-04-22T17:57:45.906Z] [CONSOLE] [ADMIN] [DOM] Password field is not contained in a form: (More info: https://goo.gl/9p2vKq) %o
+[2026-04-22T17:57:45.933Z] [CONSOLE] [ADMIN] [App] No user - showing magic link input
+[2026-04-22T17:57:45.937Z] [CONSOLE] [ADMIN] [OfflineQueue] Object store created
+[2026-04-22T17:57:45.937Z] [CONSOLE] [ADMIN] [OfflineQueue] Database opened
+[2026-04-22T17:57:45.939Z] [CONSOLE] [ADMIN] [App] No user - showing magic link input
+[2026-04-22T17:57:46.499Z] [FAIL] TEST: Admin - Login Status - ❌ FAIL - User not logged in
+[2026-04-22T17:57:46.499Z] [TEST] === ANALYZING CONSOLE LOGS ===
+[2026-04-22T17:57:46.499Z] [INFO] Found 0 [NEW JOB] logs
+[2026-04-22T17:57:46.499Z] [INFO] Found 0 [SOURCE DROPDOWN] logs
+[2026-04-22T17:57:46.499Z] [INFO] Found 0 [DB] logs
+[2026-04-22T17:57:46.499Z] [INFO] Found 1 error logs
+[2026-04-22T17:57:46.499Z] [FAIL] TEST: Debug - Settings Sync Started - ❌ FAIL - NO settings sync found!
+[2026-04-22T17:57:46.499Z] [FAIL] TEST: Debug - Settings Sync Complete - ❌ FAIL - Settings sync did NOT complete!
+[2026-04-22T17:57:46.499Z] [FAIL] TEST: Debug - Sources Loaded - ❌ FAIL - NO sources in logs!
+
+================================================================================
+TEST SUMMARY
+================================================================================
+Total Tests: 5
+✅ Passed: 0
+❌ Failed: 5
+================================================================================
+
+🔧 RECOMMENDED FIXES:
+1. CRITICAL FIX: Settings not syncing - check _syncSettingsDown() function
+
+Detailed report saved to: test-results/auto-test-report.json
+Full logs saved to: test-results/all-logs.txt
+
+[2026-04-22T17:57:46.501Z] [INFO] 
+⏸️ Browser staying open for manual inspection...
+[2026-04-22T17:57:46.501Z] [INFO] Press Ctrl+C when done
+
