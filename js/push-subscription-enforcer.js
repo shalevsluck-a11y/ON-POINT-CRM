@@ -54,7 +54,8 @@ const PushSubscriptionEnforcer = (() => {
         return;
       }
 
-      console.log('[Push Enforcer] User logged in:', currentUser.name || currentUser.email || currentUser.id);
+      // FIX 2: Log user name and role to verify admin is not being skipped
+      console.log('[Push Enforcer] Running for:', currentUser.name || currentUser.email, 'role:', currentUser.role, 'id:', currentUser.id);
 
       // Check current permission state
       const permission = Notification.permission;

@@ -286,6 +286,14 @@ const DB = (() => {
         }
         const job = _dbRowToJob(payload.new, {}, true, false);
         Storage.saveJob(job);
+
+        // FIX 1: Don't play sound/notify if I created this job
+        const currentUser = Auth.getUser();
+        if (currentUser && payload.new.created_by === currentUser.id) {
+          console.log('[Realtime] Skipping notification - I created this job');
+          return;
+        }
+
         if (onInsert) onInsert(job);
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'jobs' }, payload => {
