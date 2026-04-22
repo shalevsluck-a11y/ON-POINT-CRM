@@ -2406,6 +2406,18 @@ const App = (() => {
     _setVal('s-apps-script-url', s.appsScriptUrl);
     _setVal('s-default-state',   s.defaultState);
 
+    // Load notification preferences (available to all users)
+    const notifPrefs = JSON.parse(localStorage.getItem('notificationPreferences') || '{}');
+    _setVal('s-notif-sound', notifPrefs.sound || 'chime');
+    const notifNewJob = document.getElementById('s-notif-new-job');
+    const notifJobUpdate = document.getElementById('s-notif-job-update');
+    const notifJobReminder = document.getElementById('s-notif-job-reminder');
+    const notifMessages = document.getElementById('s-notif-messages');
+    if (notifNewJob) notifNewJob.checked = notifPrefs.newJob !== false;
+    if (notifJobUpdate) notifJobUpdate.checked = notifPrefs.jobUpdate !== false;
+    if (notifJobReminder) notifJobReminder.checked = notifPrefs.jobReminder !== false;
+    if (notifMessages) notifMessages.checked = notifPrefs.messages !== false;
+
     // Zelle handle visible to admin only
     const zelleGroup = document.getElementById('s-zelle-group');
     if (zelleGroup) zelleGroup.classList.toggle('hidden', !Auth.canSeeZelleMemo());
@@ -2748,6 +2760,16 @@ const App = (() => {
   }
 
   async function _doSaveSettings() {
+    // Save notification preferences for all users (stored in localStorage)
+    const notifPrefs = {
+      sound: document.getElementById('s-notif-sound')?.value || 'chime',
+      newJob: document.getElementById('s-notif-new-job')?.checked !== false,
+      jobUpdate: document.getElementById('s-notif-job-update')?.checked !== false,
+      jobReminder: document.getElementById('s-notif-job-reminder')?.checked !== false,
+      messages: document.getElementById('s-notif-messages')?.checked !== false,
+    };
+    localStorage.setItem('notificationPreferences', JSON.stringify(notifPrefs));
+
     // Non-admin: save only their own profile (name + phone)
     if (!Auth.isAdmin()) {
       const name  = document.getElementById('s-owner-name')?.value?.trim()  || '';
@@ -2755,7 +2777,7 @@ const App = (() => {
       if (!name) { showToast('Name is required', 'warning'); return; }
       try {
         await Auth.updateProfile({ name, phone });
-        showToast('Profile updated', 'success');
+        showToast('Settings saved', 'success');
         _updateHeaderUser();
       } catch (e) {
         showToast('Failed to update profile: ' + (e.message || 'unknown error'), 'error');
@@ -2784,6 +2806,78 @@ const App = (() => {
       showToast('Settings saved', 'success');
     } catch (e) {
       showToast('Failed to save settings: ' + (e.message || 'unknown error'), 'error');
+    }
+  }
+
+  // ── NOTIFICATIONS ──────────────────────────────────────
+
+  function testNotificationSound() {
+    const sound = document.getElementById('s-notif-sound')?.value || 'chime';
+    if (sound === 'none') {
+      showToast('Sound is set to Silent', 'info');
+      return;
+    }
+
+    // Play the selected sound
+    if (window.NotificationSounds) {
+      window.NotificationSounds.play(sound);
+    } else {
+      showToast('Sound system not loaded yet', 'warning');
+    }
+  }
+
+  async function testNotification() {
+    const btn = document.getElementById('btn-test-notification');
+    if (!btn) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Sending...';
+
+    try {
+      // Check if notifications are supported
+      if (!('Notification' in window)) {
+        showToast('Notifications not supported in this browser', 'warning');
+        return;
+      }
+
+      // Check permission
+      let permission = Notification.permission;
+      if (permission === 'default') {
+        permission = await Notification.requestPermission();
+      }
+
+      if (permission !== 'granted') {
+        showToast('Notification permission denied', 'warning');
+        return;
+      }
+
+      // Show test notification
+      const notification = new Notification('ON POINT CRM', {
+        body: 'This is a test notification. If you can see this, notifications are working!',
+        icon: '/favicon.ico',
+        badge: '/favicon.ico',
+        tag: 'test-notification',
+        requireInteraction: false,
+      });
+
+      // Play sound
+      const sound = document.getElementById('s-notif-sound')?.value || 'chime';
+      if (sound !== 'none' && window.NotificationSounds) {
+        window.NotificationSounds.play(sound);
+      }
+
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+      };
+
+      showToast('Test notification sent!', 'success');
+
+    } catch (e) {
+      showToast('Failed to send notification: ' + (e.message || 'unknown error'), 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Send Test Notification';
     }
   }
 
@@ -3801,6 +3895,8 @@ const App = (() => {
 
     // Settings
     saveSettings,
+    testNotification,
+    testNotificationSound,
     showTechModal,
     saveTech,
     deleteTech,

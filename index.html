@@ -592,6 +592,54 @@
         </div>
       </div>
 
+      <!-- Notifications -->
+      <div class="settings-card" id="settings-notifications-card">
+        <div class="settings-section-title">Notifications</div>
+
+        <div class="field-group">
+          <label class="field-label">Notification Sound</label>
+          <select id="s-notif-sound" class="field-input">
+            <option value="chime">Chime (Default)</option>
+            <option value="bell">Bell</option>
+            <option value="pop">Pop</option>
+            <option value="ding">Ding</option>
+            <option value="swoosh">Swoosh</option>
+            <option value="none">Silent</option>
+          </select>
+          <button class="btn btn-secondary" onclick="App.testNotificationSound()" style="margin-top:8px;width:100%">
+            Test Sound
+          </button>
+        </div>
+
+        <div class="field-group" style="margin-top:16px">
+          <label class="field-label">Notification Types</label>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <label class="checkbox-label">
+              <input type="checkbox" id="s-notif-new-job" checked>
+              <span>New job assigned to me</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="s-notif-job-update" checked>
+              <span>Job status updates</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="s-notif-job-reminder" checked>
+              <span>Job reminders</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="s-notif-messages" checked>
+              <span>Messages and mentions</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="field-group" style="margin-top:16px">
+          <button class="btn btn-primary btn-full" onclick="App.testNotification()" id="btn-test-notification">
+            Send Test Notification
+          </button>
+        </div>
+      </div>
+
       <!-- Sync (admin only) -->
       <div class="settings-card" id="settings-sync-card">
         <div class="settings-section-title">Google Sheets Sync</div>
