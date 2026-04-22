@@ -1376,8 +1376,8 @@ const App = (() => {
 
     const job = DB.getJobById(jobId);
     if (!job) {
-      console.error('[App] Job not found:', jobId);
-      showToast('Job not found - refreshing data...', 'error');
+      console.error('[App] Job not found in cache:', jobId);
+      showToast('Job not in cache - fetching fresh...', 'warning');
       // Sync from remote and try again
       DB.syncJobsFromRemote().then(() => {
         const retryJob = DB.getJobById(jobId);
@@ -1404,9 +1404,28 @@ const App = (() => {
     try {
       container.innerHTML = _buildJobDetailHTML(job);
     } catch (error) {
-      console.error('[App] Error building job detail:', error);
-      showToast('Error loading job details', 'error');
-      navigate('jobs');
+      console.error('[App] Error rendering job - corrupted data:', error);
+      console.error('[App] Corrupted job data:', job);
+
+      // Job data is corrupted - delete from cache and fetch fresh
+      showToast('⚠️ Corrupted job data - fetching fresh copy...', 'warning');
+      Storage.deleteJob(jobId);
+
+      // Fetch fresh from database
+      DB.syncJobsFromRemote().then(() => {
+        const freshJob = DB.getJobById(jobId);
+        if (freshJob) {
+          console.log('[App] Fresh job fetched, retrying...');
+          openJobDetail(jobId); // Recursive call with fresh data
+        } else {
+          navigate('jobs');
+          showToast('❌ Could not load job - try clearing cache from Settings', 'error');
+        }
+      }).catch(err => {
+        console.error('[App] Sync failed:', err);
+        navigate('jobs');
+        showToast('❌ Sync failed - please use CLEAR CACHE button in Settings', 'error');
+      });
     }
   }
 
@@ -3655,6 +3674,41 @@ const App = (() => {
     showToast('Backup exported', 'success');
   }
 
+  async function forceClearCache() {
+    showToast('Clearing cache...', 'info');
+
+    try {
+      // Clear localStorage
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // Clear IndexedDB if exists
+      try {
+        indexedDB.deleteDatabase('offline_queue');
+      } catch (e) {
+        console.error('IndexedDB clear failed:', e);
+      }
+
+      // Clear service worker cache
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+      }
+
+      showToast('✅ Cache cleared! Reloading...', 'success');
+
+      // Hard reload to get fresh data
+      setTimeout(() => {
+        window.location.href = window.location.href.split('#')[0];
+        window.location.reload(true);
+      }, 500);
+    } catch (error) {
+      console.error('Force clear failed:', error);
+      showToast('❌ Clear failed, trying simpler reload...', 'error');
+      setTimeout(() => window.location.reload(true), 500);
+    }
+  }
+
   function clearAllData() {
     showConfirm({
       icon: '&#9888;',
@@ -3662,32 +3716,7 @@ const App = (() => {
       message: 'This will permanently delete all jobs and settings from your device. Jobs in the database will remain.',
       okLabel: 'Clear Everything',
       onOk: async () => {
-        // Clear localStorage
-        Storage.clearAll();
-
-        // Clear IndexedDB if exists
-        if (window.OfflineQueue) {
-          try {
-            const db = indexedDB.open('offline_queue');
-            db.onsuccess = () => {
-              db.result.close();
-              indexedDB.deleteDatabase('offline_queue');
-            };
-          } catch (e) {
-            console.error('IndexedDB clear failed:', e);
-          }
-        }
-
-        // Clear service worker cache
-        if ('caches' in window) {
-          const cacheNames = await caches.keys();
-          await Promise.all(cacheNames.map(name => caches.delete(name)));
-        }
-
-        showToast('All local data cleared! Refreshing...', 'success');
-
-        // Hard reload to get fresh data
-        setTimeout(() => window.location.reload(true), 1000);
+        await forceClearCache();
       }
     });
   }
@@ -4233,6 +4262,7 @@ const App = (() => {
     // Data
     exportData,
     clearAllData,
+    forceClearCache,
 
     // Kanban / view toggle
     toggleJobsView,
