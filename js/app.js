@@ -66,6 +66,7 @@ const App = (() => {
 
     // Set header avatar / name / role
     _updateHeaderUser();
+    _updatePushBanner();
 
     // Show/hide nav + header items based on role
     _applyRoleUI();
@@ -2922,6 +2923,40 @@ const App = (() => {
     }
   }
 
+  async function requestPushPermission() {
+    try {
+      if (!('Notification' in window)) {
+        showToast('Notifications not supported in this browser', 'warning');
+        return;
+      }
+
+      const permission = await Notification.requestPermission();
+
+      if (permission === 'granted') {
+        // Subscribe to push notifications
+        await Auth.subscribeToPush();
+        showToast('Notifications enabled! You\'ll be notified when jobs are assigned', 'success');
+        _updatePushBanner(); // Hide banner
+      } else {
+        showToast('Notification permission denied', 'warning');
+      }
+    } catch (e) {
+      showToast('Failed to enable notifications: ' + (e.message || 'unknown error'), 'error');
+    }
+  }
+
+  function _updatePushBanner() {
+    const banner = document.getElementById('push-permission-banner');
+    if (!banner) return;
+
+    // Only show for tech/contractor who haven't granted permission
+    const user = Auth.getUser();
+    const isTechOrContractor = user?.role === 'tech' || user?.role === 'contractor';
+    const hasPermission = 'Notification' in window && Notification.permission === 'granted';
+
+    banner.classList.toggle('hidden', !isTechOrContractor || hasPermission);
+  }
+
   // ── TECHNICIANS ────────────────────────────────────────
 
   function _renderTechList(techs = []) {
@@ -3938,6 +3973,7 @@ const App = (() => {
     saveSettings,
     testNotification,
     testNotificationSound,
+    requestPushPermission,
     showTechModal,
     saveTech,
     deleteTech,
