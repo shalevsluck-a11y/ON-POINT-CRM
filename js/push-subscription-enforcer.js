@@ -321,19 +321,36 @@ const PushSubscriptionEnforcer = (() => {
     };
 
     console.log('[Push Enforcer] Upserting to push_subscriptions table...');
+    console.log('[Push Enforcer] Data to upsert:', JSON.stringify(data, null, 2));
+    console.log('[Push Enforcer] Field types:', {
+      user_id: typeof data.user_id,
+      endpoint: typeof data.endpoint,
+      p256dh: typeof data.p256dh,
+      auth_key: typeof data.auth_key
+    });
 
     const { data: result, error } = await SupabaseClient.from('push_subscriptions').upsert(data, {
       onConflict: 'user_id,endpoint'
     }).select();
 
+    console.log('[Push Enforcer] Upsert completed');
+    console.log('[Push Enforcer] Error?', error);
+    console.log('[Push Enforcer] Result?', result);
+
     if (error) {
-      console.error('[Push Enforcer] FAILED to save subscription:', error);
-      console.error('[Push Enforcer] Error details:', JSON.stringify(error, null, 2));
+      console.error('[Push Enforcer] ❌ FAILED to save subscription');
+      console.error('[Push Enforcer] Error object:', error);
+      console.error('[Push Enforcer] Error JSON:', JSON.stringify(error, null, 2));
+      console.error('[Push Enforcer] Error message:', error.message);
+      console.error('[Push Enforcer] Error code:', error.code);
+      console.error('[Push Enforcer] Error details:', error.details);
+      console.error('[Push Enforcer] Error hint:', error.hint);
       throw error;
     }
 
     console.log('[Push Enforcer] ✅ Subscription saved to database successfully');
     console.log('[Push Enforcer] Returned data:', result);
+    console.log('[Push Enforcer] Row count:', result?.length);
   }
 
   /**
