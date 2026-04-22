@@ -117,54 +117,62 @@ const Auth = (() => {
   }
 
   async function _loginWithMagicToken(token) {
-    console.log('[Auth] Querying profile for magic token:', token.substring(0, 15) + '...');
-    console.log('[Auth] Full token length:', token.length);
+    console.log('[Auth] Exchanging magic token for Supabase session:', token.substring(0, 15) + '...');
 
-    // Get profile using magic token (password-less)
-    const { data: profile, error } = await SupabaseClient
-      .from('profiles')
-      .select('*')
-      .eq('magic_token', token)
-      .single();
+    try {
+      // Exchange magic token for proper Supabase session via server
+      const response = await fetch('/auth/magic-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ magic_token: token })
+      });
 
-    if (error) {
-      console.error('[Auth] Database error fetching profile:', error);
-      throw new Error('Database error: ' + error.message);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Session exchange failed');
+      }
+
+      const { profile, hashed_token, email } = await response.json();
+      console.log('[Auth] Session data received for:', profile.name);
+
+      // Use the hashed token to create a real Supabase auth session
+      // This makes auth.uid() work in RLS policies!
+      const { data, error } = await SupabaseClient.auth.verifyOtp({
+        token_hash: hashed_token,
+        type: 'magiclink'
+      });
+
+      if (error) {
+        console.error('[Auth] Session verification failed:', error);
+        throw new Error('Session verification failed: ' + error.message);
+      }
+
+      console.log('[Auth] ✓ Real Supabase session created! auth.uid() =', data.user.id);
+
+      // Build user object from profile + Supabase session
+      _currentUser = {
+        id: data.user.id,
+        email: profile.email,
+        name: profile.name,
+        role: profile.role || 'tech',
+        color: profile.color || '#3B82F6',
+        phone: profile.phone || '',
+        zelleHandle: profile.zelle_handle || '',
+        zipCodes: profile.zip_codes || [],
+        techPercent: profile.default_tech_percent || 60,
+        isOwner: profile.is_owner || false,
+        assignedLeadSource: profile.assigned_lead_source || null,
+        allowedLeadSources: profile.allowed_lead_sources || null,
+        isMagicAuth: true
+      };
+
+      _startSessionHealthCheck();
+      return _currentUser;
+
+    } catch (error) {
+      console.error('[Auth] Magic token login failed:', error);
+      throw error;
     }
-
-    if (!profile) {
-      console.error('[Auth] No profile found for magic token');
-      throw new Error('Invalid magic link - profile not found');
-    }
-
-    console.log('[Auth] Profile found - ID:', profile.id, 'Name:', profile.name, 'Email:', profile.email, 'Role:', profile.role);
-    console.log('[Auth] Profile magic_token prefix:', profile.magic_token ? profile.magic_token.substring(0, 15) + '...' : 'null');
-
-    // Create fake auth user object for compatibility
-    const fakeAuthUser = {
-      id: profile.id,
-      email: `${profile.name}@magic.local`,
-      user_metadata: { name: profile.name }
-    };
-
-    // Build user object directly without Supabase auth
-    _currentUser = {
-      id: profile.id,
-      email: fakeAuthUser.email,
-      name: profile.name || fakeAuthUser.email,
-      role: profile.role || 'tech',
-      color: profile.color || '#3B82F6',
-      phone: profile.phone || '',
-      zelleHandle: profile.zelle_handle || '',
-      zipCodes: profile.zip_codes || [],
-      techPercent: profile.default_tech_percent || 60,
-      isOwner: profile.is_owner || false,
-      assignedLeadSource: profile.assigned_lead_source || null,
-      allowedLeadSources: profile.allowed_lead_sources || null,
-      isMagicAuth: true
-    };
-
-    return _currentUser;
   }
 
   // ──────────────────────────────────────────────────────────
