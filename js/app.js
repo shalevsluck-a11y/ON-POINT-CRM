@@ -1371,23 +1371,36 @@ const App = (() => {
   // JOB DETAIL VIEW
   // ══════════════════════════════════════════════════════════
 
-  function openJobDetail(jobId) {
-    console.log('[App] Opening job:', jobId);
+  function openJobDetail(jobId, retryCount = 0) {
+    console.log('[App] Opening job:', jobId, 'retry:', retryCount);
+
+    // Prevent infinite loop
+    if (retryCount > 2) {
+      console.error('[App] Max retries exceeded for job:', jobId);
+      navigate('jobs');
+      showToast('❌ Cannot load this job - data is corrupted. Use CLEAR CACHE in Settings.', 'error');
+      return;
+    }
 
     const job = DB.getJobById(jobId);
     if (!job) {
       console.error('[App] Job not found in cache:', jobId);
-      showToast('Job not in cache - fetching fresh...', 'warning');
-      // Sync from remote and try again
-      DB.syncJobsFromRemote().then(() => {
-        const retryJob = DB.getJobById(jobId);
-        if (retryJob) {
-          openJobDetail(jobId); // Recursive call after sync
-        } else {
-          navigate('jobs');
-          showToast('Job no longer exists', 'error');
-        }
-      });
+      if (retryCount === 0) {
+        showToast('Job not in cache - fetching fresh...', 'warning');
+        // Sync from remote and try again
+        DB.syncJobsFromRemote().then(() => {
+          const retryJob = DB.getJobById(jobId);
+          if (retryJob) {
+            openJobDetail(jobId, retryCount + 1);
+          } else {
+            navigate('jobs');
+            showToast('Job no longer exists', 'error');
+          }
+        });
+      } else {
+        navigate('jobs');
+        showToast('❌ Job not found after sync', 'error');
+      }
       return;
     }
 
@@ -1407,25 +1420,30 @@ const App = (() => {
       console.error('[App] Error rendering job - corrupted data:', error);
       console.error('[App] Corrupted job data:', job);
 
-      // Job data is corrupted - delete from cache and fetch fresh
-      showToast('⚠️ Corrupted job data - fetching fresh copy...', 'warning');
-      Storage.deleteJob(jobId);
+      if (retryCount === 0) {
+        // First try: delete from cache and fetch fresh
+        showToast('⚠️ Corrupted job data - fetching fresh copy...', 'warning');
+        Storage.deleteJob(jobId);
 
-      // Fetch fresh from database
-      DB.syncJobsFromRemote().then(() => {
-        const freshJob = DB.getJobById(jobId);
-        if (freshJob) {
-          console.log('[App] Fresh job fetched, retrying...');
-          openJobDetail(jobId); // Recursive call with fresh data
-        } else {
+        DB.syncJobsFromRemote().then(() => {
+          const freshJob = DB.getJobById(jobId);
+          if (freshJob) {
+            console.log('[App] Fresh job fetched, retrying...');
+            openJobDetail(jobId, retryCount + 1);
+          } else {
+            navigate('jobs');
+            showToast('❌ Could not load job', 'error');
+          }
+        }).catch(err => {
+          console.error('[App] Sync failed:', err);
           navigate('jobs');
-          showToast('❌ Could not load job - try clearing cache from Settings', 'error');
-        }
-      }).catch(err => {
-        console.error('[App] Sync failed:', err);
+          showToast('❌ Sync failed - use CLEAR CACHE in Settings', 'error');
+        });
+      } else {
+        // Already retried - give up
         navigate('jobs');
-        showToast('❌ Sync failed - please use CLEAR CACHE button in Settings', 'error');
-      });
+        showToast('❌ Job data is corrupted. Use CLEAR CACHE button in Settings.', 'error');
+      }
     }
   }
 
@@ -1679,7 +1697,21 @@ const App = (() => {
   }
 
   function _buildPhotoGrid(jobId, photos) {
-    const thumbs = photos.map((photo, idx) => {
+    // CRITICAL: Ensure photos is ALWAYS an array
+    let photoArray = [];
+    if (Array.isArray(photos)) {
+      photoArray = photos;
+    } else if (typeof photos === 'string') {
+      try {
+        const parsed = JSON.parse(photos);
+        photoArray = Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        console.error('[App] Failed to parse photos string:', e);
+        photoArray = [];
+      }
+    }
+
+    const thumbs = photoArray.map((photo, idx) => {
       const safeSrc = typeof photo.data === 'string' && photo.data.startsWith('data:image/')
         ? photo.data : '';
       return `<img class="photo-thumb" src="${safeSrc}" alt="Photo ${idx+1}"
