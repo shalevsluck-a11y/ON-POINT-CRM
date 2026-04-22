@@ -119,18 +119,24 @@ const DB = (() => {
   // ──────────────────────────────────────────────────────────
 
   async function saveJob(job) {
+    console.log('[DB] saveJob START - Job ID:', job.jobId, 'Customer:', job.customerName);
     // Write to cache immediately
     Storage.saveJob(job);
+    console.log('[DB] saveJob - Saved to localStorage');
     // Push to Supabase in background
-    _upsertJobRemote(job).catch(e => console.warn('DB.saveJob remote error:', e.message));
+    _upsertJobRemote(job)
+      .then(() => console.log('[DB] saveJob - Synced to Supabase SUCCESS for job', job.jobId))
+      .catch(e => console.error('[DB] saveJob remote error:', e.message, e));
     return job;
   }
 
   async function _upsertJobRemote(job) {
+    console.log('[DB] _upsertJobRemote - Starting for job', job.jobId);
     // Techs/contractors have zeroed financial fields locally (the DB view masks them).
     // Sending a full upsert would overwrite real job_total/estimated_total with zeros.
     // Only allow them to patch the fields they're actually permitted to change.
     if (Auth.isTechOrContractor()) {
+      console.log('[DB] _upsertJobRemote - Tech/Contractor mode, partial update only');
       const { error } = await supa.from('jobs').update({
         status:     job.status,
         updated_at: new Date().toISOString(),
@@ -140,8 +146,13 @@ const DB = (() => {
     }
 
     const row = _jobToDbRow(job);
-    const { error } = await supa.from('jobs').upsert(row);
-    if (error) throw error;
+    console.log('[DB] _upsertJobRemote - Upserting row:', { job_id: row.job_id, customer_name: row.customer_name, source: row.source });
+    const { data, error } = await supa.from('jobs').upsert(row).select();
+    if (error) {
+      console.error('[DB] _upsertJobRemote - Upsert FAILED:', error);
+      throw error;
+    }
+    console.log('[DB] _upsertJobRemote - Upsert SUCCESS, returned data:', data);
 
     // Handle zelle memo (admin-only table)
     if (Auth.isAdmin() && job.zelleMemo !== undefined) {
