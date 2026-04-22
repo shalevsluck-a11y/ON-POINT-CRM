@@ -431,17 +431,14 @@ const Auth = (() => {
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 30000);
-      const body = { name, email, role };
-      if (assignedLeadSource) body.assigned_lead_source = assignedLeadSource;
-      if (payoutPct !== null && payoutPct !== undefined && payoutPct !== '') body.payout_pct = parseFloat(payoutPct);
-      res = await fetch(`${SUPABASE_URL}/functions/v1/create-user`, {
+      res = await fetch('/admin/create-user', {
         method: 'POST',
         signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ name, email, role }),
       });
       clearTimeout(timer);
       json = await res.json();
@@ -464,14 +461,13 @@ const Auth = (() => {
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 30000);
-      res = await fetch(`${SUPABASE_URL}/functions/v1/remove-user`, {
-        method: 'POST',
+      res = await fetch(`/admin/delete-user/${userId}`, {
+        method: 'DELETE',
         signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ userId }),
       });
       clearTimeout(timer);
       json = await res.json();
