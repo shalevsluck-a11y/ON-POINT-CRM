@@ -2667,15 +2667,37 @@ const App = (() => {
     if (!Auth.isAdmin()) return;
     const modal = document.getElementById('invite-modal');
     if (!modal) return;
-    document.getElementById('invite-name').value  = '';
-    document.getElementById('invite-email').value = '';
-    document.getElementById('invite-password').value = '';
-    document.getElementById('invite-role').value  = 'tech';
-    document.getElementById('invite-error').classList.add('hidden');
-    document.getElementById('invite-form-body').classList.remove('hidden');
-    document.getElementById('invite-success-body').classList.add('hidden');
+
+    // Clear name field
+    const nameInput = document.getElementById('invite-name');
+    if (nameInput) nameInput.value = '';
+
+    // Set role to dispatcher
+    const roleInput = document.getElementById('invite-role');
+    if (roleInput) roleInput.value = 'dispatcher';
+
+    // Reset UI state
+    const errEl = document.getElementById('invite-error');
+    if (errEl) errEl.classList.add('hidden');
+
+    const formBody = document.getElementById('invite-form-body');
+    if (formBody) formBody.classList.remove('hidden');
+
+    const successBody = document.getElementById('invite-success-body');
+    if (successBody) successBody.classList.add('hidden');
+
+    // Setup button with event listener
     const btn = document.getElementById('invite-submit-btn');
-    if (btn) { btn.disabled = false; btn.textContent = 'Create Account'; }
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Create Dispatcher';
+
+      // Remove old listeners and add new one
+      const newBtn = btn.cloneNode(true);
+      btn.parentNode.replaceChild(newBtn, btn);
+      newBtn.addEventListener('click', submitInvite);
+      newBtn.addEventListener('touchend', submitInvite);
+    }
 
     // Populate lead sources dropdown
     const settings = DB.getSettings();
