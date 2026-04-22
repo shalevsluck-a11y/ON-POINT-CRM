@@ -2547,6 +2547,7 @@ const App = (() => {
           </div>
           <div class="user-item-role" style="display:flex;align-items:center;gap:6px">
             <span style="font-size:12px;padding:4px 12px;background:${u.role==='admin'?'var(--color-primary)':'var(--color-surface-3)'};color:${u.role==='admin'?'#fff':'var(--color-text)'};border-radius:6px;font-weight:500;text-transform:capitalize">${u.role}</span>
+            ${u.role==='dispatcher' ? `<button class="btn-icon" onclick="App.showDispatcherPermissions('${u.id}')" title="Edit permissions">&#9998;</button>` : ''}
             ${u.id !== currentUserId ? `<button class="btn-icon" style="color:var(--color-error);font-size:16px"
               onclick="App._confirmRemoveUser(this.dataset.uid,this.dataset.uname)" title="Remove user"
               data-uid="${_esc(u.id)}" data-uname="${_esc(u.name||u.email)}">&#128465;</button>` : ''}
@@ -2681,10 +2682,6 @@ const App = (() => {
     if (!Auth.isAdmin()) { showToast('Not authorized', 'error'); return; }
     const name  = document.getElementById('invite-name')?.value?.trim();
     const email = document.getElementById('invite-email')?.value?.trim();
-    const password = document.getElementById('invite-password')?.value;
-    const role  = document.getElementById('invite-role')?.value;
-    const assignedLeadSource = document.getElementById('invite-lead-source')?.value || null;
-    const payoutPct = document.getElementById('invite-payout-pct')?.value;
     const errEl = document.getElementById('invite-error');
     const btn   = document.getElementById('invite-submit-btn');
 
@@ -2700,24 +2697,8 @@ const App = (() => {
       errEl.classList.remove('hidden');
       return;
     }
-    if (!password || password.length < 8) {
-      errEl.textContent = 'Password must be at least 8 characters.';
-      errEl.classList.remove('hidden');
-      return;
-    }
-    if ((role === 'tech' || role === 'contractor') && (!payoutPct || payoutPct < 0 || payoutPct > 100)) {
-      errEl.textContent = 'Payout percentage is required for technicians and contractors (0-100).';
-      errEl.classList.remove('hidden');
-      return;
-    }
-    if (role === 'contractor' && !assignedLeadSource) {
-      errEl.textContent = 'Please select a lead source for the contractor.';
-      errEl.classList.remove('hidden');
-      return;
-    }
-
     btn.disabled    = true;
-    btn.textContent = 'Creating dispatcher…';
+    btn.textContent = 'Creating dispatcherï¿½';
 
     try {
       // Add 15 second hard timeout to prevent infinite loading
@@ -2731,8 +2712,12 @@ const App = (() => {
       _lastInvite = { name, setupLink, loginEmail };
       _renderAdminUsersSection().catch(() => {});
 
-      showToast(`Dispatcher ${name} created successfully`, 'success');
-      closeInviteModal();
+      document.getElementById('invite-form-body').classList.add('hidden');
+      document.getElementById('invite-success-body').classList.remove('hidden');
+      document.getElementById('invite-success-email').value = loginEmail;
+      document.getElementById('invite-success-password').value = setupLink;
+      btn.disabled = false;
+      btn.textContent = 'Create Dispatcher Account';
 
     } catch (e) {
       console.error('Create user error:', e);
@@ -3887,8 +3872,63 @@ const App = (() => {
     navigateToJob,
     toggleDetailSection,
     exportJobPDF,
+  async function showDispatcherPermissions(userId) {
+    if (!Auth.isAdmin()) return;
+    const modal = document.getElementById('dispatcher-permissions-modal');
+    if (!modal) return;
+
+    document.getElementById('dp-user-id').value = userId;
+
+    // Get current user's permissions
+    const { data: profile } = await SupabaseClient
+      .from('profiles')
+      .select('allowed_lead_sources')
+      .eq('id', userId)
+      .single();
+
+    const allowed = profile?.allowed_lead_sources || [];
+
+    // Get all lead sources
+    const settings = DB.getSettings();
+    const leadSources = settings.leadSources || [];
+
+    const list = document.getElementById('dp-lead-sources-list');
+    list.innerHTML = leadSources.map(ls => `
+      <label class="checkbox-label" style="padding:12px;margin:4px 0;background:var(--color-surface-2);border-radius:8px">
+        <input type="checkbox" value="${_esc(ls.name)}" ${allowed.includes(ls.name) ? 'checked' : ''}>
+        <span>${_esc(ls.name)}</span>
+      </label>
+    `).join('') || '<div class="empty-state-sm">No lead sources — add them in Settings first</div>';
+
+    modal.classList.remove('hidden');
+  }
+
+  async function saveDispatcherPermissions() {
+    if (!Auth.isAdmin()) return;
+    const userId = document.getElementById('dp-user-id')?.value;
+    if (!userId) return;
+
+    const checkboxes = document.querySelectorAll('#dp-lead-sources-list input[type="checkbox"]:checked');
+    const allowedSources = Array.from(checkboxes).map(cb => cb.value);
+
+    try {
+      await SupabaseClient
+        .from('profiles')
+        .update({ allowed_lead_sources: allowedSources })
+        .eq('id', userId);
+
+      showToast('Permissions updated', 'success');
+      closeModal();
+      _renderAdminUsersSection();
+    } catch (e) {
+      showToast('Failed to update permissions: ' + (e.message || 'unknown error'), 'error');
+    }
+  }
+
 
     // Admin invite
+    showDispatcherPermissions,
+    saveDispatcherPermissions,
     showInviteModal,
     closeInviteModal,
     toggleContractorFields,

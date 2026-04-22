@@ -858,6 +858,28 @@
     </div>
   </div>
 
+  <!-- Dispatcher Permissions Modal -->
+  <div id="dispatcher-permissions-modal" class="modal hidden">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3 class="modal-title">Dispatcher Permissions</h3>
+      <button class="btn-icon" onclick="App.closeModal()">&#215;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="dp-user-id">
+      <p style="margin-bottom:12px;color:var(--color-text-muted);font-size:14px">
+        Select which lead sources this dispatcher can see. If nothing selected, they can't see any jobs.
+      </p>
+      <div id="dp-lead-sources-list" style="max-height:300px;overflow-y:auto">
+        <!-- Populated by JS -->
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" style="flex:1" onclick="App.closeModal()">Cancel</button>
+        <button class="btn btn-primary" style="flex:1" id="btn-save-dp-permissions" onclick="App.saveDispatcherPermissions()">Save Permissions</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Invite User Modal -->
   <div id="invite-modal" class="modal hidden">
     <div class="modal-handle"></div>
