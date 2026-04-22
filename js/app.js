@@ -922,8 +922,7 @@ const App = (() => {
     const techHidden = document.getElementById('f-tech-id');
     if (techHidden) techHidden.value = '';
 
-    // Reset source
-    const sourceEl = document.getElementById('f-source');
+    // Reset source (sourceEl already declared at top of function)
     if (sourceEl) {
       if (Auth.isContractor()) {
         // Contractors: auto-set to their assigned lead source and lock the field
