@@ -894,24 +894,12 @@
         <div id="invite-error" class="login-error hidden" style="margin-bottom:12px"></div>
         <div class="field-group">
           <label class="field-label">Full Name <span style="color:var(--color-error)">*</span></label>
-          <input type="text" id="invite-name" class="field-input" placeholder="Mike Smith"
+          <input type="text" id="invite-name" class="field-input" placeholder="John Doe"
                  autocomplete="off" autocapitalize="words">
         </div>
-        <div class="field-group">
-          <label class="field-label">Username <span style="color:var(--color-error)">*</span></label>
-          <input type="text" id="invite-email" class="field-input" placeholder="dispatcher1"
-                 autocomplete="off">
-        </div>
-        <div class="field-group">
-          <label class="field-label">Password <span style="color:var(--color-error)">*</span> <span style="color:var(--color-text-muted);font-weight:400;font-size:12px">(minimum 6 characters)</span></label>
-          <input type="text" id="invite-password" class="field-input" placeholder="simple123"
-                 autocomplete="off">
-        </div>
         <input type="hidden" id="invite-role" value="dispatcher">
-        <input type="hidden" id="invite-payout-pct" value="0">
-        <input type="hidden" id="invite-lead-source" value="">
         <button class="btn btn-primary btn-full" id="invite-submit-btn" onclick="App.submitInvite()">
-          Create Dispatcher Account
+          Create Dispatcher
         </button>
         <p style="font-size:12px;color:var(--color-text-muted);margin-top:10px;text-align:center">
           Creates dispatcher account. Only you and dispatchers can access the app.
