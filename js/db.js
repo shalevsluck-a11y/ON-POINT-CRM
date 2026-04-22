@@ -56,21 +56,31 @@ const DB = (() => {
   }
 
   async function _syncSettingsDown() {
+    console.log('[DB._syncSettingsDown] ========== START SYNC ==========');
     try {
+      console.log('[DB._syncSettingsDown] Fetching app_settings from Supabase...');
       const { data: settings, error } = await supa
         .from('app_settings')
         .select('*')
         .eq('id', 1)
         .single();
       if (error) throw error;
+      console.log('[DB._syncSettingsDown] ✓ app_settings fetched:', settings);
+      console.log('[DB._syncSettingsDown] Lead sources from DB:', settings.lead_sources);
 
+      console.log('[DB._syncSettingsDown] Fetching profiles from Supabase...');
       const { data: techs } = await supa
         .from('profiles')
         .select('id, name, phone, color, zip_codes, default_tech_percent, zelle_handle, is_owner, role')
         .order('name');
+      console.log('[DB._syncSettingsDown] ✓ Profiles fetched, count:', techs?.length || 0);
 
       const current = Storage.getSettings();
+      console.log('[DB._syncSettingsDown] Current cached settings:', current);
+      console.log('[DB._syncSettingsDown] Current cached leadSources:', current.leadSources);
+
       const isAdmin = Auth.isAdmin();
+      console.log('[DB._syncSettingsDown] User is admin?', isAdmin);
 
       // Build technician list — only tech/contractor roles, only Zelle for admin
       const techList = (techs || []).filter(t => t.role === 'tech' || t.role === 'contractor').map(t => ({
@@ -85,8 +95,9 @@ const DB = (() => {
         isOwner:   t.is_owner || false,
         role:      t.role,
       }));
+      console.log('[DB._syncSettingsDown] Built tech list, count:', techList.length);
 
-      Storage.saveSettings({
+      const newSettings = {
         ...current,
         ownerName:      settings.owner_name      ?? current.ownerName     ?? '',
         ownerPhone:     settings.owner_phone     ?? current.ownerPhone    ?? '',
@@ -97,8 +108,22 @@ const DB = (() => {
         appsScriptUrl:  settings.apps_script_url ?? current.appsScriptUrl ?? '',
         leadSources:    settings.lead_sources    ?? current.leadSources   ?? [],
         technicians:    techList,
-      });
+      };
+
+      console.log('[DB._syncSettingsDown] About to save new settings to Storage...');
+      console.log('[DB._syncSettingsDown] New leadSources value:', newSettings.leadSources);
+      Storage.saveSettings(newSettings);
+      console.log('[DB._syncSettingsDown] ✓ Settings saved to Storage');
+
+      // Verify it was actually saved
+      const verification = Storage.getSettings();
+      console.log('[DB._syncSettingsDown] VERIFICATION - Settings after save:', verification);
+      console.log('[DB._syncSettingsDown] VERIFICATION - leadSources after save:', verification.leadSources);
+      console.log('[DB._syncSettingsDown] ========== END SYNC SUCCESS ==========');
     } catch (e) {
+      console.error('[DB._syncSettingsDown] ========== ERROR ==========');
+      console.error('[DB._syncSettingsDown] Error message:', e.message);
+      console.error('[DB._syncSettingsDown] Error stack:', e.stack);
       console.warn('DB._syncSettingsDown error (using cache):', e.message);
     }
   }
