@@ -62,7 +62,7 @@ const DB = (() => {
       const { data: settings, error } = await supa
         .from('app_settings')
         .select('*')
-        .eq('job_id', 1)
+        .eq('id', 1)
         .single();
       if (error) throw error;
       console.log('[DB._syncSettingsDown] ✓ app_settings fetched:', settings);
@@ -217,7 +217,7 @@ const DB = (() => {
 
     if (Object.keys(row).length === 0) return; // nothing to persist (e.g. technicians-only update)
 
-    const { error } = await supa.from('app_settings').update(row).eq('job_id', 1);
+    const { error } = await supa.from('app_settings').update(row).eq('id', 1);
     if (error) throw new Error(error.message);
   }
 
@@ -232,13 +232,13 @@ const DB = (() => {
     if (profileData.zipCodes !== undefined) row.zip_codes            = profileData.zipCodes;
     if (profileData.isOwner  !== undefined) row.is_owner             = profileData.isOwner;
     if (Object.keys(row).length === 0) return;
-    const { error } = await supa.from('profiles').update(row).eq('job_id', id);
+    const { error } = await supa.from('profiles').update(row).eq('id', id);
     if (error) throw new Error(error.message);
   }
 
   async function deleteProfile(id) {
     if (!Auth.isAdmin()) throw new Error('Admin only');
-    const { error } = await supa.from('profiles').delete().eq('job_id', id);
+    const { error } = await supa.from('profiles').delete().eq('id', id);
     if (error) throw new Error(error.message);
   }
 
@@ -415,7 +415,7 @@ const DB = (() => {
   }
 
   async function markNotificationRead(id) {
-    await supa.from('notifications').update({ is_read: true }).eq('job_id', id);
+    await supa.from('notifications').update({ is_read: true }).eq('id', id);
   }
 
   async function markAllNotificationsRead() {
