@@ -13,41 +13,49 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: 'Missing authorization' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    // Parse request body first to check if this is a database trigger call
+    const { title, body, jobId, targetUserId, broadcast, roles } = await req.json();
 
-    // Check if this is a service role key (from database trigger) or user JWT
-    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const isServiceRole = authHeader.replace('Bearer ', '') === serviceRoleKey;
+    // Database triggers use broadcast + roles pattern - these are trusted internal calls
+    const isDatabaseTrigger = broadcast === true && Array.isArray(roles) && roles.length > 0;
 
-    // If not service role, verify it's an admin/dispatcher user
-    if (!isServiceRole) {
-      const callerClient = createClient(
-        Deno.env.get('SUPABASE_URL')!,
-        Deno.env.get('SUPABASE_ANON_KEY')!,
-        { global: { headers: { Authorization: authHeader } } }
-      );
-
-      const { data: { user } } = await callerClient.auth.getUser();
-      if (!user) {
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+    if (!isDatabaseTrigger) {
+      // For non-trigger calls, require authentication
+      const authHeader = req.headers.get('Authorization');
+      if (!authHeader) {
+        return new Response(JSON.stringify({ error: 'Missing authorization' }), {
           status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      const { data: profile } = await callerClient.from('profiles').select('role').eq('id', user.id).single();
-      if (!['admin', 'dispatcher'].includes(profile?.role)) {
-        return new Response(JSON.stringify({ error: 'Admin/dispatcher only' }), {
-          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+      // Check if this is a service role key or user JWT
+      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const providedKey = authHeader.replace('Bearer ', '');
+      const isServiceRole = providedKey === serviceRoleKey;
+
+      // If not service role, verify it's an admin/dispatcher user
+      if (!isServiceRole) {
+        const callerClient = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_ANON_KEY')!,
+          { global: { headers: { Authorization: authHeader } } }
+        );
+
+        const { data: { user } } = await callerClient.auth.getUser();
+        if (!user) {
+          return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+            status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const { data: profile } = await callerClient.from('profiles').select('role').eq('id', user.id).single();
+        if (!['admin', 'dispatcher'].includes(profile?.role)) {
+          return new Response(JSON.stringify({ error: 'Admin/dispatcher only' }), {
+            status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
       }
     }
-
-    const { title, body, jobId, targetUserId, broadcast, roles } = await req.json();
 
     const adminClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
