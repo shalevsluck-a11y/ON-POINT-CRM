@@ -21,8 +21,20 @@ const Storage = (() => {
     try {
       const raw = localStorage.getItem(KEYS.JOBS);
       if (!raw) return [];
-      const jobs = JSON.parse(raw);
-      return Array.isArray(jobs) ? jobs : [];
+      let jobs = JSON.parse(raw);
+      if (!Array.isArray(jobs)) return [];
+
+      // Filter jobs based on dispatcher permissions
+      if (window.Auth && window.Auth.isDispatcher && window.Auth.isDispatcher()) {
+        const profile = window.Auth.getProfile();
+        const allowedSources = profile?.allowedLeadSources;
+        // If allowedSources is set (not null/undefined), filter jobs
+        if (allowedSources && Array.isArray(allowedSources) && allowedSources.length > 0) {
+          jobs = jobs.filter(job => allowedSources.includes(job.source));
+        }
+      }
+
+      return jobs;
     } catch (e) {
       console.error('Storage.getJobs error:', e);
       return [];

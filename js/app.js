@@ -1146,6 +1146,26 @@ const App = (() => {
       opt.textContent = `${s.name} (${s.contractorPercent || 0}%)`;
       select.appendChild(opt);
     });
+
+    // Auto-select for dispatcher with only one allowed source
+    if (Auth.isDispatcher()) {
+      const profile = Auth.getProfile();
+      const allowedSources = profile?.allowedLeadSources || null;
+      if (allowedSources && allowedSources.length === 1) {
+        // Find the matching source
+        const sourceName = allowedSources[0];
+        if (sourceName === 'my_lead') {
+          select.value = 'my_lead';
+        } else {
+          const source = sources.find(s => s.name === sourceName);
+          if (source) {
+            select.value = source.id;
+          }
+        }
+        // Disable the dropdown since they only have one choice
+        select.disabled = true;
+      }
+    }
   }
 
   function onSourceChange() {
