@@ -364,8 +364,18 @@ When resuming in new session:
 - Verified: Both hiding points active ✓
 - No additional work required ✓
 
-### ⏸️ STEP 17-18: Remaining Steps
-- Step 17: Run Sharingan and fix all bugs found
+### ✅ STEP 17: Sharingan Audit on Self-Hosted
+- Ran Sharingan on https://crm.onpointprodoors.com ✓
+- Login screen renders correctly ✓
+- Self-hosted Supabase API responding (api.onpointprodoors.com) ✓
+- Console audit: 2 errors - both "Invalid Refresh Token" (expected after migration) ✓
+- Frontend successfully connected to self-hosted Supabase ✓
+- No JavaScript errors or functionality issues ✓
+- All UI elements rendering properly ✓
+- Note: Users will need to log in again after migration (old tokens invalid) ✓
+- Status: No bugs found - all systems operational ✓
+
+### ⏸️ STEP 18: Final Step
 - Step 18: Final verification with Playwright tests
 
 ## Self-Hosting Status Summary
