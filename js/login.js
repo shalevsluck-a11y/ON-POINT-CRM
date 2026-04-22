@@ -19,24 +19,68 @@ const LoginScreen = (() => {
   }
 
   async function submit() {
-    const email = document.getElementById('login-email')?.value?.trim();
+    const input = document.getElementById('login-email')?.value?.trim();
     const btn   = document.getElementById('login-btn');
     const errEl = document.getElementById('login-error');
 
-    if (!email) {
-      _showError('Please enter your email address.');
-      return;
-    }
-
-    // Validate email format
-    if (!email.includes('@')) {
-      _showError('Please enter a valid email address.');
+    if (!input) {
+      _showError('Please enter your magic link or email address.');
       return;
     }
 
     btn.disabled    = true;
-    btn.textContent = 'Sending…';
+    btn.textContent = 'Processing…';
     errEl.classList.add('hidden');
+
+    // Check if input is a magic link URL or token
+    if (input.includes('#token=') || input.includes('token=')) {
+      try {
+        // Extract token from pasted URL or raw token
+        let token;
+        if (input.includes('#token=')) {
+          token = input.split('#token=')[1].split('&')[0];
+        } else if (input.includes('token=')) {
+          token = input.split('token=')[1].split('&')[0];
+        } else {
+          token = input;
+        }
+
+        if (!token) {
+          throw new Error('Could not extract token from magic link');
+        }
+
+        // Store token and mark for permanent session
+        localStorage.setItem('magic_token', token);
+        localStorage.setItem('stay_logged_in', 'true');
+
+        // Show success and reload to trigger auth
+        errEl.textContent = '✅ Logging you in...';
+        errEl.style.color = '#10b981';
+        errEl.classList.remove('hidden');
+
+        // Reload to trigger auth.js magic token detection
+        setTimeout(() => window.location.reload(), 500);
+        return;
+      } catch (e) {
+        _showError('Invalid magic link. Please check and try again.');
+        btn.disabled    = false;
+        btn.textContent = 'Continue';
+        return;
+      }
+    }
+
+    // Otherwise, treat as email and send magic link
+    const email = input;
+
+    // Validate email format
+    if (!email.includes('@')) {
+      _showError('Please enter a valid email address or magic link.');
+      btn.disabled    = false;
+      btn.textContent = 'Send Magic Link';
+      return;
+    }
+
+    btn.textContent = 'Sending…';
 
     try {
       // Send magic link via Supabase auth
