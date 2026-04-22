@@ -17,19 +17,35 @@ const Auth = (() => {
   async function init(onAuthChange) {
     _onAuthChange = onAuthChange;
 
+    // Detect PWA mode
+    const isPWA = window.navigator.standalone === true ||
+                  window.matchMedia('(display-mode: standalone)').matches ||
+                  window.matchMedia('(display-mode: fullscreen)').matches;
+
+    console.log('[Auth] Mode:', isPWA ? 'PWA' : 'Browser');
+
     // Check for magic link token in URL hash
     const hash = window.location.hash;
     if (hash && hash.includes('token=')) {
       const token = hash.split('token=')[1].split('&')[0];
-      console.log('[Auth] Magic token found in URL, storing...');
+      console.log('[Auth] Magic token found in URL, storing in ALL storage locations...');
       window.location.hash = ''; // Clear the token from URL
+
+      // Store in MULTIPLE locations so PWA and browser both can access it
       localStorage.setItem('magic_token', token);
+      localStorage.setItem('onpoint-pwa-auth-magic_token', token);
+      localStorage.setItem('onpoint-web-auth-magic_token', token);
+      sessionStorage.setItem('magic_token', token);
     }
 
-    // Check for stored magic token (password-less auth)
-    const storedToken = localStorage.getItem('magic_token');
+    // Check for stored magic token in MULTIPLE locations (PWA vs browser storage)
+    let storedToken = localStorage.getItem('magic_token') ||
+                      localStorage.getItem('onpoint-pwa-auth-magic_token') ||
+                      localStorage.getItem('onpoint-web-auth-magic_token') ||
+                      sessionStorage.getItem('magic_token');
+
     if (storedToken) {
-      console.log('[Auth] Attempting magic token authentication...');
+      console.log('[Auth] Found magic token in storage, attempting authentication...');
       try {
         await _loginWithMagicToken(storedToken);
         if (_currentUser) {
@@ -41,7 +57,11 @@ const Auth = (() => {
         }
       } catch (e) {
         console.error('[Auth] Magic token auth ERROR:', e.message);
+        // Clear from ALL storage locations
         localStorage.removeItem('magic_token');
+        localStorage.removeItem('onpoint-pwa-auth-magic_token');
+        localStorage.removeItem('onpoint-web-auth-magic_token');
+        sessionStorage.removeItem('magic_token');
       }
     }
 
