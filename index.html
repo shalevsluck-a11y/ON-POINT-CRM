@@ -1039,12 +1039,31 @@
       const delay = isStandalone ? 100 : 0;
 
       setTimeout(() => {
-        const swPath = new URL('/sw.js', window.location.origin).href;
-        console.log('[SW] Registering from:', window.location.href);
-        console.log('[SW] SW Path:', swPath);
+        // Log ALL URL details for debugging
+        console.log('[SW] === REGISTRATION DEBUG ===');
+        console.log('[SW] window.location.href:', window.location.href);
+        console.log('[SW] window.location.origin:', window.location.origin);
+        console.log('[SW] window.location.pathname:', window.location.pathname);
         console.log('[SW] Standalone mode:', isStandalone);
 
-        navigator.serviceWorker.register('/sw.js')
+        // Construct full URL to verify
+        const fullSwUrl = new URL('/sw.js', window.location.origin).href;
+        console.log('[SW] Full SW URL:', fullSwUrl);
+        console.log('[SW] Registration path: /sw.js');
+
+        // Test file accessibility before registration
+        fetch('/sw.js', { method: 'HEAD' })
+          .then(response => {
+            console.log('[SW] File check status:', response.status);
+            console.log('[SW] File check URL:', response.url);
+
+            if (response.status !== 200) {
+              throw new Error(`SW file not accessible: ${response.status}`);
+            }
+
+            // File exists, proceed with registration
+            return navigator.serviceWorker.register('/sw.js');
+          })
           .then(reg => {
             console.log('[SW] ✅ SUCCESS');
             console.log('[SW] Scope:', reg.scope);
