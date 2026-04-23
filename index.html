@@ -1034,9 +1034,34 @@
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       console.log('[SW] Registering service worker...');
+
+      // Show visible error banner if registration fails
+      function showSWError(error) {
+        const banner = document.createElement('div');
+        banner.style.cssText = `
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          background: #dc2626;
+          color: white;
+          padding: 12px;
+          font-size: 12px;
+          font-family: monospace;
+          z-index: 999999;
+          border-bottom: 2px solid #ef4444;
+        `;
+        banner.innerHTML = `
+          <div><strong>⚠️ Service Worker Registration Failed</strong></div>
+          <div>Error: ${error.name} - ${error.message}</div>
+          <div>Path: ${error.filename || 'N/A'}</div>
+        `;
+        document.body.prepend(banner);
+      }
+
       navigator.serviceWorker.register('/sw.js')
         .then(reg => {
-          console.log('[SW] Registration successful, scope:', reg.scope);
+          console.log('[SW] ✅ Registration successful, scope:', reg.scope);
           console.log('[SW] Installing:', !!reg.installing);
           console.log('[SW] Waiting:', !!reg.waiting);
           console.log('[SW] Active:', !!reg.active);
@@ -1051,11 +1076,15 @@
           });
         })
         .catch(err => {
-          console.error('[SW] Registration FAILED:', err);
+          console.error('[SW] ❌ Registration FAILED:', err);
           console.error('[SW] Error name:', err.name);
           console.error('[SW] Error message:', err.message);
+          console.error('[SW] Error stack:', err.stack);
+          showSWError(err);
         });
     });
+  } else {
+    console.error('[SW] Service Worker API not supported');
   }
 
   // iOS install hint — shown when in mobile Safari, not already installed
