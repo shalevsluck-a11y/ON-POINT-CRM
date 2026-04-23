@@ -1,7 +1,7 @@
 // On Point Pro Doors CRM — Service Worker
 // CACHE_VERSION is stamped by the deploy script on every push so the
 // browser always sees a changed sw.js file and installs the new version.
-const CACHE_VERSION = 'v20260423-relative-path';
+const CACHE_VERSION = 'v20260423-debug-system';
 const CACHE_NAME = `onpoint-${CACHE_VERSION}`;
 
 // Inline offline HTML — guaranteed fallback even with empty cache
@@ -158,25 +158,53 @@ self.addEventListener('fetch', (event) => {
 
 // ── PUSH NOTIFICATION ─────────────────────────────────────
 self.addEventListener('push', (event) => {
+  console.log('[SW Push] Event received, raw data:', event.data);
+
   let data = { title: 'On Point CRM', body: 'You have a new notification.' };
-  try { data = event.data ? event.data.json() : data; }
-  catch (_e) { data.body = event.data ? event.data.text() : data.body; }
+  try {
+    data = event.data ? event.data.json() : data;
+    console.log('[SW Push] Parsed JSON data:', data);
+  } catch (_e) {
+    console.warn('[SW Push] Failed to parse JSON, using text:', _e.message);
+    data.body = event.data ? event.data.text() : data.body;
+    console.log('[SW Push] Text data:', data.body);
+  }
 
-  console.log('[SW] Push notification received:', data);
+  console.log('[SW Push] Showing notification with:', { title: data.title, body: data.body, jobId: data.jobId });
 
+  // Notify all clients about the push
   event.waitUntil(
-    self.registration.showNotification(data.title || 'On Point CRM', {
-      body:    data.body || '',
-      icon:    '/assets/icon.svg',
-      badge:   '/assets/icon.svg',
-      tag:     data.jobId ? `job-${data.jobId}` : 'onpoint-notif',
-      data:    { jobId: data.jobId || null },
-      vibrate: [200, 100, 200],
-      requireInteraction: false,
-      silent: false,
-      // iOS/Safari specific
-      actions: [],
-    })
+    (async () => {
+      try {
+        // Show notification
+        await self.registration.showNotification(data.title || 'On Point CRM', {
+          body:    data.body || '',
+          icon:    '/assets/icon.svg',
+          badge:   '/assets/icon.svg',
+          tag:     data.jobId ? `job-${data.jobId}` : 'onpoint-notif',
+          data:    { jobId: data.jobId || null },
+          vibrate: [200, 100, 200],
+          requireInteraction: false,
+          silent: false,
+          actions: [],
+        });
+
+        console.log('[SW Push] ✅ Notification shown successfully');
+
+        // Notify all clients for debug panel
+        const allClients = await clients.matchAll({ includeUncontrolled: true, type: 'window' });
+        console.log('[SW Push] Notifying', allClients.length, 'clients');
+        allClients.forEach(client => {
+          client.postMessage({
+            type: 'PUSH_RECEIVED',
+            data: data,
+            timestamp: new Date().toISOString()
+          });
+        });
+      } catch (error) {
+        console.error('[SW Push] ❌ Failed to show notification:', error);
+      }
+    })()
   );
 });
 
