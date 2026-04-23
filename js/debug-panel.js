@@ -199,11 +199,20 @@ const DebugPanel = (() => {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('message', (event) => {
         if (event.data.type === 'PUSH_RECEIVED') {
-          log('PUSH', 'Push notification received from SW', event.data.data);
-          log('PUSH', `Title: "${event.data.data.title}", Body: "${event.data.data.body}"`);
+          log('PUSH', `✅ Push received at ${event.data.timestamp}`);
+          log('PUSH', `Title: "${event.data.data.title}"`);
+          log('PUSH', `Body: "${event.data.data.body}"`);
           if (event.data.data.jobId) {
             log('PUSH', `Job ID: ${event.data.data.jobId}`);
           }
+          if (event.data.parseError) {
+            log('PUSH', `Parse error: ${event.data.parseError}`, null, true);
+          }
+          if (event.data.execLog) {
+            log('PUSH', 'Execution log:', event.data.execLog);
+          }
+        } else if (event.data.type === 'PUSH_ERROR') {
+          log('PUSH', `❌ Push handler error: ${event.data.error}`, event.data.execLog, true);
         }
       });
     }
