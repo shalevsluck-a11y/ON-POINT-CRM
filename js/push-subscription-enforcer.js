@@ -315,9 +315,32 @@ const PushSubscriptionEnforcer = (() => {
       showDebug('📡 Checking for existing subscription...');
       console.log('[Push Enforcer] Ensuring subscription exists...');
 
-      // Wait for service worker to be ready
-      showDebug('⏳ Waiting for service worker...');
-      const registration = await navigator.serviceWorker.ready;
+      // Check service worker state BEFORE waiting
+      showDebug('🔍 Checking service worker state...');
+      const swRegistration = await navigator.serviceWorker.getRegistration();
+      if (!swRegistration) {
+        showDebug('❌ No service worker registered!', true);
+        throw new Error('Service worker not registered');
+      }
+
+      showDebug(`SW State: installing=${!!swRegistration.installing}, waiting=${!!swRegistration.waiting}, active=${!!swRegistration.active}`);
+
+      if (swRegistration.active) {
+        showDebug('✅ Service worker already active');
+      } else {
+        showDebug('⏳ Waiting for service worker to activate...');
+      }
+
+      // Wait for service worker to be ready (with timeout)
+      const readyTimeout = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Service worker ready timeout after 10s')), 10000);
+      });
+
+      const registration = await Promise.race([
+        navigator.serviceWorker.ready,
+        readyTimeout
+      ]);
+
       showDebug('✅ Service worker ready');
       console.log('[Push Enforcer] Service worker ready');
 

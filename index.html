@@ -1016,7 +1016,7 @@
 <script defer src="js/db.js"></script>
 <script defer src="js/notifications.js"></script>
 <script defer src="js/notification-settings.js"></script>
-<script defer src="js/push-subscription-enforcer.js?v=detailed-debug"></script>
+<script defer src="js/push-subscription-enforcer.js?v=sw-debug"></script>
 <script defer src="js/reminders.js"></script>
 <script defer src="js/sounds.js"></script>
 <script defer src="js/cleanup.js"></script>
@@ -1033,7 +1033,28 @@
   // Register service worker
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
+      console.log('[SW] Registering service worker...');
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => {
+          console.log('[SW] Registration successful, scope:', reg.scope);
+          console.log('[SW] Installing:', !!reg.installing);
+          console.log('[SW] Waiting:', !!reg.waiting);
+          console.log('[SW] Active:', !!reg.active);
+
+          // Listen for updates
+          reg.addEventListener('updatefound', () => {
+            console.log('[SW] Update found, new worker installing...');
+            const newWorker = reg.installing;
+            newWorker.addEventListener('statechange', () => {
+              console.log('[SW] New worker state:', newWorker.state);
+            });
+          });
+        })
+        .catch(err => {
+          console.error('[SW] Registration FAILED:', err);
+          console.error('[SW] Error name:', err.name);
+          console.error('[SW] Error message:', err.message);
+        });
     });
   }
 
