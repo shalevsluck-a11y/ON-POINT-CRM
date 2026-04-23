@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Auth Diagnostic</title>
+  <style>
+    body { font-family: monospace; padding: 20px; background: #1a1a1a; color: #0f0; }
+    h2 { color: #0ff; }
+    pre { background: #000; padding: 10px; border: 1px solid #0f0; overflow-x: auto; }
+    .error { color: #f00; }
+    .success { color: #0f0; }
+    .warning { color: #ff0; }
+  </style>
+</head>
+<body>
+  <h1>🔍 SUPABASE AUTH DIAGNOSTIC</h1>
+
+  <div id="output"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const output = document.getElementById('output');
+
+    function log(title, data, type = 'info') {
+      const colorClass = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : '';
+      output.innerHTML += `<h2>${title}</h2><pre class="${colorClass}">${JSON.stringify(data, null, 2)}</pre>`;
+    }
+
+    async function diagnose() {
+      try {
+        // 1. Check localStorage keys
+        log('1. ALL LOCALSTORAGE KEYS', Object.keys(localStorage));
+
+        const allStorage = {};
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          const value = localStorage.getItem(key);
+          try {
+            allStorage[key] = JSON.parse(value);
+          } catch (e) {
+            allStorage[key] = value;
+          }
+        }
+        log('2. ALL LOCALSTORAGE VALUES', allStorage);
+
+        // 2. Initialize Supabase client (same config as app)
+        const SUPABASE_URL = 'https://api.onpointprodoors.com';
+        const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODI5Mjg5LCJleHAiOjE5MzQ1MDkyODl9.E8NSAZFNAMAUvWpLLR3xBVmrwnTDwawMYIMy9V_pWyU';
+
+        const isPWA = window.navigator.standalone === true ||
+                      window.matchMedia('(display-mode: standalone)').matches ||
+                      window.matchMedia('(display-mode: fullscreen)').matches;
+        const storageKey = isPWA ? 'onpoint-pwa-auth' : 'onpoint-web-auth';
+
+        log('3. PWA MODE', { isPWA, storageKey });
+
+        const customStorage = {
+          getItem: (key) => localStorage.getItem(`${storageKey}-${key}`),
+          setItem: (key, value) => localStorage.setItem(`${storageKey}-${key}`, value),
+          removeItem: (key) => localStorage.removeItem(`${storageKey}-${key}`),
+        };
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+          auth: {
+            autoRefreshToken: true,
+            persistSession: true,
+            detectSessionInUrl: true,
+            storage: customStorage,
+            storageKey: storageKey,
+          },
+        });
+
+        // 3. Get current session from Supabase
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError) {
+          log('4. SESSION ERROR', sessionError, 'error');
+        } else {
+          log('4. SUPABASE SESSION', {
+            hasSession: !!sessionData.session,
+            user: sessionData.session?.user ? {
+              id: sessionData.session.user.id,
+              email: sessionData.session.user.email,
+              created_at: sessionData.session.user.created_at,
+              last_sign_in_at: sessionData.session.user.last_sign_in_at,
+            } : null,
+          }, sessionData.session ? 'success' : 'warning');
+        }
+
+        // 4. Get user from Supabase
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+
+        if (userError) {
+          log('5. GET USER ERROR', userError, 'error');
+        } else {
+          log('5. SUPABASE AUTH.GETUSER()', {
+            user: userData.user ? {
+              id: userData.user.id,
+              email: userData.user.email,
+              created_at: userData.user.created_at,
+              user_metadata: userData.user.user_metadata,
+              app_metadata: userData.user.app_metadata,
+            } : null,
+          }, userData.user ? 'success' : 'warning');
+        }
+
+        // 5. Check if Auth object from app is available
+        if (window.Auth) {
+          const currentUser = window.Auth.getUser();
+          log('6. APP AUTH.GETUSER()', currentUser, currentUser ? 'success' : 'warning');
+        } else {
+          log('6. APP AUTH.GETUSER()', 'Auth object not loaded - open this from the main app', 'error');
+        }
+
+        // 6. Query profiles table for current user
+        if (sessionData.session?.user?.id) {
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', sessionData.session.user.id)
+            .single();
+
+          if (profileError) {
+            log('7. PROFILE QUERY ERROR', profileError, 'error');
+          } else {
+            log('7. PROFILE FROM DATABASE', profile, profile ? 'success' : 'error');
+          }
+
+          // 7. Check if user exists in auth.users via RPC or direct query
+          log('8. CHECKING AUTH.USERS TABLE...', 'Use SQL query to verify user exists in auth.users');
+        }
+
+        // Summary
+        const userId = sessionData.session?.user?.id;
+        const appUserId = window.Auth?.getUser()?.id;
+
+        log('═══════════════════════════════════════════', {
+          '🔍 DIAGNOSIS SUMMARY': {
+            'Supabase session user_id': userId || 'NULL',
+            'App Auth user_id': appUserId || 'NULL',
+            'Match': userId === appUserId ? '✅ MATCH' : '❌ MISMATCH',
+            'Action needed': userId === appUserId ?
+              'Check if this user_id exists in profiles table' :
+              'Frontend session is stale - need to log out and back in',
+          }
+        }, userId === appUserId ? 'success' : 'error');
+
+      } catch (error) {
+        log('DIAGNOSTIC ERROR', { error: error.message, stack: error.stack }, 'error');
+      }
+    }
+
+    diagnose();
+  </script>
+</body>
+</html>
