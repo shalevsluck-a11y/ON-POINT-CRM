@@ -1085,10 +1085,13 @@
             }
 
             addDebugLine('Calling register()...');
-            addDebugLine(`Path: "/sw.js"`);
+
+            // FIX: Use ABSOLUTE URL for iOS compatibility
+            const absoluteSwUrl = window.location.origin + '/sw.js';
+            addDebugLine(`Absolute URL: ${absoluteSwUrl}`);
             addDebugLine(`From: ${window.location.href}`);
 
-            return navigator.serviceWorker.register('/sw.js');
+            return navigator.serviceWorker.register(absoluteSwUrl);
           })
           .then(reg => {
             addDebugLine(`✅ SUCCESS`);
