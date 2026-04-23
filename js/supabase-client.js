@@ -3,9 +3,9 @@
    ============================================================ */
 
 // CRITICAL FIX: Custom domain api.onpointprodoors.com is broken (RPC/writes fail)
-// Using real Supabase URL until custom domain proxy is fixed
+// Using real Supabase URL + correct anon key for nmmpemjcnncjfpooytpv project
 const SUPABASE_URL  = 'https://nmmpemjcnncjfpooytpv.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODI5Mjg5LCJleHAiOjE5MzQ1MDkyODl9.E8NSAZFNAMAUvWpLLR3xBVmrwnTDwawMYIMy9V_pWyU';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5tbXBlbWpjbm5jamZwb295dHB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2ODk3NzIsImV4cCI6MjA5MjI2NTc3Mn0.4Y8atq2axARopvt6_BlBfkyUQyrbuQyjYsUNit-MJwM';
 
 // Detect if running in PWA mode vs regular browser
 const isPWA = window.navigator.standalone === true ||
