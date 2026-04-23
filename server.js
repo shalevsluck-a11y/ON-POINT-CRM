@@ -484,6 +484,9 @@ app.post('/api/save-push-subscription', async (req, res) => {
     }
 
     console.log('[PUSH SUB] Saving subscription for user:', user_id);
+    console.log('[PUSH SUB] User ID type:', typeof user_id);
+    console.log('[PUSH SUB] User ID length:', user_id.length);
+    console.log('[PUSH SUB] User ID format:', user_id);
     console.log('[PUSH SUB] Endpoint preview:', endpoint.substring(0, 50) + '...');
 
     const { data, error } = await supabaseAdmin
