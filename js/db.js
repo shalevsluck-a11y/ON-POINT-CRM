@@ -281,8 +281,10 @@ const DB = (() => {
     channel
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'jobs' }, payload => {
         console.log('[Realtime] ✅ INSERT:', payload.new.job_id, payload.new.customer_name);
-        if (window.DebugPanel) {
-          DebugPanel.logRealtime('INSERT', { id: payload.new.job_id, customer: payload.new.customer_name });
+        if (window.DebugPanel && typeof DebugPanel.log === 'function') {
+          try {
+            DebugPanel.log('PUSH', 'Job INSERT detected', { id: payload.new.job_id, customer: payload.new.customer_name });
+          } catch (e) { console.warn('[Debug] log failed:', e); }
         }
         const job = _dbRowToJob(payload.new, {}, true, false);
         Storage.saveJob(job);
@@ -298,8 +300,10 @@ const DB = (() => {
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'jobs' }, payload => {
         console.log('[Realtime] ✏️ UPDATE:', payload.new.job_id, payload.new.customer_name);
-        if (window.DebugPanel) {
-          DebugPanel.logRealtime('UPDATE', { id: payload.new.job_id, customer: payload.new.customer_name });
+        if (window.DebugPanel && typeof DebugPanel.log === 'function') {
+          try {
+            DebugPanel.log('PUSH', 'Job UPDATE detected', { id: payload.new.job_id, customer: payload.new.customer_name });
+          } catch (e) { console.warn('[Debug] log failed:', e); }
         }
         const job = _dbRowToJob(payload.new, {}, true, false);
         Storage.saveJob(job);
@@ -307,8 +311,10 @@ const DB = (() => {
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'jobs' }, payload => {
         console.log('[Realtime] ❌ DELETE:', payload.old?.job_id);
-        if (window.DebugPanel) {
-          DebugPanel.logRealtime('DELETE', { id: payload.old?.job_id });
+        if (window.DebugPanel && typeof DebugPanel.log === 'function') {
+          try {
+            DebugPanel.log('PUSH', 'Job DELETE detected', { id: payload.old?.job_id });
+          } catch (e) { console.warn('[Debug] log failed:', e); }
         }
         const jobId = payload.old?.job_id;
         if (jobId) {
@@ -391,8 +397,10 @@ const DB = (() => {
     // Subscribe with status callback for reconnection handling
     return channel.subscribe((status, err) => {
       console.log('[Realtime] 📡 Jobs channel status:', status, err ? 'Error:' : '', err);
-      if (window.DebugPanel) {
-        DebugPanel.logRealtime('CHANNEL_STATUS', { status, error: err });
+      if (window.DebugPanel && typeof DebugPanel.log === 'function') {
+        try {
+          DebugPanel.log('PUSH', `Realtime channel status: ${status}`, err ? { error: err } : null);
+        } catch (e) { console.warn('[Debug] log failed:', e); }
       }
       if (status === 'SUBSCRIBED') {
         console.log('[Realtime] ✓ Successfully subscribed to jobs channel');

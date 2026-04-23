@@ -175,13 +175,7 @@ const App = (() => {
       if (_state.currentView === 'settings') _loadSettingsForm();
     });
 
-    // Subscribe to notifications for realtime updates
-    _notificationsChannel = DB.subscribeToNotifications((newNotification) => {
-      console.log('[App] New notification received:', newNotification);
-      _playNotificationSound();
-      _loadNotifications(); // Refresh notification bell
-      showToast('New notification received', 'info');
-    });
+    // Notifications are already subscribed in Notifications module - don't duplicate
 
     // Auto-sync Google Sheets on load if URL configured
     const settings = DB.getSettings();
