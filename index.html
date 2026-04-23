@@ -1059,8 +1059,8 @@
         document.body.prepend(banner);
       }
 
-      // Register service worker with no path prefix for iOS compatibility
-      navigator.serviceWorker.register('sw.js')
+      // Register service worker at absolute root path, NO scope parameter
+      navigator.serviceWorker.register('/sw.js')
         .then(reg => {
           console.log('[SW] ✅ Registration successful, scope:', reg.scope);
           console.log('[SW] Installing:', !!reg.installing);
