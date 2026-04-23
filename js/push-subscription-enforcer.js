@@ -342,6 +342,30 @@ const PushSubscriptionEnforcer = (() => {
       auth_key: keys.auth,
     };
 
+    // CRITICAL: Validate UUID format before sending to server
+    console.log('[Push Enforcer] Validating user_id format...');
+    console.log('[Push Enforcer] user_id type:', typeof data.user_id);
+    console.log('[Push Enforcer] user_id value:', data.user_id);
+    console.log('[Push Enforcer] user_id length:', data.user_id?.length);
+
+    // UUID regex: 8-4-4-4-12 hex characters with hyphens
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const isValidUUID = uuidRegex.test(data.user_id);
+
+    console.log('[Push Enforcer] Is valid UUID?', isValidUUID);
+
+    if (!isValidUUID) {
+      console.error('[Push Enforcer] ❌ INVALID USER ID FORMAT');
+      console.error('[Push Enforcer] Expected: UUID (e.g., "123e4567-e89b-12d3-a456-426614174000")');
+      console.error('[Push Enforcer] Received:', data.user_id);
+      console.error('[Push Enforcer] Current user object:', JSON.stringify(currentUser, null, 2));
+
+      // Show user-friendly error
+      alert('Cannot subscribe to notifications: Invalid user ID format. Please log out and log in again.');
+      throw new Error(`Invalid user_id format: "${data.user_id}" is not a UUID`);
+    }
+
+    console.log('[Push Enforcer] ✅ UUID validation passed');
     console.log('[Push Enforcer] Prepared data for server:', JSON.stringify(data, null, 2));
     console.log('[Push Enforcer] About to call window.savePushSubscriptionDirect...');
     console.log('[Push Enforcer] Function exists?', typeof window.savePushSubscriptionDirect);
