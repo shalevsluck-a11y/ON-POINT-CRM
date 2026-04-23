@@ -1069,18 +1069,41 @@
             addDebugLine(`File status: ${response.status}`);
             addDebugLine(`File URL: ${response.url}`);
 
+            // CRITICAL: Check if fetch URL matches expected URL
+            const expectedUrl = window.location.origin + '/sw.js';
+            const actualUrl = response.url;
+            addDebugLine(`Expected: ${expectedUrl}`);
+            addDebugLine(`Actual: ${actualUrl}`);
+            addDebugLine(`Match: ${expectedUrl === actualUrl}`);
+
             if (response.status !== 200) {
               throw new Error(`File not accessible: ${response.status}`);
             }
 
-            addDebugLine('Registering SW...');
+            if (expectedUrl !== actualUrl) {
+              addDebugLine('⚠️ URL MISMATCH DETECTED');
+            }
+
+            addDebugLine('Calling register()...');
+            addDebugLine(`Path: "/sw.js"`);
+            addDebugLine(`From: ${window.location.href}`);
+
             return navigator.serviceWorker.register('/sw.js');
           })
           .then(reg => {
             addDebugLine(`✅ SUCCESS`);
-            addDebugLine(`Scope: ${reg.scope}`);
+            addDebugLine(`Reg scope: ${reg.scope}`);
+            addDebugLine(`Reg scriptURL: ${reg.active?.scriptURL || 'none'}`);
+            addDebugLine(`Expected scope: ${window.location.origin + '/'}`);
             debugPanel.style.background = '#065f46';
             debugPanel.style.color = '#d1fae5';
+
+            // Final verification
+            const actualScope = reg.scope;
+            const expectedScope = window.location.origin + '/';
+            if (actualScope !== expectedScope) {
+              addDebugLine(`⚠️ SCOPE MISMATCH: ${actualScope} vs ${expectedScope}`);
+            }
           })
           .catch(err => {
             addDebugLine(`❌ ERROR: ${err.name}`);
