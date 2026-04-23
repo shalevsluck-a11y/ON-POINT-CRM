@@ -467,30 +467,67 @@ app.post('/api/save-push-subscription', async (req, res) => {
   // Add CORS headers for iOS PWA standalone mode
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   console.log('[PUSH SUB] ========== REQUEST RECEIVED ==========');
   console.log('[PUSH SUB] Method:', req.method);
-  console.log('[PUSH SUB] Headers:', req.headers);
-  console.log('[PUSH SUB] Body:', req.body);
+  console.log('[PUSH SUB] Headers:', JSON.stringify({ ...req.headers, authorization: req.headers.authorization ? 'Bearer [REDACTED]' : undefined }));
+  console.log('[PUSH SUB] Body:', JSON.stringify({ ...req.body, user_id: req.body.user_id ? '[IGNORED]' : undefined }));
 
   try {
-    const { user_id, endpoint, p256dh, auth_key } = req.body;
+    // ✅ SECURITY FIX: Derive user_id from authenticated session ONLY
+    // NEVER trust frontend-provided user_id
+    const authHeader = req.headers.authorization;
 
-    if (!user_id || !endpoint || !p256dh || !auth_key) {
-      console.error('[PUSH SUB] Missing fields:', { user_id: !!user_id, endpoint: !!endpoint, p256dh: !!p256dh, auth_key: !!auth_key });
-      return res.status(400).json({ error: 'Missing required fields' });
+    if (!authHeader) {
+      console.error('[PUSH SUB] ❌ No Authorization header provided');
+      return res.status(401).json({ error: 'Unauthorized - missing auth token' });
     }
 
-    console.log('[PUSH SUB] Saving subscription for user:', user_id);
-    console.log('[PUSH SUB] User ID type:', typeof user_id);
-    console.log('[PUSH SUB] User ID length:', user_id.length);
-    console.log('[PUSH SUB] User ID format:', user_id);
+    // Extract token and verify with Supabase
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !user) {
+      console.error('[PUSH SUB] ❌ Auth verification failed:', authError?.message);
+      return res.status(401).json({ error: 'Invalid auth token' });
+    }
+
+    // ✅ user_id is now DERIVED from authenticated session, not from frontend
+    const user_id = user.id;
+    const { endpoint, p256dh, auth_key } = req.body;
+
+    if (!endpoint || !p256dh || !auth_key) {
+      console.error('[PUSH SUB] Missing fields:', { endpoint: !!endpoint, p256dh: !!p256dh, auth_key: !!auth_key });
+      return res.status(400).json({ error: 'Missing subscription fields' });
+    }
+
+    console.log('[PUSH SUB] ✅ Authenticated user:', user_id, user.email);
+
+    // Verify profile exists for this user
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('id, name, role')
+      .eq('id', user_id)
+      .single();
+
+    if (profileError || !profile) {
+      console.error('[PUSH SUB] ❌ No profile found for user:', user_id);
+      return res.status(403).json({ error: 'No profile found - contact admin' });
+    }
+
+    console.log('[PUSH SUB] Profile:', profile.name, '-', profile.role);
     console.log('[PUSH SUB] Endpoint preview:', endpoint.substring(0, 50) + '...');
 
+    // Save subscription with auth-derived user_id
     const { data, error } = await supabaseAdmin
       .from('push_subscriptions')
-      .upsert({ user_id, endpoint, p256dh, auth_key }, {
+      .upsert({
+        user_id,  // ✅ From authenticated session, NOT from frontend
+        endpoint,
+        p256dh,
+        auth_key
+      }, {
         onConflict: 'user_id,endpoint'
       })
       .select();
@@ -500,7 +537,7 @@ app.post('/api/save-push-subscription', async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
 
-    console.log('[PUSH SUB] ✅ Subscription saved successfully');
+    console.log('[PUSH SUB] ✅ Subscription saved for', profile.name);
     console.log('[PUSH SUB] Data:', data);
     res.json({ success: true, data });
   } catch (error) {
@@ -514,7 +551,7 @@ app.post('/api/save-push-subscription', async (req, res) => {
 app.options('/api/save-push-subscription', (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.sendStatus(200);
 });
 

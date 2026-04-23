@@ -1382,6 +1382,7 @@ const App = (() => {
     const job = {
       jobId:           DB.generateId(),
       status:          'new',
+      createdBy:       Auth.getUser()?.id || null,
       customerName:    name,
       phone:           LeadParser.formatPhone(phone),
       address:         document.getElementById('f-address')?.value?.trim() || '',
