@@ -317,17 +317,23 @@ const PushSubscriptionEnforcer = (() => {
    * Save subscription to database (upsert)
    */
   async function savePushSubscription(sub) {
+    console.log('[Push Enforcer] ========== savePushSubscription START ==========');
+
     const currentUser = Auth.getUser();
+    console.log('[Push Enforcer] Current user:', currentUser);
+
     if (!currentUser) {
-      console.warn('[Push Enforcer] No user to save subscription for');
+      console.error('[Push Enforcer] ❌ No user to save subscription for');
       return;
     }
 
+    console.log('[Push Enforcer] User ID:', currentUser.id);
+    console.log('[Push Enforcer] User name:', currentUser.name);
+
     const { endpoint, keys } = sub.toJSON ? sub.toJSON() : sub;
 
-    console.log('[Push Enforcer] Saving subscription for user:', currentUser.id);
-    console.log('[Push Enforcer] Endpoint:', endpoint.substring(0, 50) + '...');
-    console.log('[Push Enforcer] Keys present:', !!keys.p256dh, !!keys.auth);
+    console.log('[Push Enforcer] Push subscription endpoint:', endpoint.substring(0, 50) + '...');
+    console.log('[Push Enforcer] Keys present - p256dh:', !!keys.p256dh, 'auth:', !!keys.auth);
 
     const data = {
       user_id:  currentUser.id,
@@ -336,14 +342,31 @@ const PushSubscriptionEnforcer = (() => {
       auth_key: keys.auth,
     };
 
-    console.log('[Push Enforcer] Saving via server proxy (no session needed)...');
-    console.log('[Push Enforcer] Data to save:', JSON.stringify(data, null, 2));
+    console.log('[Push Enforcer] Prepared data for server:', JSON.stringify(data, null, 2));
+    console.log('[Push Enforcer] About to call window.savePushSubscriptionDirect...');
+    console.log('[Push Enforcer] Function exists?', typeof window.savePushSubscriptionDirect);
 
-    // Use server endpoint - no Supabase session required
-    const result = await window.savePushSubscriptionDirect(data);
+    if (!window.savePushSubscriptionDirect) {
+      console.error('[Push Enforcer] ❌ window.savePushSubscriptionDirect is not defined!');
+      throw new Error('savePushSubscriptionDirect function not loaded');
+    }
 
-    console.log('[Push Enforcer] ✅ Subscription saved via server proxy!');
-    console.log('[Push Enforcer] Returned data:', result);
+    console.log('[Push Enforcer] Calling window.savePushSubscriptionDirect NOW...');
+
+    try {
+      const result = await window.savePushSubscriptionDirect(data);
+      console.log('[Push Enforcer] ✅ window.savePushSubscriptionDirect returned successfully');
+      console.log('[Push Enforcer] Result:', result);
+      console.log('[Push Enforcer] ========== savePushSubscription END (SUCCESS) ==========');
+      return result;
+    } catch (err) {
+      console.error('[Push Enforcer] ❌ window.savePushSubscriptionDirect FAILED');
+      console.error('[Push Enforcer] Error:', err);
+      console.error('[Push Enforcer] Error message:', err.message);
+      console.error('[Push Enforcer] Error stack:', err.stack);
+      console.error('[Push Enforcer] ========== savePushSubscription END (FAILED) ==========');
+      throw err;
+    }
   }
 
   /**
