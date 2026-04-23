@@ -16,8 +16,9 @@ serve(async (req) => {
     // Parse request body first to check if this is a database trigger call
     const { title, body, jobId, targetUserId, broadcast, roles, excludedUserId } = await req.json();
 
+    const requestBody = { title, body, jobId, targetUserId, broadcast, roles, excludedUserId };
     console.log('[Send Push] ========== INCOMING REQUEST ==========');
-    console.log('[Send Push] Request body:', { title, body, jobId, targetUserId, broadcast, roles, excludedUserId });
+    console.log('[Send Push] Request body:', requestBody);
 
     // Database triggers use broadcast + roles pattern - these are trusted internal calls
     const isDatabaseTrigger = broadcast === true && Array.isArray(roles) && roles.length > 0;
@@ -141,6 +142,7 @@ serve(async (req) => {
 
     let sent = 0;
     const staleIds: string[] = [];
+    const sendResults: any[] = [];
 
     for (const sub of subs) {
       try {
@@ -157,6 +159,13 @@ serve(async (req) => {
         const result = await webpush.sendNotification(pushSubscription, payload);
         console.log(`[Send Push] ✅ Push sent to ${sub.user_id}: HTTP ${result.statusCode}`);
 
+        sendResults.push({
+          user_id: sub.user_id,
+          endpoint: sub.endpoint.substring(0, 60),
+          status: result.statusCode,
+          success: true
+        });
+
         if (result.statusCode === 410 || result.statusCode === 404) {
           staleIds.push(sub.id);
         } else if (result.statusCode === 201) {
@@ -166,6 +175,15 @@ serve(async (req) => {
         console.error(`[Send Push] ❌ Failed to send push to ${sub.user_id}:`, e.message);
         console.error(`[Send Push] Error status code:`, e.statusCode);
         console.error(`[Send Push] Error body:`, e.body);
+
+        sendResults.push({
+          user_id: sub.user_id,
+          endpoint: sub.endpoint.substring(0, 60),
+          status: e.statusCode || 0,
+          error: e.message,
+          success: false
+        });
+
         // If subscription is invalid/expired
         if (e.statusCode === 410 || e.statusCode === 404) {
           staleIds.push(sub.id);
@@ -182,6 +200,26 @@ serve(async (req) => {
     }
 
     console.log(`[Send Push] ✅ Successfully sent ${sent}/${subs.length} push notifications`);
+
+    // Log to database for persistent debugging
+    try {
+      const logData = {
+        event_type: targetUserId ? 'test_push' : 'job_created',
+        request_body: requestBody,
+        recipients: subs.map(s => s.user_id),
+        results: {
+          total_subscriptions: subs.length,
+          sent_count: sent,
+          stale_count: staleIds.length,
+          send_results: sendResults,
+          payload: payload
+        }
+      };
+
+      await adminClient.from('push_logs').insert(logData);
+    } catch (logError) {
+      console.error('[Send Push] Failed to log to database:', logError);
+    }
 
     return new Response(JSON.stringify({ success: true, sent }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },

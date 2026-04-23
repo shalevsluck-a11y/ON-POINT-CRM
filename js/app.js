@@ -145,6 +145,12 @@ const App = (() => {
 
         if (!isOwnAction) {
           _playNotificationSound();
+
+          // Show in-app notification when app is in foreground
+          // iOS suppresses system notifications when PWA is active, so show banner instead
+          if (document.visibilityState === 'visible') {
+            showToast(`New Job: ${newJob.customer_name || 'Customer'} - #${newJob.job_id}`, 'info', 5000);
+          }
         }
 
         renderDashboard();
