@@ -312,16 +312,21 @@ const PushSubscriptionEnforcer = (() => {
    */
   async function ensureSubscribed() {
     try {
+      showDebug('📡 Checking for existing subscription...');
       console.log('[Push Enforcer] Ensuring subscription exists...');
 
       // Wait for service worker to be ready
+      showDebug('⏳ Waiting for service worker...');
       const registration = await navigator.serviceWorker.ready;
+      showDebug('✅ Service worker ready');
       console.log('[Push Enforcer] Service worker ready');
 
       // Check if subscription already exists
+      showDebug('🔍 Checking existing subscription...');
       let subscription = await registration.pushManager.getSubscription();
 
       if (subscription) {
+        showDebug('✅ Found existing subscription');
         console.log('[Push Enforcer] Existing subscription found');
         // Subscription exists - make sure it's saved to database
         await savePushSubscription(subscription);
@@ -330,17 +335,24 @@ const PushSubscriptionEnforcer = (() => {
       }
 
       // No subscription - create one
+      showDebug('⚠️ No subscription found');
+      showDebug('🆕 Creating new push subscription...');
+      showDebug('⏳ This may take a moment on iOS...');
       console.log('[Push Enforcer] No subscription found, creating new one...');
+
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
       });
 
+      showDebug('✅ Subscription created!');
       console.log('[Push Enforcer] Subscription created, saving to database...');
       await savePushSubscription(subscription);
       console.log('[Push Enforcer] ✅ New subscription created and saved');
 
     } catch (error) {
+      showDebug(`❌ Subscription failed: ${error.name}`, true);
+      showDebug(`Error: ${error.message}`, true);
       console.error('[Push Enforcer] Failed to ensure subscription:', error);
       throw error;
     }
