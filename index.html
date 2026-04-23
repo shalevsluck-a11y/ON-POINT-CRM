@@ -1059,7 +1059,9 @@
         document.body.prepend(banner);
       }
 
-      navigator.serviceWorker.register('/sw.js')
+      // Try registration with explicit scope
+      // iOS PWA may need explicit scope parameter
+      navigator.serviceWorker.register('/sw.js', { scope: '/' })
         .then(reg => {
           console.log('[SW] ✅ Registration successful, scope:', reg.scope);
           console.log('[SW] Installing:', !!reg.installing);
