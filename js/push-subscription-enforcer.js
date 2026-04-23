@@ -323,21 +323,6 @@ const PushSubscriptionEnforcer = (() => {
       return;
     }
 
-    // CRITICAL: Check if Supabase session exists before attempting insert
-    const { data: { session } } = await SupabaseClient.auth.getSession();
-    console.log('[Push Enforcer] ========== SESSION CHECK ==========');
-    console.log('[Push Enforcer] Has session?', !!session);
-    console.log('[Push Enforcer] Session user:', session?.user?.id);
-    console.log('[Push Enforcer] Current user:', currentUser.id);
-    console.log('[Push Enforcer] Match?', session?.user?.id === currentUser.id);
-
-    if (!session) {
-      console.error('[Push Enforcer] ❌ NO SUPABASE SESSION - Cannot save subscription!');
-      console.error('[Push Enforcer] User is logged in via magic link but Supabase session is missing');
-      console.error('[Push Enforcer] This explains why upsert returns success but data does not persist');
-      throw new Error('No Supabase session - subscription cannot be saved');
-    }
-
     const { endpoint, keys } = sub.toJSON ? sub.toJSON() : sub;
 
     console.log('[Push Enforcer] Saving subscription for user:', currentUser.id);
@@ -351,20 +336,13 @@ const PushSubscriptionEnforcer = (() => {
       auth_key: keys.auth,
     };
 
-    console.log('[Push Enforcer] Saving via DIRECT Supabase connection (bypasses broken proxy)...');
+    console.log('[Push Enforcer] Saving via server proxy (no session needed)...');
     console.log('[Push Enforcer] Data to save:', JSON.stringify(data, null, 2));
-    console.log('[Push Enforcer] Field types:', {
-      user_id: typeof data.user_id,
-      endpoint: typeof data.endpoint,
-      p256dh: typeof data.p256dh,
-      auth_key: typeof data.auth_key
-    });
 
-    // Use dedicated push client that bypasses custom domain proxy
+    // Use server endpoint - no Supabase session required
     const result = await window.savePushSubscriptionDirect(data);
 
-    console.log('[Push Enforcer] ✅✅✅ Subscription saved via DIRECT connection!');
-    console.log('[Push Enforcer] This ACTUALLY saved to database (not fake success from proxy)');
+    console.log('[Push Enforcer] ✅ Subscription saved via server proxy!');
     console.log('[Push Enforcer] Returned data:', result);
   }
 
