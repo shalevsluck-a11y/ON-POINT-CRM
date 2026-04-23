@@ -172,7 +172,15 @@ const PushSubscriptionEnforcer = (() => {
           if (permission === 'granted') {
             console.log('[Push Enforcer] Permission GRANTED! Creating subscription...');
             btn.textContent = 'Subscribing...';
-            await ensureSubscribed();
+
+            // Add timeout to prevent infinite hang
+            const subscriptionPromise = ensureSubscribed();
+            const timeoutPromise = new Promise((_, reject) => {
+              setTimeout(() => reject(new Error('Subscription timeout after 30s')), 30000);
+            });
+
+            await Promise.race([subscriptionPromise, timeoutPromise]);
+
             console.log('[Push Enforcer] Subscription complete, closing modal');
             modal.remove();
             resolve();
@@ -185,10 +193,18 @@ const PushSubscriptionEnforcer = (() => {
           }
         } catch (error) {
           console.error('[Push Enforcer] Permission request FAILED:', error);
+          console.error('[Push Enforcer] Error message:', error.message);
           console.error('[Push Enforcer] Error stack:', error.stack);
           btn.disabled = false;
           btn.style.background = '#ef4444';
-          btn.textContent = 'Try Again - Error occurred';
+          btn.textContent = 'Error: ' + (error.message || 'Unknown error');
+
+          // Auto re-enable after 3 seconds
+          setTimeout(() => {
+            btn.disabled = false;
+            btn.style.background = '#2563eb';
+            btn.textContent = 'Try Again';
+          }, 3000);
         }
       };
     });
