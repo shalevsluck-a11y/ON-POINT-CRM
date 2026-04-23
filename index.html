@@ -1032,87 +1032,20 @@
 (function() {
   // Register service worker
   if ('serviceWorker' in navigator) {
-    // iOS PWA needs registration after page is fully loaded + small delay
     window.addEventListener('load', () => {
-      // iOS-specific: wait additional 100ms for standalone mode to stabilize
       const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
       const delay = isStandalone ? 100 : 0;
 
       setTimeout(() => {
-        // Create visible debug panel for iOS
-        const debugPanel = document.createElement('div');
-        debugPanel.id = 'sw-debug-panel';
-        debugPanel.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#1e293b;color:#94a3b8;padding:8px;font-size:10px;font-family:monospace;max-height:150px;overflow-y:auto;z-index:999998;border-top:1px solid #334155';
+        const swUrl = window.location.origin + '/sw.js';
 
-        function addDebugLine(text) {
-          const line = document.createElement('div');
-          line.textContent = text;
-          debugPanel.appendChild(line);
-          console.log(text);
-        }
-
-        document.body.appendChild(debugPanel);
-
-        // Log ALL URL details
-        addDebugLine('=== SW REGISTRATION DEBUG ===');
-        addDebugLine(`href: ${window.location.href}`);
-        addDebugLine(`origin: ${window.location.origin}`);
-        addDebugLine(`pathname: ${window.location.pathname}`);
-        addDebugLine(`standalone: ${isStandalone}`);
-
-        const fullSwUrl = new URL('/sw.js', window.location.origin).href;
-        addDebugLine(`SW URL: ${fullSwUrl}`);
-
-        // Test file accessibility
-        fetch('/sw.js', { method: 'HEAD' })
-          .then(response => {
-            addDebugLine(`File status: ${response.status}`);
-            addDebugLine(`File URL: ${response.url}`);
-
-            // CRITICAL: Check if fetch URL matches expected URL
-            const expectedUrl = window.location.origin + '/sw.js';
-            const actualUrl = response.url;
-            addDebugLine(`Expected: ${expectedUrl}`);
-            addDebugLine(`Actual: ${actualUrl}`);
-            addDebugLine(`Match: ${expectedUrl === actualUrl}`);
-
-            if (response.status !== 200) {
-              throw new Error(`File not accessible: ${response.status}`);
-            }
-
-            if (expectedUrl !== actualUrl) {
-              addDebugLine('⚠️ URL MISMATCH DETECTED');
-            }
-
-            addDebugLine('Calling register()...');
-
-            // FIX: Use ABSOLUTE URL for iOS compatibility
-            const absoluteSwUrl = window.location.origin + '/sw.js';
-            addDebugLine(`Absolute URL: ${absoluteSwUrl}`);
-            addDebugLine(`From: ${window.location.href}`);
-
-            return navigator.serviceWorker.register(absoluteSwUrl);
-          })
+        navigator.serviceWorker.register(swUrl)
           .then(reg => {
-            addDebugLine(`✅ SUCCESS`);
-            addDebugLine(`Reg scope: ${reg.scope}`);
-            addDebugLine(`Reg scriptURL: ${reg.active?.scriptURL || 'none'}`);
-            addDebugLine(`Expected scope: ${window.location.origin + '/'}`);
-            debugPanel.style.background = '#065f46';
-            debugPanel.style.color = '#d1fae5';
-
-            // Final verification
-            const actualScope = reg.scope;
-            const expectedScope = window.location.origin + '/';
-            if (actualScope !== expectedScope) {
-              addDebugLine(`⚠️ SCOPE MISMATCH: ${actualScope} vs ${expectedScope}`);
-            }
+            console.log('[SW] Registered successfully');
+            console.log('[SW] Scope:', reg.scope);
           })
           .catch(err => {
-            addDebugLine(`❌ ERROR: ${err.name}`);
-            addDebugLine(`Message: ${err.message}`);
-            debugPanel.style.background = '#7f1d1d';
-            debugPanel.style.color = '#fecaca';
+            console.error('[SW] Registration failed:', err.name, err.message);
           });
       }, delay);
     });
