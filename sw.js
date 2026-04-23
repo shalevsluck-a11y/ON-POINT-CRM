@@ -1,7 +1,7 @@
 // On Point Pro Doors CRM — Service Worker
 // CACHE_VERSION is stamped by the deploy script on every push so the
 // browser always sees a changed sw.js file and installs the new version.
-const CACHE_VERSION = 'v20260423-push-debug-v2';
+const CACHE_VERSION = 'v20260423-identity-fix';
 const CACHE_NAME = `onpoint-${CACHE_VERSION}`;
 
 // Inline offline HTML — guaranteed fallback even with empty cache

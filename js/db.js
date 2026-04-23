@@ -610,6 +610,7 @@ const DB = (() => {
       is_recurring_customer: job.isRecurringCustomer || false,
       overdue_flagged_at:   job.overdueAt || null,
       follow_up_at:         job.followUpAt || null,
+      created_by:           job.createdBy || null,
       updated_at:           new Date().toISOString(),
     };
 

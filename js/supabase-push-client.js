@@ -7,63 +7,71 @@
 
 /**
  * Save push subscription via server proxy (iOS-compatible)
- * WITH COMPREHENSIVE LOGGING for iOS PWA debugging
+ * ✅ SECURITY FIX: Passes auth token, backend derives user_id
  */
 async function savePushSubscriptionDirect(subscriptionData) {
   console.log('[PushClient] ========== START savePushSubscriptionDirect ==========');
   console.log('[PushClient] Timestamp:', new Date().toISOString());
   console.log('[PushClient] Running in standalone mode:', window.navigator.standalone);
   console.log('[PushClient] Current origin:', window.location.origin);
-  console.log('[PushClient] Data:', JSON.stringify(subscriptionData, null, 2));
 
   try {
-    console.log('[PushClient] Step 1: Building fetch request');
-    const url = window.location.origin + '/api/save-push-subscription';
-    console.log('[PushClient] Step 2: Full URL =', url);
+    // ✅ STEP 1: Get authenticated session token
+    console.log('[PushClient] Step 1: Getting auth session...');
+    const { data: sessionData, error: sessionError } = await SupabaseClient.auth.getSession();
 
-    console.log('[PushClient] Step 3: Creating request options');
+    if (sessionError || !sessionData.session) {
+      console.error('[PushClient] ❌ No authenticated session');
+      throw new Error('Not authenticated - please log in');
+    }
+
+    const accessToken = sessionData.session.access_token;
+    console.log('[PushClient] ✅ Got auth token (length:', accessToken.length, ')');
+
+    // ✅ STEP 2: Build request with Authorization header (NOT user_id in body)
+    const url = window.location.origin + '/api/save-push-subscription';
+    console.log('[PushClient] Step 2: URL =', url);
+
+    // Extract subscription fields ONLY (no user_id - backend derives it from token)
+    const { endpoint, p256dh, auth_key } = subscriptionData;
+    const requestBody = { endpoint, p256dh, auth_key };
+    // ❌ user_id is NOT sent - backend derives it from auth token
+
     const requestOptions = {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(subscriptionData)
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`  // ✅ Auth token here
+      },
+      body: JSON.stringify(requestBody)
     };
-    console.log('[PushClient] Step 4: Request method:', requestOptions.method);
-    console.log('[PushClient] Step 5: Request headers:', requestOptions.headers);
-    console.log('[PushClient] Step 6: Request body length:', requestOptions.body.length);
 
-    console.log('[PushClient] Step 7: About to call fetch()...');
-    console.log('[PushClient] If this hangs, fetch is blocked in standalone mode');
+    console.log('[PushClient] Step 3: Request with auth header (token redacted for security)');
+    console.log('[PushClient] Step 4: Body contains:', Object.keys(requestBody).join(', '));
+    console.log('[PushClient] Step 5: Calling fetch...');
 
     const response = await fetch(url, requestOptions);
 
-    console.log('[PushClient] Step 8: Fetch returned!');
-    console.log('[PushClient] Response status:', response.status);
-    console.log('[PushClient] Response ok:', response.ok);
-    console.log('[PushClient] Response type:', response.type);
+    console.log('[PushClient] Step 6: Fetch returned! Status:', response.status);
 
     if (!response.ok) {
-      console.error('[PushClient] Step 9: Response NOT OK');
+      console.error('[PushClient] ❌ Response NOT OK:', response.status);
       const errorData = await response.json().catch(() => ({ error: 'Could not parse error' }));
-      console.error('[PushClient] Error data from server:', errorData);
+      console.error('[PushClient] Error from server:', errorData);
       throw new Error(errorData.error || `HTTP ${response.status}`);
     }
 
-    console.log('[PushClient] Step 10: Parsing success response');
     const result = await response.json();
-    console.log('[PushClient] Step 11: ✅ SUCCESS!');
+    console.log('[PushClient] ✅ SUCCESS! Backend derived user_id from auth token');
     console.log('[PushClient] Result:', result);
     console.log('[PushClient] ========== END (SUCCESS) ==========');
 
     return result.data;
 
   } catch (err) {
-    console.error('[PushClient] ========== EXCEPTION CAUGHT ==========');
-    console.error('[PushClient] Error name:', err.name);
-    console.error('[PushClient] Error message:', err.message);
-    console.error('[PushClient] Error stack:', err.stack);
-    console.error('[PushClient] Error constructor:', err.constructor.name);
-    console.error('[PushClient] Is TypeError?:', err instanceof TypeError);
-    console.error('[PushClient] Is NetworkError?:', err.name === 'NetworkError');
+    console.error('[PushClient] ========== EXCEPTION ==========');
+    console.error('[PushClient] Error:', err.message);
+    console.error('[PushClient] Stack:', err.stack);
     console.error('[PushClient] ========== END (FAILED) ==========');
     throw err;
   }
