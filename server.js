@@ -26,10 +26,9 @@ app.use((_req, res, next) => {
 
 app.use(express.static(path.join(__dirname), {
   setHeaders(res, filePath) {
-    // SW and manifest: always revalidate
+    // SW headers are set by nginx, don't duplicate
     if (filePath.endsWith('sw.js')) {
-      res.setHeader('Service-Worker-Allowed', '/');
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      // nginx handles Service-Worker-Allowed and Cache-Control
       return;
     }
     if (filePath.endsWith('manifest.json')) {
