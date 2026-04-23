@@ -518,6 +518,61 @@ app.options('/api/save-push-subscription', (req, res) => {
   res.sendStatus(200);
 });
 
+// Test push notification endpoint
+app.post('/api/test-push', async (req, res) => {
+  try {
+    console.log('[TEST PUSH] ========== Test push request received ==========');
+    console.log('[TEST PUSH] Request body:', req.body);
+
+    const { user_id } = req.body;
+
+    if (!user_id) {
+      console.log('[TEST PUSH] ❌ No user_id provided');
+      return res.status(400).json({ error: 'user_id required' });
+    }
+
+    console.log('[TEST PUSH] Sending test notification to user:', user_id);
+
+    // Call the Supabase Edge Function
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error('[TEST PUSH] ❌ Missing Supabase credentials');
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/send-push`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${serviceRoleKey}`,
+      },
+      body: JSON.stringify({
+        targetUserId: user_id,
+        title: 'Test Notification',
+        body: `Test push sent at ${new Date().toLocaleTimeString()}`,
+        jobId: null,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      console.log('[TEST PUSH] ✅ Success:', result);
+      res.json({ success: true, result });
+    } else {
+      console.error('[TEST PUSH] ❌ Failed:', result);
+      res.status(response.status).json({ error: result.error || 'Failed to send test push' });
+    }
+
+  } catch (error) {
+    console.error('[TEST PUSH] ❌ Exception:', error.message);
+    console.error('[TEST PUSH] Stack:', error.stack);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // SPA fallback — all routes serve index.html
 app.get('*', (req, res) => {
   res.set('Cache-Control', 'no-cache, must-revalidate');

@@ -16,6 +16,9 @@ serve(async (req) => {
     // Parse request body first to check if this is a database trigger call
     const { title, body, jobId, targetUserId, broadcast, roles, excludedUserId } = await req.json();
 
+    console.log('[Send Push] ========== INCOMING REQUEST ==========');
+    console.log('[Send Push] Request body:', { title, body, jobId, targetUserId, broadcast, roles, excludedUserId });
+
     // Database triggers use broadcast + roles pattern - these are trusted internal calls
     const isDatabaseTrigger = broadcast === true && Array.isArray(roles) && roles.length > 0;
 
@@ -64,40 +67,63 @@ serve(async (req) => {
     );
 
     // Fetch subscriptions
+    console.log('[Send Push] Fetching subscriptions...');
     let query = adminClient.from('push_subscriptions').select('*');
 
     if (targetUserId) {
       // Send to specific user
+      console.log('[Send Push] Target user ID:', targetUserId);
       query = query.eq('user_id', targetUserId);
     } else if (broadcast && roles && roles.length > 0) {
       // Broadcast to specific roles - join with profiles to filter by role
-      const { data: profiles } = await adminClient.from('profiles').select('id').in('role', roles);
+      console.log('[Send Push] Broadcasting to roles:', roles);
+      const { data: profiles, error: profileError } = await adminClient.from('profiles').select('id, role, name').in('role', roles);
+
+      if (profileError) {
+        console.error('[Send Push] Error fetching profiles:', profileError);
+      }
+
+      console.log('[Send Push] Found', profiles?.length || 0, 'users with matching roles');
+      if (profiles && profiles.length > 0) {
+        console.log('[Send Push] Profiles:', profiles.map(p => ({ id: p.id, role: p.role, name: p.name })));
+      }
+
       let userIds = profiles?.map(p => p.id) || [];
 
       // Exclude the user who triggered the action (creator/closer)
       if (excludedUserId) {
+        const beforeCount = userIds.length;
         userIds = userIds.filter(id => id !== excludedUserId);
-        console.log(`Excluding user ${excludedUserId} from broadcast`);
+        console.log(`[Send Push] Excluded user ${excludedUserId}, recipients: ${beforeCount} → ${userIds.length}`);
       }
 
       if (userIds.length === 0) {
+        console.log('[Send Push] No recipients after filtering, returning early');
         return new Response(JSON.stringify({ success: true, sent: 0 }), {
           status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
+
+      console.log('[Send Push] Final recipient user IDs:', userIds);
       query = query.in('user_id', userIds);
     }
 
-    const { data: subs } = await query;
+    const { data: subs, error: subsError } = await query;
+
+    if (subsError) {
+      console.error('[Send Push] Error fetching subscriptions:', subsError);
+    }
 
     if (!subs || subs.length === 0) {
-      console.log('No push subscriptions found');
+      console.log('[Send Push] ⚠️ No push subscriptions found for recipients');
       return new Response(JSON.stringify({ success: true, sent: 0 }), {
         status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log(`Sending push to ${subs.length} subscriptions`);
+    console.log(`[Send Push] Found ${subs.length} subscriptions to send to`);
+    console.log('[Send Push] Subscription user IDs:', subs.map(s => s.user_id));
+    console.log('[Send Push] Subscription endpoints (first 50 chars):', subs.map(s => s.endpoint.substring(0, 50) + '...'));
 
     // VAPID keys
     const vapidPublic  = Deno.env.get('VAPID_PUBLIC_KEY') || 'BNThACyKMai6hck9NCqpLf_Qdyx_qhpcqGCeOI-_qr1ZS-FyfSx1woTtR9ERYjXBtn8bT5u3am_dBvSADIy_oLc';
@@ -127,8 +153,9 @@ serve(async (req) => {
           }
         };
 
+        console.log(`[Send Push] Sending to user ${sub.user_id}... endpoint: ${sub.endpoint.substring(0, 50)}...`);
         const result = await webpush.sendNotification(pushSubscription, payload);
-        console.log(`Push sent to ${sub.user_id}: ${result.statusCode}`);
+        console.log(`[Send Push] ✅ Push sent to ${sub.user_id}: HTTP ${result.statusCode}`);
 
         if (result.statusCode === 410 || result.statusCode === 404) {
           staleIds.push(sub.id);
@@ -136,7 +163,9 @@ serve(async (req) => {
           sent++;
         }
       } catch (e) {
-        console.error(`Failed to send push to ${sub.user_id}:`, e.message);
+        console.error(`[Send Push] ❌ Failed to send push to ${sub.user_id}:`, e.message);
+        console.error(`[Send Push] Error status code:`, e.statusCode);
+        console.error(`[Send Push] Error body:`, e.body);
         // If subscription is invalid/expired
         if (e.statusCode === 410 || e.statusCode === 404) {
           staleIds.push(sub.id);
@@ -144,13 +173,15 @@ serve(async (req) => {
       }
     }
 
+    console.log('[Send Push] ========== SENDING COMPLETE ==========');
+
     // Clean up stale subscriptions
     if (staleIds.length > 0) {
       await adminClient.from('push_subscriptions').delete().in('id', staleIds);
       console.log(`Cleaned up ${staleIds.length} stale subscriptions`);
     }
 
-    console.log(`Successfully sent ${sent} push notifications`);
+    console.log(`[Send Push] ✅ Successfully sent ${sent}/${subs.length} push notifications`);
 
     return new Response(JSON.stringify({ success: true, sent }), {
       status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
