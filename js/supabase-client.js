@@ -2,7 +2,9 @@
    SUPABASE-CLIENT.JS — Supabase client initialization
    ============================================================ */
 
-const SUPABASE_URL  = 'https://api.onpointprodoors.com';
+// CRITICAL FIX: Custom domain api.onpointprodoors.com is broken (RPC/writes fail)
+// Using real Supabase URL until custom domain proxy is fixed
+const SUPABASE_URL  = 'https://nmmpemjcnncjfpooytpv.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODI5Mjg5LCJleHAiOjE5MzQ1MDkyODl9.E8NSAZFNAMAUvWpLLR3xBVmrwnTDwawMYIMy9V_pWyU';
 
 // Detect if running in PWA mode vs regular browser
