@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iOS Endpoint Test</title>
+  <style>
+    body { font-family: system-ui; padding: 20px; background: #0f172a; color: white; }
+    button { padding: 16px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 16px; width: 100%; margin: 10px 0; }
+    #log { background: #1e293b; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px; margin-top: 20px; white-space: pre-wrap; word-break: break-all; }
+    .success { color: #10b981; }
+    .error { color: #ef4444; }
+  </style>
+</head>
+<body>
+  <h1>🔍 iOS Push Endpoint Test</h1>
+  <p>Test if /api/save-push-subscription works on iOS PWA</p>
+
+  <button onclick="testEndpoint()">Test Server Endpoint</button>
+  <button onclick="testWithAbsoluteURL()">Test with Absolute URL</button>
+  <button onclick="testWithXHR()">Test with XMLHttpRequest</button>
+  <button onclick="clearLog()">Clear Log</button>
+
+  <div id="log">Logs will appear here...</div>
+
+  <script>
+    const log = document.getElementById('log');
+
+    function addLog(msg, isError = false) {
+      const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+      const className = isError ? 'error' : 'success';
+      log.innerHTML += `<span class="${className}">[${timestamp}] ${msg}</span>\n`;
+      log.scrollTop = log.scrollHeight;
+      console.log(msg);
+    }
+
+    function clearLog() {
+      log.innerHTML = 'Logs cleared.\n';
+    }
+
+    async function testEndpoint() {
+      addLog('========== TEST START ==========');
+      addLog('Testing relative URL: /api/save-push-subscription');
+      addLog('Standalone mode: ' + (window.navigator.standalone ? 'YES' : 'NO'));
+      addLog('Origin: ' + window.location.origin);
+
+      try {
+        addLog('Calling fetch...');
+        const response = await fetch('/api/save-push-subscription', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: 'test-user-ios',
+            endpoint: 'test-endpoint',
+            p256dh: 'test-p256dh',
+            auth_key: 'test-auth'
+          })
+        });
+
+        addLog('✅ Fetch returned! Status: ' + response.status);
+        const data = await response.json();
+        addLog('✅ Response: ' + JSON.stringify(data, null, 2));
+
+      } catch (err) {
+        addLog('❌ ERROR: ' + err.message, true);
+        addLog('❌ Error name: ' + err.name, true);
+        addLog('❌ Error stack: ' + err.stack, true);
+      }
+    }
+
+    async function testWithAbsoluteURL() {
+      addLog('========== TEST ABSOLUTE URL ==========');
+      const url = window.location.origin + '/api/save-push-subscription';
+      addLog('Testing absolute URL: ' + url);
+
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: 'test-user-absolute',
+            endpoint: 'test-endpoint',
+            p256dh: 'test-p256dh',
+            auth_key: 'test-auth'
+          })
+        });
+
+        addLog('✅ Status: ' + response.status);
+        const data = await response.json();
+        addLog('✅ Response: ' + JSON.stringify(data, null, 2));
+
+      } catch (err) {
+        addLog('❌ ERROR: ' + err.message, true);
+      }
+    }
+
+    async function testWithXHR() {
+      addLog('========== TEST XMLHttpRequest ==========');
+      addLog('Using XMLHttpRequest instead of fetch');
+
+      try {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/save-push-subscription', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+
+        xhr.onload = function() {
+          addLog('✅ XHR Status: ' + xhr.status);
+          addLog('✅ Response: ' + xhr.responseText);
+        };
+
+        xhr.onerror = function() {
+          addLog('❌ XHR Error', true);
+        };
+
+        xhr.send(JSON.stringify({
+          user_id: 'test-user-xhr',
+          endpoint: 'test-endpoint',
+          p256dh: 'test-p256dh',
+          auth_key: 'test-auth'
+        }));
+
+        addLog('XHR request sent...');
+
+      } catch (err) {
+        addLog('❌ ERROR: ' + err.message, true);
+      }
+    }
+  </script>
+</body>
+</html>
