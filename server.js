@@ -465,14 +465,26 @@ app.get('/admin/debug-tokens', async (req, res) => {
 
 // Save push subscription - iOS-compatible proxy endpoint
 app.post('/api/save-push-subscription', async (req, res) => {
+  // Add CORS headers for iOS PWA standalone mode
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  console.log('[PUSH SUB] ========== REQUEST RECEIVED ==========');
+  console.log('[PUSH SUB] Method:', req.method);
+  console.log('[PUSH SUB] Headers:', req.headers);
+  console.log('[PUSH SUB] Body:', req.body);
+
   try {
     const { user_id, endpoint, p256dh, auth_key } = req.body;
 
     if (!user_id || !endpoint || !p256dh || !auth_key) {
+      console.error('[PUSH SUB] Missing fields:', { user_id: !!user_id, endpoint: !!endpoint, p256dh: !!p256dh, auth_key: !!auth_key });
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
     console.log('[PUSH SUB] Saving subscription for user:', user_id);
+    console.log('[PUSH SUB] Endpoint preview:', endpoint.substring(0, 50) + '...');
 
     const { data, error } = await supabaseAdmin
       .from('push_subscriptions')
@@ -482,16 +494,26 @@ app.post('/api/save-push-subscription', async (req, res) => {
       .select();
 
     if (error) {
-      console.error('[PUSH SUB] Error:', error);
+      console.error('[PUSH SUB] Supabase error:', error);
       return res.status(500).json({ error: error.message });
     }
 
-    console.log('[PUSH SUB] ✅ Subscription saved');
+    console.log('[PUSH SUB] ✅ Subscription saved successfully');
+    console.log('[PUSH SUB] Data:', data);
     res.json({ success: true, data });
   } catch (error) {
-    console.error('[PUSH SUB] Exception:', error);
+    console.error('[PUSH SUB] ❌ Exception caught:', error);
+    console.error('[PUSH SUB] Error stack:', error.stack);
     res.status(500).json({ error: error.message });
   }
+});
+
+// OPTIONS handler for CORS preflight
+app.options('/api/save-push-subscription', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.sendStatus(200);
 });
 
 // SPA fallback — all routes serve index.html
