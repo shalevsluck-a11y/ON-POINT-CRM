@@ -463,6 +463,37 @@ app.get('/admin/debug-tokens', async (req, res) => {
   }
 });
 
+// Save push subscription - iOS-compatible proxy endpoint
+app.post('/api/save-push-subscription', async (req, res) => {
+  try {
+    const { user_id, endpoint, p256dh, auth_key } = req.body;
+
+    if (!user_id || !endpoint || !p256dh || !auth_key) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    console.log('[PUSH SUB] Saving subscription for user:', user_id);
+
+    const { data, error } = await supabaseAdmin
+      .from('push_subscriptions')
+      .upsert({ user_id, endpoint, p256dh, auth_key }, {
+        onConflict: 'user_id,endpoint'
+      })
+      .select();
+
+    if (error) {
+      console.error('[PUSH SUB] Error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    console.log('[PUSH SUB] ✅ Subscription saved');
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('[PUSH SUB] Exception:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // SPA fallback — all routes serve index.html
 app.get('*', (req, res) => {
   res.set('Cache-Control', 'no-cache, must-revalidate');
