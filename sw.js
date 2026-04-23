@@ -1,7 +1,7 @@
 // On Point Pro Doors CRM — Service Worker
 // CACHE_VERSION is stamped by the deploy script on every push so the
 // browser always sees a changed sw.js file and installs the new version.
-const CACHE_VERSION = 'v20260423-push-fix-final';
+const CACHE_VERSION = 'v20260423-debug-logging';
 const CACHE_NAME = `onpoint-${CACHE_VERSION}`;
 
 // Inline offline HTML — guaranteed fallback even with empty cache
@@ -73,7 +73,10 @@ self.addEventListener('fetch', (event) => {
   // Pass through: Supabase API / Edge Functions (never intercept auth or DB calls)
   if (url.hostname.includes('supabase.co') || url.hostname.includes('supabase.io')) return;
   // Pass through: non-GET (POST, PUT, DELETE to API routes)
-  if (request.method !== 'GET') return;
+  if (request.method !== 'GET') {
+    console.log('[SW] Passing through non-GET request:', request.method, request.url);
+    return;
+  }
   // Pass through: cross-origin requests
   if (url.origin !== self.location.origin) return;
 
