@@ -1,0 +1,126 @@
+═══════════════════════════════════════════════════════════════════════════════
+PUSH NOTIFICATION DIAGNOSIS - EXACT ROOT CAUSE FOUND
+═══════════════════════════════════════════════════════════════════════════════
+
+COMPARISON: MANUAL TEST PUSH vs REAL JOB PUSH
+─────────────────────────────────────────────────────────────────────────────
+
+MANUAL TEST PUSH (WORKS ✅):
+  Code path: Debug panel → /api/test-push → send-push edge function
+  Payload: {
+    targetUserId: "a306db51-20e0-40c5-9258-1634d4c9079b",  // solomon's ID
+    title: "Test Notification",
+    body: "Test push sent at...",
+    jobId: null
+  }
+
+  Edge function logic:
+    → if (targetUserId) query push_subscriptions WHERE user_id = targetUserId
+    → NO role filtering
+    → Sends to ALL subscriptions for that specific user
+
+  Result: WORKS because it queries by user_id directly
+
+REAL JOB PUSH (FAILS ❌):
+  Code path: Job INSERT → DB trigger → send-push edge function
+  Payload: {
+    broadcast: true,
+    roles: ["admin", "dispatcher"],
+    excludedUserId: null,  // job creator ID
+    title: "New Job Added",
+    body: "Job #... - Customer Name",
+    jobId: "..."
+  }
+
+  Edge function logic:
+    → if (broadcast && roles) join profiles table
+    → SELECT id FROM profiles WHERE role IN ('admin', 'dispatcher')
+    → Result: [mami_id, solomon_id]
+    → Then query: push_subscriptions WHERE user_id IN (mami_id, solomon_id)
+    → REQUIRES profile with admin/dispatcher role
+
+  Result: FAILS because iPhone subscription user_id not in profiles table
+
+═══════════════════════════════════════════════════════════════════════════════
+ROOT CAUSE
+═══════════════════════════════════════════════════════════════════════════════
+
+ORPHANED PUSH SUBSCRIPTION:
+  user_id:     8b2d9042-501e-408d-b260-64e0b08a555f
+  endpoint:    https://fcm.googleapis.com/fcm/send/cq1YQE7vOCg:APA91b...
+  created_at:  2026-04-23 00:54:08.705922+00
+
+  ❌ This user_id does NOT exist in auth.users table
+  ❌ This user_id does NOT exist in profiles table
+  ❌ Cannot receive job notifications (no profile = no role = filtered out)
+
+VALID USERS IN DATABASE:
+  gere:     a4418815-3887-40b6-9bbe-a1365d9a4312  (tech)      - g@gmail.com
+  mami:     83cd5cbb-b983-449a-af54-a69cf516db55  (dispatcher) - mami@gmail.com
+  solomon:  a306db51-20e0-40c5-9258-1634d4c9079b  (admin)     - service@onpointprodoors.com
+
+═══════════════════════════════════════════════════════════════════════════════
+WHY MANUAL TEST WORKED BUT REAL JOB DIDN'T
+═══════════════════════════════════════════════════════════════════════════════
+
+When you clicked "Test Push" in debug panel:
+  1. It sent targetUserId: solomon's real ID (a306db51...)
+  2. Edge function queried: push_subscriptions WHERE user_id = 'a306db51...'
+  3. But there's NO subscription for solomon! Only for orphaned ID 8b2d9042...
+
+Wait... if test push worked, that means:
+  → Either test push was sent to a DIFFERENT subscription (PC?)
+  → OR the user_id in the test was 8b2d9042... not solomon
+
+Need to verify: Which user_id was used in the successful manual test push?
+
+═══════════════════════════════════════════════════════════════════════════════
+THE FIX
+═══════════════════════════════════════════════════════════════════════════════
+
+STEP 1: DELETE ORPHANED SUBSCRIPTION ✅ DONE
+  DELETE FROM push_subscriptions WHERE user_id = '8b2d9042-501e-408d-b260-64e0b08a555f';
+
+STEP 2: IDENTIFY CORRECT USER ON IPHONE
+  On iPhone PWA, check debug panel or console for:
+    - What Auth.getUser() returns
+    - What user_id is being used
+
+  Expected result:
+    → Should be one of: gere (a4418815...), mami (83cd5cbb...), or solomon (a306db51...)
+    → NOT the orphaned ID 8b2d9042...
+
+STEP 3: RECREATE SUBSCRIPTION WITH CORRECT USER_ID
+  On iPhone:
+    1. Open PWA app
+    2. Click "Enable Notifications"
+    3. Grant permission
+    4. New subscription will be created with CORRECT user_id
+
+STEP 4: VERIFY SUBSCRIPTION HAS CORRECT USER_ID
+  Query: SELECT user_id, endpoint FROM push_subscriptions;
+
+  Expected:
+    → user_id should match one of the valid users (gere/mami/solomon)
+    → user_id should exist in profiles table
+    → That profile should have role = 'admin' or 'dispatcher'
+
+STEP 5: TEST END-TO-END
+  1. Create job from PC
+  2. iPhone should receive push notification (both foreground toast + background system push)
+
+═══════════════════════════════════════════════════════════════════════════════
+QUESTIONS TO ANSWER
+═══════════════════════════════════════════════════════════════════════════════
+
+Q1: Which user are you logged in as on iPhone?
+    Options: gere, mami, or solomon
+
+Q2: When you said "manual test push worked", did you:
+    a) Click "Test Push" in debug panel on iPhone?
+    b) Or create a test job that triggered the push?
+
+Q3: Did you ACTUALLY receive the manual test push on iPhone?
+    Or did you see it in logs but not on the device?
+
+═══════════════════════════════════════════════════════════════════════════════
