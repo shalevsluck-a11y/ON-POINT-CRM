@@ -25,29 +25,16 @@ const PushSupabaseClient = window.supabase.createClient(PUSH_SUPABASE_URL, PUSH_
 /**
  * Save push subscription using the real Supabase endpoint
  * This bypasses the custom domain proxy that breaks push subscriptions
+ *
+ * NOTE: RLS is disabled on push_subscriptions table, so no auth needed
  */
 async function savePushSubscriptionDirect(subscriptionData) {
   console.log('[PushClient] Saving subscription via direct Supabase connection');
-
-  // Get session token from main client to authenticate
-  const { data: { session } } = await SupabaseClient.auth.getSession();
-
-  if (!session || !session.access_token) {
-    throw new Error('No session token available for push subscription save');
-  }
-
-  console.log('[PushClient] Using session token from main client');
-
-  // Set the session token on the push client
-  await PushSupabaseClient.auth.setSession({
-    access_token: session.access_token,
-    refresh_token: session.refresh_token,
-  });
-
-  console.log('[PushClient] Session set, upserting to push_subscriptions...');
+  console.log('[PushClient] RLS disabled - using anon key only (no session needed)');
   console.log('[PushClient] Data:', JSON.stringify(subscriptionData, null, 2));
 
   // Save to push_subscriptions via direct connection
+  // RLS is disabled, so anon key is sufficient
   const { data, error } = await PushSupabaseClient
     .from('push_subscriptions')
     .upsert(subscriptionData, {
@@ -57,6 +44,7 @@ async function savePushSubscriptionDirect(subscriptionData) {
 
   if (error) {
     console.error('[PushClient] Failed to save subscription:', error);
+    console.error('[PushClient] Error details:', JSON.stringify(error, null, 2));
     throw error;
   }
 
