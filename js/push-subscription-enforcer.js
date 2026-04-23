@@ -12,6 +12,35 @@ const PushSubscriptionEnforcer = (() => {
   let _lastAttempt = 0;
   const RETRY_INTERVAL = 5000; // 5 seconds between retry attempts
 
+  // DEBUG: Create visible debug overlay for iOS debugging (no dev tools access)
+  let _debugDiv = null;
+  function showDebug(msg, isError = false) {
+    if (!_debugDiv) {
+      _debugDiv = document.createElement('div');
+      _debugDiv.id = 'push-debug-overlay';
+      _debugDiv.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background: ${isError ? '#dc2626' : '#1e293b'};
+        color: white;
+        padding: 12px;
+        font-size: 11px;
+        font-family: monospace;
+        z-index: 999999;
+        max-height: 200px;
+        overflow-y: auto;
+        border-bottom: 2px solid ${isError ? '#ef4444' : '#3b82f6'};
+      `;
+      document.body.prepend(_debugDiv);
+    }
+    const time = new Date().toTimeString().split(' ')[0];
+    _debugDiv.innerHTML += `<div style="color: ${isError ? '#fca5a5' : '#94a3b8'}">[${time}] ${msg}</div>`;
+    _debugDiv.scrollTop = _debugDiv.scrollHeight;
+    console.log('[Push Debug]', msg);
+  }
+
   /**
    * Main enforcement function - runs everywhere, always
    */
@@ -33,6 +62,7 @@ const PushSubscriptionEnforcer = (() => {
     _isEnforcing = true;
 
     try {
+      showDebug('🔔 Starting push subscription check...');
       console.log('[Push Enforcer] ========== STARTING ENFORCEMENT ==========');
 
       // Check if push is supported
@@ -47,6 +77,7 @@ const PushSubscriptionEnforcer = (() => {
       // Check if user is logged in
       const currentUser = Auth && Auth.getUser ? Auth.getUser() : null;
       if (!currentUser) {
+        showDebug('⚠️ No user logged in, skipping');
         console.log('[Push Enforcer] No user logged in, skipping enforcement');
         console.log('[Push Enforcer] Auth available:', !!Auth);
         console.log('[Push Enforcer] Auth.getUser available:', Auth && !!Auth.getUser);
@@ -55,6 +86,8 @@ const PushSubscriptionEnforcer = (() => {
       }
 
       // FIX 2: Log user name and role to verify admin is not being skipped
+      showDebug(`✅ User: ${currentUser.name} (${currentUser.role})`);
+      showDebug(`🆔 User ID: ${currentUser.id}`);
       console.log('[Push Enforcer] Running for:', currentUser.name || currentUser.email, 'role:', currentUser.role, 'id:', currentUser.id);
 
       // Check current permission state
@@ -343,6 +376,7 @@ const PushSubscriptionEnforcer = (() => {
     };
 
     // CRITICAL: Validate UUID format before sending to server
+    showDebug('🔍 Validating user ID format...');
     console.log('[Push Enforcer] Validating user_id format...');
     console.log('[Push Enforcer] user_id type:', typeof data.user_id);
     console.log('[Push Enforcer] user_id value:', data.user_id);
@@ -355,6 +389,8 @@ const PushSubscriptionEnforcer = (() => {
     console.log('[Push Enforcer] Is valid UUID?', isValidUUID);
 
     if (!isValidUUID) {
+      showDebug(`❌ INVALID USER ID: ${data.user_id}`, true);
+      showDebug('Expected UUID format like: 12345678-1234-1234-1234-123456789abc', true);
       console.error('[Push Enforcer] ❌ INVALID USER ID FORMAT');
       console.error('[Push Enforcer] Expected: UUID (e.g., "123e4567-e89b-12d3-a456-426614174000")');
       console.error('[Push Enforcer] Received:', data.user_id);
@@ -365,6 +401,7 @@ const PushSubscriptionEnforcer = (() => {
       throw new Error(`Invalid user_id format: "${data.user_id}" is not a UUID`);
     }
 
+    showDebug('✅ UUID valid - sending to server...');
     console.log('[Push Enforcer] ✅ UUID validation passed');
     console.log('[Push Enforcer] Prepared data for server:', JSON.stringify(data, null, 2));
     console.log('[Push Enforcer] About to call window.savePushSubscriptionDirect...');
@@ -379,11 +416,20 @@ const PushSubscriptionEnforcer = (() => {
 
     try {
       const result = await window.savePushSubscriptionDirect(data);
+      showDebug('✅ SUCCESS! Subscription saved to database');
       console.log('[Push Enforcer] ✅ window.savePushSubscriptionDirect returned successfully');
       console.log('[Push Enforcer] Result:', result);
       console.log('[Push Enforcer] ========== savePushSubscription END (SUCCESS) ==========');
+
+      // Remove debug overlay after 3 seconds on success
+      setTimeout(() => {
+        if (_debugDiv) _debugDiv.remove();
+        _debugDiv = null;
+      }, 3000);
+
       return result;
     } catch (err) {
+      showDebug(`❌ ERROR: ${err.message}`, true);
       console.error('[Push Enforcer] ❌ window.savePushSubscriptionDirect FAILED');
       console.error('[Push Enforcer] Error:', err);
       console.error('[Push Enforcer] Error message:', err.message);
