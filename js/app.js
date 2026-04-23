@@ -149,7 +149,9 @@ const App = (() => {
           // Show in-app notification when app is in foreground
           // iOS suppresses system notifications when PWA is active, so show banner instead
           if (document.visibilityState === 'visible') {
-            showToast(`New Job: ${newJob.customer_name || 'Customer'} - #${newJob.job_id}`, 'info', 5000);
+            console.log('[Foreground Notification] Job:', newJob);
+            console.log('[Foreground Notification] Customer:', newJob.customerName, 'Job ID:', newJob.jobId);
+            showToast(`New Job: ${newJob.customerName || 'Unidentified'} - #${newJob.jobId}`, 'info', 5000);
           }
         }
 

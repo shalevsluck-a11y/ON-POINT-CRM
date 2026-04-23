@@ -1,7 +1,7 @@
 // On Point Pro Doors CRM — Service Worker
 // CACHE_VERSION is stamped by the deploy script on every push so the
 // browser always sees a changed sw.js file and installs the new version.
-const CACHE_VERSION = 'v20260423-fix-api-bypass';
+const CACHE_VERSION = 'v20260423-push-debug-v2';
 const CACHE_NAME = `onpoint-${CACHE_VERSION}`;
 
 // Inline offline HTML — guaranteed fallback even with empty cache
@@ -150,25 +150,42 @@ self.addEventListener('fetch', (event) => {
 
 // ── PUSH NOTIFICATION ─────────────────────────────────────
 self.addEventListener('push', (event) => {
-  console.log('[SW Push] Event received, raw data:', event.data);
+  const timestamp = new Date().toISOString();
+  console.log('[SW Push] ========== PUSH EVENT RECEIVED ==========');
+  console.log('[SW Push] Timestamp:', timestamp);
+  console.log('[SW Push] Event:', event);
+  console.log('[SW Push] Raw data:', event.data);
+  console.log('[SW Push] Has data:', !!event.data);
 
   let data = { title: 'On Point CRM', body: 'You have a new notification.' };
+  let parseError = null;
+
   try {
-    data = event.data ? event.data.json() : data;
-    console.log('[SW Push] Parsed JSON data:', data);
+    if (event.data) {
+      data = event.data.json();
+      console.log('[SW Push] ✅ Parsed JSON data:', data);
+    } else {
+      console.warn('[SW Push] ⚠️ No data in push event, using defaults');
+    }
   } catch (_e) {
-    console.warn('[SW Push] Failed to parse JSON, using text:', _e.message);
+    parseError = _e.message;
+    console.error('[SW Push] ❌ Failed to parse JSON:', _e.message);
     data.body = event.data ? event.data.text() : data.body;
-    console.log('[SW Push] Text data:', data.body);
+    console.log('[SW Push] Fallback text data:', data.body);
   }
 
-  console.log('[SW Push] Showing notification with:', { title: data.title, body: data.body, jobId: data.jobId });
+  console.log('[SW Push] Final notification data:', { title: data.title, body: data.body, jobId: data.jobId });
 
   // Notify all clients about the push
   event.waitUntil(
     (async () => {
+      const execLog = [];
+
       try {
+        execLog.push({ step: 'START', time: new Date().toISOString() });
+
         // Show notification
+        console.log('[SW Push] Calling showNotification...');
         await self.registration.showNotification(data.title || 'On Point CRM', {
           body:    data.body || '',
           icon:    '/assets/icon.svg',
@@ -181,20 +198,47 @@ self.addEventListener('push', (event) => {
           actions: [],
         });
 
-        console.log('[SW Push] ✅ Notification shown successfully');
+        execLog.push({ step: 'NOTIFICATION_SHOWN', time: new Date().toISOString() });
+        console.log('[SW Push] ✅ showNotification completed successfully');
 
-        // Notify all clients for debug panel
+        // Notify all clients for debug panel and logging
         const allClients = await clients.matchAll({ includeUncontrolled: true, type: 'window' });
-        console.log('[SW Push] Notifying', allClients.length, 'clients');
+        execLog.push({ step: 'CLIENTS_FOUND', count: allClients.length, time: new Date().toISOString() });
+        console.log('[SW Push] Found', allClients.length, 'clients to notify');
+
         allClients.forEach(client => {
           client.postMessage({
             type: 'PUSH_RECEIVED',
             data: data,
-            timestamp: new Date().toISOString()
+            timestamp: timestamp,
+            parseError: parseError,
+            execLog: execLog,
+            success: true
           });
         });
+
+        console.log('[SW Push] ========== PUSH EVENT COMPLETE ==========');
       } catch (error) {
-        console.error('[SW Push] ❌ Failed to show notification:', error);
+        execLog.push({ step: 'ERROR', error: error.message, time: new Date().toISOString() });
+        console.error('[SW Push] ❌ Exception in push handler:', error);
+        console.error('[SW Push] Error name:', error.name);
+        console.error('[SW Push] Error message:', error.message);
+        console.error('[SW Push] Error stack:', error.stack);
+
+        // Try to notify clients about the error
+        try {
+          const allClients = await clients.matchAll({ includeUncontrolled: true, type: 'window' });
+          allClients.forEach(client => {
+            client.postMessage({
+              type: 'PUSH_ERROR',
+              error: error.message,
+              timestamp: timestamp,
+              execLog: execLog
+            });
+          });
+        } catch (e) {
+          console.error('[SW Push] Failed to notify clients about error:', e);
+        }
       }
     })()
   );
