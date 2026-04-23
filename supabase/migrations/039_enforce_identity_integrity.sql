@@ -40,7 +40,7 @@ BEGIN
   INSERT INTO profiles (id, name, role, created_at, updated_at)
   VALUES (
     NEW.id,
-    COALESCE(NEW.raw_user_metadata->>'name', NEW.email),
+    COALESCE(NEW.raw_user_meta_data->>'name', NEW.email),
     'tech', -- Default role, can be changed by admin
     NOW(),
     NOW()
