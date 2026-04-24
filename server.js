@@ -655,6 +655,116 @@ app.post('/api/test-push', async (req, res) => {
   }
 });
 
+// Diagnostic endpoint to check trigger status
+app.get('/api/diagnostic/trigger-status', async (req, res) => {
+  console.log('[DIAGNOSTIC] Checking trigger status...');
+
+  try {
+    const diagnostics = {
+      timestamp: new Date().toISOString(),
+      checks: {}
+    };
+
+    // Check 1: pg_net extension
+    const { data: pgNetData, error: pgNetError } = await supabaseAdmin.rpc('pg_extension_check', {});
+
+    if (pgNetError) {
+      // Extension check function doesn't exist, create inline SQL check
+      const { data: extData, error: extError } = await supabaseAdmin
+        .from('pg_extension')
+        .select('extname, extversion')
+        .eq('extname', 'pg_net')
+        .maybeSingle();
+
+      diagnostics.checks.pg_net = {
+        exists: !!extData && !extError,
+        version: extData?.extversion || null,
+        error: extError?.message || null
+      };
+    } else {
+      diagnostics.checks.pg_net = pgNetData;
+    }
+
+    // Check 2: Trigger exists (query via raw SQL if possible)
+    try {
+      const { data: triggerData, error: triggerError } = await supabaseAdmin.rpc('check_trigger_status', {});
+
+      diagnostics.checks.trigger = {
+        exists: !!triggerData && !triggerError,
+        data: triggerData,
+        error: triggerError?.message || null
+      };
+    } catch (e) {
+      diagnostics.checks.trigger = {
+        exists: 'unknown',
+        error: 'Cannot query system catalogs via RPC - manual SQL needed'
+      };
+    }
+
+    // Check 3: App config
+    const { data: configData, error: configError } = await supabaseAdmin
+      .from('app_config')
+      .select('key, value')
+      .in('key', ['supabase_url', 'service_role_key']);
+
+    diagnostics.checks.app_config = {
+      exists: !!configData && !configError,
+      supabase_url: configData?.find(c => c.key === 'supabase_url')?.value || null,
+      has_service_role_key: !!configData?.find(c => c.key === 'service_role_key')?.value,
+      error: configError?.message || null
+    };
+
+    // Check 4: Recent test jobs
+    const { data: jobsData, error: jobsError } = await supabaseAdmin
+      .from('jobs')
+      .select('job_id, customer_name, created_by, created_at')
+      .or('job_id.like.moc%,job_id.like.DIAGNOSTIC_%')
+      .order('created_at', { ascending: false })
+      .limit(5);
+
+    diagnostics.checks.test_jobs = {
+      count: jobsData?.length || 0,
+      jobs: jobsData || [],
+      error: jobsError?.message || null
+    };
+
+    // Check 5: Test trigger manually
+    console.log('[DIAGNOSTIC] Attempting manual trigger test...');
+    const testJobId = `DIAGNOSTIC_${Date.now()}`;
+
+    const { data: insertData, error: insertError } = await supabaseAdmin
+      .from('jobs')
+      .insert({
+        job_id: testJobId,
+        customer_name: 'Trigger Diagnostic Test',
+        created_by: '8b2d9042-501e-408d-b260-64e0b08a555f', // dispatcher "de"
+        status: 'new',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    diagnostics.checks.manual_trigger_test = {
+      job_created: !!insertData && !insertError,
+      job_id: testJobId,
+      job_data: insertData,
+      error: insertError?.message || null,
+      note: 'Check edge function logs for invocation within 5 seconds'
+    };
+
+    console.log('[DIAGNOSTIC] ✅ Diagnostics complete:', JSON.stringify(diagnostics, null, 2));
+    res.json(diagnostics);
+
+  } catch (error) {
+    console.error('[DIAGNOSTIC] ❌ Exception:', error.message);
+    res.status(500).json({
+      error: error.message,
+      stack: error.stack
+    });
+  }
+});
+
 // SPA fallback — all routes serve index.html
 app.get('*', (req, res) => {
   res.set('Cache-Control', 'no-cache, must-revalidate');
