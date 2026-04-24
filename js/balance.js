@@ -609,9 +609,4 @@ const Balance = (function() {
   };
 })();
 
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', Balance.init);
-} else {
-  Balance.init();
-}
+// Do NOT auto-initialize — app.js will call Balance.init() after auth is ready

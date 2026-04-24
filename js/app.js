@@ -123,6 +123,11 @@ const App = (() => {
     // Start background overdue-job checker (admin/dispatcher only)
     Reminders.init();
 
+    // Initialize Balance reports (admin/dispatcher only)
+    if (window.Balance) {
+      Balance.init();
+    }
+
     // Initialize live data enhancements
     if (window.RealtimeManager) {
       RealtimeManager.init();
