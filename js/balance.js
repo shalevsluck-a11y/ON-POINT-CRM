@@ -13,6 +13,9 @@ const Balance = (function() {
 
     // Populate tech selector
     populateTechSelector();
+
+    // Populate lead source selector (admin only)
+    populateLeadSourceSelector();
   }
 
   async function populateTechSelector() {
@@ -32,6 +35,36 @@ const Balance = (function() {
       });
     } catch (err) {
       console.error('[Balance] Failed to load techs:', err);
+    }
+  }
+
+  function populateLeadSourceSelector() {
+    try {
+      // Only show for admins
+      const filterDiv = document.getElementById('balance-source-filter');
+      if (!filterDiv) return;
+
+      if (!Auth.isAdmin()) {
+        filterDiv.style.display = 'none';
+        return;
+      }
+
+      // Get lead sources from settings
+      const settings = DB.getSettings();
+      const leadSources = settings.leadSources || [];
+
+      const select = document.getElementById('balance-source-select');
+      if (!select) return;
+
+      select.innerHTML = '<option value="">All Sources</option>';
+      leadSources.forEach(source => {
+        const option = document.createElement('option');
+        option.value = source.name;
+        option.textContent = source.name;
+        select.appendChild(option);
+      });
+    } catch (err) {
+      console.error('[Balance] Failed to load lead sources:', err);
     }
   }
 
@@ -64,6 +97,7 @@ const Balance = (function() {
     try {
       const period = document.getElementById('balance-period').value;
       const status = document.getElementById('balance-status').value;
+      const sourceFilter = Auth.isAdmin() ? document.getElementById('balance-source-select')?.value : null;
       const techId = currentReportType === 'tech'
         ? document.getElementById('balance-tech-select').value
         : null;
@@ -73,7 +107,7 @@ const Balance = (function() {
 
       // Fetch jobs
       const allJobs = DB.getJobs();
-      let jobs = filterJobs(allJobs, dateRange, status);
+      let jobs = filterJobs(allJobs, dateRange, status, sourceFilter);
 
       // Generate report based on type
       let reportHTML = '';
@@ -88,6 +122,7 @@ const Balance = (function() {
         type: currentReportType,
         period,
         status,
+        sourceFilter,
         techId,
         jobs,
         dateRange
@@ -142,7 +177,7 @@ const Balance = (function() {
     }
   }
 
-  function filterJobs(jobs, dateRange, status) {
+  function filterJobs(jobs, dateRange, status, sourceFilter = null) {
     // Get current user to check for dispatcher lead source filtering
     const currentUser = Auth.getUser();
     const assignedLeadSource = currentUser?.assignedLeadSource;
@@ -150,6 +185,11 @@ const Balance = (function() {
     return jobs.filter(job => {
       // Dispatcher filter: only show jobs from their assigned lead source
       if (assignedLeadSource && job.source !== assignedLeadSource) {
+        return false;
+      }
+
+      // Admin filter: optional lead source selection
+      if (sourceFilter && job.source !== sourceFilter) {
         return false;
       }
 
@@ -175,18 +215,20 @@ const Balance = (function() {
     const periodLabel = dateRange.label;
     const statusLabel = status === 'all' ? 'All Jobs' : status === 'paid' ? 'Paid Only' : 'Unpaid Only';
 
-    // Show lead source for dispatchers
+    // Show lead source for dispatchers or admin-selected filter
     const currentUser = Auth.getUser();
     const assignedLeadSource = currentUser?.assignedLeadSource;
+    const sourceFilter = currentReportData?.sourceFilter;
+    const displaySource = assignedLeadSource || sourceFilter;
 
     let html = `
       <div class="report-header">
         <h2>Overall Balance Report</h2>
         <div class="report-meta">
-          ${assignedLeadSource ? `
+          ${displaySource ? `
             <div class="report-meta-item">
               <span class="report-meta-label">Lead Source:</span>
-              <span class="report-meta-value">${assignedLeadSource}</span>
+              <span class="report-meta-value">${displaySource}</span>
             </div>
           ` : ''}
           <div class="report-meta-item">
@@ -277,9 +319,11 @@ const Balance = (function() {
     const periodLabel = dateRange.label;
     const statusLabel = status === 'all' ? 'All Jobs' : status === 'paid' ? 'Paid Only' : 'Unpaid Only';
 
-    // Show lead source for dispatchers
+    // Show lead source for dispatchers or admin-selected filter
     const currentUser = Auth.getUser();
     const assignedLeadSource = currentUser?.assignedLeadSource;
+    const sourceFilter = currentReportData?.sourceFilter;
+    const displaySource = assignedLeadSource || sourceFilter;
 
     // Calculate per-job averages
     const avgJobValue = stats.totalJobs > 0 ? stats.totalCollected / stats.totalJobs : 0;
@@ -289,10 +333,10 @@ const Balance = (function() {
       <div class="report-header">
         <h2>Tech Balance Report</h2>
         <div class="report-meta">
-          ${assignedLeadSource ? `
+          ${displaySource ? `
             <div class="report-meta-item">
               <span class="report-meta-label">Lead Source:</span>
-              <span class="report-meta-value">${assignedLeadSource}</span>
+              <span class="report-meta-value">${displaySource}</span>
             </div>
           ` : ''}
           <div class="report-meta-item">
@@ -456,21 +500,22 @@ const Balance = (function() {
   function generatePlainText() {
     if (!currentReportData) return '';
 
-    const { type, period, status, jobs, dateRange } = currentReportData;
+    const { type, period, status, sourceFilter, jobs, dateRange } = currentReportData;
     const stats = calculateStats(jobs);
     const periodLabel = dateRange.label;
 
     // Get current user for lead source
     const currentUser = Auth.getUser();
     const assignedLeadSource = currentUser?.assignedLeadSource;
+    const displaySource = assignedLeadSource || sourceFilter;
 
     let text = '';
 
     if (type === 'overall') {
       text = `📊 OVERALL BALANCE REPORT\n`;
       text += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-      if (assignedLeadSource) {
-        text += `Lead Source: ${assignedLeadSource}\n`;
+      if (displaySource) {
+        text += `Lead Source: ${displaySource}\n`;
       }
       text += `Period: ${periodLabel}\n`;
       text += `Date: ${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}\n`;
@@ -504,8 +549,8 @@ const Balance = (function() {
 
       text = `👤 TECH BALANCE REPORT\n`;
       text += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-      if (assignedLeadSource) {
-        text += `Lead Source: ${assignedLeadSource}\n`;
+      if (displaySource) {
+        text += `Lead Source: ${displaySource}\n`;
       }
       text += `Tech: ${techName}\n`;
       text += `Period: ${periodLabel}\n`;
