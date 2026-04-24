@@ -4554,3 +4554,131 @@ window.addEventListener('load', () => {
     }
   }, 6000);
 });
+
+// ============================================================
+// IDENTITY DEBUG UI
+// ============================================================
+
+async function refreshIdentityDebug() {
+  const output = document.getElementById('identity-debug-output');
+  if (!output) return;
+
+  try {
+    // Get all identity sources
+    const currentUser = Auth.getUser();
+    const { data: { session } } = await SupabaseClient.auth.getSession();
+    const { data: { user: authUser } } = await SupabaseClient.auth.getUser();
+
+    let profileData = null;
+    if (session?.user?.id) {
+      const { data } = await SupabaseClient
+        .from('profiles')
+        .select('*')
+        .eq('id', session.user.id)
+        .single();
+      profileData = data;
+    }
+
+    // Check for mismatches
+    const sessionId = session?.user?.id;
+    const authId = authUser?.id;
+    const currentId = currentUser?.id;
+    const profileId = profileData?.id;
+
+    const allMatch =
+      sessionId === authId &&
+      authId === currentId &&
+      currentId === profileId;
+
+    const html = `
+<div style="line-height: 1.6;">
+  <div style="margin-bottom: 10px; font-weight: bold; color: ${allMatch ? '#0f0' : '#f00'};">
+    ${allMatch ? '✅ ALL IDs MATCH' : '❌ IDENTITY MISMATCH DETECTED'}
+  </div>
+
+  <div style="margin-bottom: 15px;">
+    <div style="color: #0ff; margin-bottom: 5px;">📱 Session (localStorage):</div>
+    <div>  user_id: ${sessionId || 'null'}</div>
+    <div>  email: ${session?.user?.email || 'null'}</div>
+    <div>  created: ${session?.user?.created_at || 'null'}</div>
+  </div>
+
+  <div style="margin-bottom: 15px;">
+    <div style="color: #0ff; margin-bottom: 5px;">🔐 Auth.getUser() (Supabase):</div>
+    <div>  user_id: ${authId || 'null'}</div>
+    <div>  email: ${authUser?.email || 'null'}</div>
+    <div>  created: ${authUser?.created_at || 'null'}</div>
+  </div>
+
+  <div style="margin-bottom: 15px;">
+    <div style="color: #0ff; margin-bottom: 5px;">👤 App currentUser:</div>
+    <div>  user_id: ${currentId || 'null'}</div>
+    <div>  name: ${currentUser?.name || 'null'}</div>
+    <div>  role: ${currentUser?.role || 'null'}</div>
+    <div>  email: ${currentUser?.email || 'null'}</div>
+  </div>
+
+  <div style="margin-bottom: 15px;">
+    <div style="color: #0ff; margin-bottom: 5px;">📋 Database Profile:</div>
+    <div>  profile_id: ${profileId || 'null'}</div>
+    <div>  name: ${profileData?.name || 'null'}</div>
+    <div>  role: ${profileData?.role || 'null'}</div>
+    <div>  created: ${profileData?.created_at || 'null'}</div>
+  </div>
+
+  <div style="margin-top: 15px; padding: 10px; background: ${allMatch ? '#064e3b' : '#450a0a'}; border-radius: 4px;">
+    ${allMatch
+      ? '✅ Identity is consistent across all sources'
+      : '❌ WARNING: Stale session detected. Use "Clear All & Force Logout" button.'}
+  </div>
+</div>
+`;
+
+    output.innerHTML = html;
+  } catch (error) {
+    output.innerHTML = `<div style="color: #f00;">Error loading identity data: ${error.message}</div>`;
+  }
+}
+
+async function clearAllSessions() {
+  if (!confirm('This will clear all cached data and force logout. Continue?')) {
+    return;
+  }
+
+  try {
+    // Clear Supabase session
+    await SupabaseClient.auth.signOut();
+
+    // Clear all localStorage
+    localStorage.clear();
+
+    // Clear all sessionStorage
+    sessionStorage.clear();
+
+    // Force reload
+    window.location.reload();
+  } catch (error) {
+    alert('Error clearing sessions: ' + error.message);
+  }
+}
+
+// Make functions globally available
+window.refreshIdentityDebug = refreshIdentityDebug;
+window.clearAllSessions = clearAllSessions;
+
+// Auto-refresh identity debug when settings view is shown
+const settingsObserver = new MutationObserver(() => {
+  const settingsView = document.getElementById('view-settings');
+  if (settingsView && !settingsView.classList.contains('hidden')) {
+    refreshIdentityDebug();
+  }
+});
+
+// Observe body for class changes on views
+if (document.body) {
+  settingsObserver.observe(document.body, {
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['class']
+  });
+}

@@ -249,6 +249,8 @@ const Auth = (() => {
   // ──────────────────────────────────────────────────────────
 
   async function _loadProfile(authUser) {
+    console.log('[Auth._loadProfile] Loading profile for user:', authUser.id, authUser.email);
+
     const { data, error } = await SupabaseClient
       .from('profiles')
       .select('*')
@@ -256,18 +258,48 @@ const Auth = (() => {
       .single();
 
     if (error || !data) {
-      // Profile not yet created (race condition) — create it
-      const { data: newProfile } = await SupabaseClient
-        .from('profiles')
-        .upsert({
-          id:   authUser.id,
-          name: authUser.user_metadata?.name || authUser.email || '',
-          role: 'tech',
-        })
-        .select()
-        .single();
-      _currentUser = _buildUser(authUser, newProfile);
+      console.warn('[Auth._loadProfile] Profile not found for user:', authUser.id);
+      console.warn('[Auth._loadProfile] Error:', error?.message || 'No data returned');
+
+      // ✅ CRITICAL: Validate this is not a stale session for deleted user
+      // Try to verify user exists in auth.users via admin API
+      try {
+        const { data: authCheck, error: authError } = await SupabaseClient.auth.getUser();
+
+        if (authError || !authCheck.user) {
+          console.error('[Auth._loadProfile] ❌ STALE SESSION DETECTED - user does not exist in auth.users');
+          console.error('[Auth._loadProfile] Forcing logout to clear stale session');
+          await logout();
+          throw new Error('Session user does not exist - please log in again');
+        }
+
+        console.log('[Auth._loadProfile] User exists in auth.users, attempting to create profile');
+
+        // Profile not yet created (race condition) — create it
+        const { data: newProfile, error: upsertError } = await SupabaseClient
+          .from('profiles')
+          .upsert({
+            id:   authUser.id,
+            name: authUser.user_metadata?.name || authUser.email || '',
+            role: 'tech',
+          })
+          .select()
+          .single();
+
+        if (upsertError) {
+          console.error('[Auth._loadProfile] Failed to create profile:', upsertError);
+          await logout();
+          throw new Error('Failed to create profile - please contact admin');
+        }
+
+        _currentUser = _buildUser(authUser, newProfile);
+      } catch (e) {
+        console.error('[Auth._loadProfile] Critical error:', e);
+        _currentUser = null;
+        throw e;
+      }
     } else {
+      console.log('[Auth._loadProfile] ✓ Profile loaded:', data.name, data.role);
       _currentUser = _buildUser(authUser, data);
     }
   }
