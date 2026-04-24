@@ -77,9 +77,11 @@ const RemoteDebug = {
   async sendLog(logEntry) {
     try {
       const authToken = await this.getAuthToken();
+      const anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODI5Mjg5LCJleHAiOjE5MzQ1MDkyODl9.E8NSAZFNAMAUvWpLLR3xBVmrwnTDwawMYIMy9V_pWyU';
 
-      // If no auth token (not authenticated), skip silently - don't spam 401 errors
-      if (!authToken) {
+      // For service_worker events, allow sending without auth (using anon key only)
+      // For other events, require auth token
+      if (!authToken && logEntry.source !== 'service_worker') {
         // Queue it for later when auth is ready
         return false;
       }
@@ -89,8 +91,8 @@ const RemoteDebug = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODI5Mjg5LCJleHAiOjE5MzQ1MDkyODl9.E8NSAZFNAMAUvWpLLR3xBVmrwnTDwawMYIMy9V_pWyU',
-          'Authorization': 'Bearer ' + authToken
+          'apikey': anonKey,
+          'Authorization': authToken ? ('Bearer ' + authToken) : ('Bearer ' + anonKey)
         },
         body: JSON.stringify(logEntry)
       });
