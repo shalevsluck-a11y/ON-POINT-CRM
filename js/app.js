@@ -4666,11 +4666,117 @@ async function clearAllSessions() {
 window.refreshIdentityDebug = refreshIdentityDebug;
 window.clearAllSessions = clearAllSessions;
 
-// Auto-refresh identity debug when settings view is shown
+// ============================================================
+// PUSH EVENT LOGS (DURABLE)
+// ============================================================
+
+async function refreshPushLogs() {
+  const output = document.getElementById('push-logs-output');
+  if (!output) return;
+
+  try {
+    const db = await new Promise((resolve, reject) => {
+      const request = indexedDB.open('OnPointCRM_PushLogs', 1);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
+      request.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('push_events')) {
+          const store = db.createObjectStore('push_events', { keyPath: 'id', autoIncrement: true });
+          store.createIndex('timestamp', 'timestamp', { unique: false });
+        }
+      };
+    });
+
+    const tx = db.transaction(['push_events'], 'readonly');
+    const store = tx.objectStore('push_events');
+    const logs = await new Promise((resolve, reject) => {
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+
+    db.close();
+
+    if (logs.length === 0) {
+      output.innerHTML = '<div style="color: #888;">No push events logged yet. Background push events will appear here.</div>';
+      return;
+    }
+
+    // Sort by timestamp descending (newest first)
+    logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    const html = logs.slice(0, 50).map((log, index) => {
+      const color = log.event === 'PUSH_ERROR' ? '#f00' :
+                    log.event === 'NOTIFICATION_SHOWN' ? '#0f0' :
+                    '#0ff';
+
+      return `
+<div style="margin-bottom: 15px; padding: 10px; background: rgba(255,255,255,0.05); border-left: 3px solid ${color};">
+  <div style="color: ${color}; font-weight: bold;">${index + 1}. ${log.event}</div>
+  <div>Timestamp: ${log.timestamp}</div>
+  ${log.data ? `<div>Title: ${log.data.title || 'N/A'}</div>` : ''}
+  ${log.data ? `<div>Body: ${log.data.body || 'N/A'}</div>` : ''}
+  ${log.data ? `<div>Job ID: ${log.data.jobId || 'N/A'}</div>` : ''}
+  ${log.title ? `<div>Title: ${log.title}</div>` : ''}
+  ${log.body ? `<div>Body: ${log.body}</div>` : ''}
+  ${log.jobId ? `<div>Job ID: ${log.jobId}</div>` : ''}
+  ${log.parseError ? `<div style="color: #ff0;">Parse Error: ${log.parseError}</div>` : ''}
+  ${log.error ? `<div style="color: #f00;">Error: ${log.error.message}</div>` : ''}
+  ${log.error && log.error.stack ? `<div style="color: #f00; font-size: 10px; overflow-x: auto;">Stack: ${log.error.stack}</div>` : ''}
+</div>
+      `.trim();
+    }).join('');
+
+    output.innerHTML = `
+<div style="margin-bottom: 10px; color: #0f0;">
+  Total Events: ${logs.length} (showing last 50)
+</div>
+${html}
+    `;
+
+  } catch (error) {
+    output.innerHTML = `<div style="color: #f00;">Error loading push logs: ${error.message}</div>`;
+  }
+}
+
+async function clearPushLogs() {
+  if (!confirm('Clear all push event logs?')) return;
+
+  try {
+    const db = await new Promise((resolve, reject) => {
+      const request = indexedDB.open('OnPointCRM_PushLogs', 1);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
+    });
+
+    const tx = db.transaction(['push_events'], 'readwrite');
+    const store = tx.objectStore('push_events');
+    store.clear();
+
+    await new Promise((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+
+    db.close();
+
+    alert('Push logs cleared');
+    refreshPushLogs();
+  } catch (error) {
+    alert('Error clearing logs: ' + error.message);
+  }
+}
+
+window.refreshPushLogs = refreshPushLogs;
+window.clearPushLogs = clearPushLogs;
+
+// Auto-refresh identity debug and push logs when settings view is shown
 const settingsObserver = new MutationObserver(() => {
   const settingsView = document.getElementById('view-settings');
   if (settingsView && !settingsView.classList.contains('hidden')) {
     refreshIdentityDebug();
+    refreshPushLogs();
   }
 });
 
