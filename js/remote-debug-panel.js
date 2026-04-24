@@ -31,6 +31,14 @@ const RemoteDebugPanel = {
     const toggleBtn = document.getElementById('debug-toggle-btn');
     if (toggleBtn) toggleBtn.classList.remove('hidden');
 
+    // Show panel by default for admins
+    const panel = document.getElementById('remote-debug-panel');
+    if (panel) {
+      panel.classList.remove('hidden');
+      // Push content down to avoid overlap
+      document.body.style.paddingTop = '40vh';
+    }
+
     // Set up event filters
     document.getElementById('debug-filter-source')?.addEventListener('change', () => this.render());
     document.getElementById('debug-filter-type')?.addEventListener('change', () => this.render());
@@ -213,7 +221,9 @@ const RemoteDebugPanel = {
   toggle() {
     const panel = document.getElementById('remote-debug-panel');
     if (panel) {
-      panel.classList.toggle('hidden');
+      const isHidden = panel.classList.toggle('hidden');
+      // Adjust body padding to prevent overlap
+      document.body.style.paddingTop = isHidden ? '0' : '40vh';
     }
   },
 
