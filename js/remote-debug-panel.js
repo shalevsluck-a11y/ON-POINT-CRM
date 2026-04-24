@@ -18,10 +18,10 @@ const RemoteDebugPanel = {
       .eq('id', user.id)
       .single();
 
-    this.isAdmin = profile?.role === 'admin';
+    this.isAdmin = profile?.role === 'admin' || profile?.role === 'dispatcher';
 
     if (!this.isAdmin) {
-      // Hide debug panel for non-admins
+      // Hide debug panel for techs only
       document.getElementById('remote-debug-panel')?.remove();
       document.getElementById('debug-toggle-btn')?.remove();
       return;

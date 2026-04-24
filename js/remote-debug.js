@@ -97,10 +97,21 @@ const RemoteDebug = {
   // Get current auth token
   async getAuthToken() {
     try {
-      if (typeof window !== 'undefined' && window.supabaseClient) {
-        const { data } = await window.supabaseClient.auth.getSession();
-        return data?.session?.access_token || window.SUPABASE_ANON;
+      // Wait for supabaseClient to be available
+      let retries = 0;
+      while (!window.supabaseClient && retries < 10) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        retries++;
       }
+
+      if (window.supabaseClient) {
+        const { data } = await window.supabaseClient.auth.getSession();
+        if (data?.session?.access_token) {
+          return data.session.access_token;
+        }
+      }
+
+      // Fallback to anon key if no session
       return window.SUPABASE_ANON || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5tbXBlbWpjbm5jamZwb295dHB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2ODk3NzIsImV4cCI6MjA5MjI2NTc3Mn0.h_81EX9KbJHkIwqWz5c0LPwDRUQs8bOKrvC_j6MJYBk';
     } catch (e) {
       return window.SUPABASE_ANON || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5tbXBlbWpjbm5jamZwb295dHB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2ODk3NzIsImV4cCI6MjA5MjI2NTc3Mn0.h_81EX9KbJHkIwqWz5c0LPwDRUQs8bOKrvC_j6MJYBk';
