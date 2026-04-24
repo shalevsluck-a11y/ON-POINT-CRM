@@ -1,7 +1,7 @@
 // On Point Pro Doors CRM — Service Worker
 // CACHE_VERSION is stamped by the deploy script on every push so the
 // browser always sees a changed sw.js file and installs the new version.
-const CACHE_VERSION = 'v20260423-identity-fix';
+const CACHE_VERSION = 'v20260424-push-logs';
 const CACHE_NAME = `onpoint-${CACHE_VERSION}`;
 
 // Inline offline HTML — guaranteed fallback even with empty cache
@@ -148,6 +148,37 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+// ── DURABLE PUSH EVENT LOGGING (IndexedDB) ────────────────
+async function logPushEvent(logEntry) {
+  try {
+    const db = await new Promise((resolve, reject) => {
+      const request = indexedDB.open('OnPointCRM_PushLogs', 1);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
+      request.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('push_events')) {
+          const store = db.createObjectStore('push_events', { keyPath: 'id', autoIncrement: true });
+          store.createIndex('timestamp', 'timestamp', { unique: false });
+        }
+      };
+    });
+
+    const tx = db.transaction(['push_events'], 'readwrite');
+    const store = tx.objectStore('push_events');
+    store.add(logEntry);
+
+    await new Promise((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+
+    db.close();
+  } catch (err) {
+    console.error('[SW Push] Failed to persist log to IndexedDB:', err);
+  }
+}
+
 // ── PUSH NOTIFICATION ─────────────────────────────────────
 self.addEventListener('push', (event) => {
   const timestamp = new Date().toISOString();
@@ -184,6 +215,15 @@ self.addEventListener('push', (event) => {
       try {
         execLog.push({ step: 'START', time: new Date().toISOString() });
 
+        // ✅ DURABLE LOG: Push event received
+        await logPushEvent({
+          timestamp: timestamp,
+          event: 'PUSH_RECEIVED',
+          data: data,
+          parseError: parseError,
+          step: 'START'
+        });
+
         // Show notification
         console.log('[SW Push] Calling showNotification...');
         await self.registration.showNotification(data.title || 'On Point CRM', {
@@ -200,6 +240,15 @@ self.addEventListener('push', (event) => {
 
         execLog.push({ step: 'NOTIFICATION_SHOWN', time: new Date().toISOString() });
         console.log('[SW Push] ✅ showNotification completed successfully');
+
+        // ✅ DURABLE LOG: Notification shown
+        await logPushEvent({
+          timestamp: new Date().toISOString(),
+          event: 'NOTIFICATION_SHOWN',
+          title: data.title,
+          body: data.body,
+          jobId: data.jobId
+        });
 
         // Notify all clients for debug panel and logging
         const allClients = await clients.matchAll({ includeUncontrolled: true, type: 'window' });
@@ -223,6 +272,19 @@ self.addEventListener('push', (event) => {
         console.error('[SW Push] ❌ Exception in push handler:', error);
         console.error('[SW Push] Error name:', error.name);
         console.error('[SW Push] Error message:', error.message);
+
+        // ✅ DURABLE LOG: Error occurred
+        await logPushEvent({
+          timestamp: new Date().toISOString(),
+          event: 'PUSH_ERROR',
+          error: {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+          },
+          data: data,
+          execLog: execLog
+        });
         console.error('[SW Push] Error stack:', error.stack);
 
         // Try to notify clients about the error
