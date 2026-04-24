@@ -76,13 +76,21 @@ const RemoteDebug = {
   // Send log to backend
   async sendLog(logEntry) {
     try {
+      const authToken = await this.getAuthToken();
+
+      // If no auth token (not authenticated), skip silently - don't spam 401 errors
+      if (!authToken) {
+        // Queue it for later when auth is ready
+        return false;
+      }
+
       // Use fetch with proper headers
       const response = await fetch('https://api.onpointprodoors.com/rest/v1/remote_debug_logs', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'apikey': window.SUPABASE_ANON || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5tbXBlbWpjbm5jamZwb295dHB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2ODk3NzIsImV4cCI6MjA5MjI2NTc3Mn0.h_81EX9KbJHkIwqWz5c0LPwDRUQs8bOKrvC_j6MJYBk',
-          'Authorization': 'Bearer ' + (await this.getAuthToken())
+          'Authorization': 'Bearer ' + authToken
         },
         body: JSON.stringify(logEntry)
       });
@@ -94,27 +102,24 @@ const RemoteDebug = {
     }
   },
 
-  // Get current auth token
+  // Get current auth token (returns null if not authenticated)
   async getAuthToken() {
     try {
-      // Wait for supabaseClient to be available
-      let retries = 0;
-      while (!window.supabaseClient && retries < 10) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        retries++;
+      // Check if supabaseClient exists
+      if (!window.supabaseClient) {
+        return null;
       }
 
-      if (window.supabaseClient) {
-        const { data } = await window.supabaseClient.auth.getSession();
-        if (data?.session?.access_token) {
-          return data.session.access_token;
-        }
+      // Try to get the session
+      const { data } = await window.supabaseClient.auth.getSession();
+      if (data?.session?.access_token) {
+        return data.session.access_token;
       }
 
-      // Fallback to anon key if no session
-      return window.SUPABASE_ANON || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5tbXBlbWpjbm5jamZwb295dHB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2ODk3NzIsImV4cCI6MjA5MjI2NTc3Mn0.h_81EX9KbJHkIwqWz5c0LPwDRUQs8bOKrvC_j6MJYBk';
+      // No authenticated session
+      return null;
     } catch (e) {
-      return window.SUPABASE_ANON || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5tbXBlbWpjbm5jamZwb295dHB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2ODk3NzIsImV4cCI6MjA5MjI2NTc3Mn0.h_81EX9KbJHkIwqWz5c0LPwDRUQs8bOKrvC_j6MJYBk';
+      return null;
     }
   },
 

@@ -9,69 +9,48 @@ const RemoteDebugPanel = {
   events: [],
   maxEvents: 100,
 
-  async init() {
+  async init(currentUser, currentProfile) {
     try {
-      console.log('[RemoteDebugPanel] init() started');
+      console.log('[RemoteDebugPanel] init() called with user:', currentUser?.id, 'role:', currentProfile?.role);
 
-      // Wait for auth to complete (retry up to 30 seconds)
-      console.log('[RemoteDebugPanel] Getting current user...');
-      let user = await this.getCurrentUser();
-      console.log('[RemoteDebugPanel] First getCurrentUser result:', user);
-
-      let retries = 0;
-      while (!user && retries < 60) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        user = await this.getCurrentUser();
-        retries++;
-        if (retries % 10 === 0) {
-          console.log('[RemoteDebugPanel] Still waiting for user, retry', retries);
+      if (!currentUser || !currentProfile) {
+        console.error('[RemoteDebugPanel] No user or profile provided');
+        const debugEvents = document.getElementById('debug-events');
+        if (debugEvents) {
+          debugEvents.innerHTML = '<div style="color:#ef4444;text-align:center;padding:40px 20px;">❌ Auth failed - panel disabled</div>';
         }
-      }
-
-      if (!user) {
-        console.warn('[RemoteDebugPanel] No user found after 30s, hiding panel');
         return;
       }
 
-      console.log('[RemoteDebugPanel] User found:', user.id);
+      this.isAdmin = currentProfile.role === 'admin' || currentProfile.role === 'dispatcher';
 
-      const { data: profile } = await window.supabaseClient
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-
-      this.isAdmin = profile?.role === 'admin' || profile?.role === 'dispatcher';
-
-      console.log('[RemoteDebugPanel] User role:', profile?.role, 'isAdmin:', this.isAdmin);
+      console.log('[RemoteDebugPanel] User role:', currentProfile.role, 'isAdmin:', this.isAdmin);
 
       if (!this.isAdmin) {
         console.log('[RemoteDebugPanel] Not admin/dispatcher, hiding panel');
-        // Hide debug panel for techs only
-        document.getElementById('remote-debug-panel')?.remove();
-        document.getElementById('debug-toggle-btn')?.remove();
+        const panel = document.getElementById('remote-debug-panel');
+        if (panel) panel.style.display = 'none';
+        const toggleBtn = document.getElementById('debug-toggle-btn');
+        if (toggleBtn) toggleBtn.style.display = 'none';
         return;
       }
 
-      console.log('[RemoteDebugPanel] Showing panel for', profile?.role);
+      console.log('[RemoteDebugPanel] Showing panel for', currentProfile.role);
 
       // Show toggle button
       const toggleBtn = document.getElementById('debug-toggle-btn');
       if (toggleBtn) {
-        toggleBtn.classList.remove('hidden');
+        toggleBtn.style.display = 'flex';
         console.log('[RemoteDebugPanel] Toggle button shown');
       }
 
-      // Show panel by default for admins
-      const panel = document.getElementById('remote-debug-panel');
-      if (panel) {
-        panel.classList.remove('hidden');
-        // Push content down to avoid overlap
-        document.body.style.paddingTop = '40vh';
-        console.log('[RemoteDebugPanel] Panel shown at top, body padded');
-      } else {
-        console.error('[RemoteDebugPanel] Panel element not found!');
+      // Panel is already visible, just update loading message
+      const debugEvents = document.getElementById('debug-events');
+      if (debugEvents) {
+        debugEvents.innerHTML = '<div style="color:#64748b;text-align:center;padding:40px 20px;">Loading recent events...</div>';
       }
+
+      console.log('[RemoteDebugPanel] Panel initialized for', currentProfile.role);
 
       // Set up event filters
       document.getElementById('debug-filter-source')?.addEventListener('change', () => this.render());
@@ -279,9 +258,8 @@ const RemoteDebugPanel = {
   toggle() {
     const panel = document.getElementById('remote-debug-panel');
     if (panel) {
-      const isHidden = panel.classList.toggle('hidden');
-      // Adjust body padding to prevent overlap
-      document.body.style.paddingTop = isHidden ? '0' : '40vh';
+      const isVisible = panel.style.display !== 'none';
+      panel.style.display = isVisible ? 'none' : 'flex';
     }
   },
 
@@ -297,22 +275,12 @@ const RemoteDebugPanel = {
   }
 };
 
-// Auto-initialize when DOM is ready
-console.log('[RemoteDebugPanel] Setting up initialization, readyState:', document.readyState);
+// Expose init function globally so app.js can call it when auth is ready
+window.RemoteDebugPanel = RemoteDebugPanel;
 
-if (document.readyState === 'loading') {
-  console.log('[RemoteDebugPanel] Waiting for DOMContentLoaded');
-  document.addEventListener('DOMContentLoaded', () => {
-    console.log('[RemoteDebugPanel] DOMContentLoaded fired, starting init in 1s');
-    setTimeout(() => {
-      console.log('[RemoteDebugPanel] Calling init() now');
-      RemoteDebugPanel.init();
-    }, 1000);
-  });
-} else {
-  console.log('[RemoteDebugPanel] DOM already ready, starting init in 1s');
-  setTimeout(() => {
-    console.log('[RemoteDebugPanel] Calling init() now');
-    RemoteDebugPanel.init();
-  }, 1000);
+// Show loading state immediately
+console.log('[RemoteDebugPanel] Script loaded, panel visible, waiting for auth');
+const debugEvents = document.getElementById('debug-events');
+if (debugEvents) {
+  debugEvents.innerHTML = '<div style="color:#34c759;text-align:center;padding:40px 20px;font-size:14px;font-weight:600;">⏳ Waiting for authentication...</div>';
 }

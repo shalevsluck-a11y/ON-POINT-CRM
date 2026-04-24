@@ -133,6 +133,16 @@ const App = (() => {
       console.log('[App] OfflineQueue initialized');
     }
 
+    // Initialize Remote Debug Panel (for admin/dispatcher)
+    if (window.RemoteDebugPanel) {
+      const currentUser = Auth.getUser();
+      const currentProfile = Storage.get('currentProfile');
+      if (currentUser && currentProfile) {
+        console.log('[App] Initializing RemoteDebugPanel');
+        RemoteDebugPanel.init(currentUser, currentProfile);
+      }
+    }
+
     // Subscribe to live job changes from other sessions
     _jobsChannel = DB.subscribeToJobs(
       (newJob) => {
