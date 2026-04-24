@@ -136,10 +136,9 @@ const App = (() => {
     // Initialize Remote Debug Panel (for admin/dispatcher)
     if (window.RemoteDebugPanel) {
       const currentUser = Auth.getUser();
-      const currentProfile = Storage.get('currentProfile');
-      if (currentUser && currentProfile) {
-        console.log('[App] Initializing RemoteDebugPanel');
-        RemoteDebugPanel.init(currentUser, currentProfile);
+      if (currentUser && currentUser.role) {
+        console.log('[App] Initializing RemoteDebugPanel for role:', currentUser.role);
+        RemoteDebugPanel.init(currentUser);
       }
     }
 

@@ -9,12 +9,12 @@ const RemoteDebugPanel = {
   events: [],
   maxEvents: 100,
 
-  async init(currentUser, currentProfile) {
+  async init(currentUser) {
     try {
-      console.log('[RemoteDebugPanel] init() called with user:', currentUser?.id, 'role:', currentProfile?.role);
+      console.log('[RemoteDebugPanel] init() called with user:', currentUser?.id, 'role:', currentUser?.role);
 
-      if (!currentUser || !currentProfile) {
-        console.error('[RemoteDebugPanel] No user or profile provided');
+      if (!currentUser || !currentUser.role) {
+        console.error('[RemoteDebugPanel] No user or role provided');
         const debugEvents = document.getElementById('debug-events');
         if (debugEvents) {
           debugEvents.innerHTML = '<div style="color:#ef4444;text-align:center;padding:40px 20px;">❌ Auth failed - panel disabled</div>';
@@ -22,9 +22,9 @@ const RemoteDebugPanel = {
         return;
       }
 
-      this.isAdmin = currentProfile.role === 'admin' || currentProfile.role === 'dispatcher';
+      this.isAdmin = currentUser.role === 'admin' || currentUser.role === 'dispatcher';
 
-      console.log('[RemoteDebugPanel] User role:', currentProfile.role, 'isAdmin:', this.isAdmin);
+      console.log('[RemoteDebugPanel] User role:', currentUser.role, 'isAdmin:', this.isAdmin);
 
       if (!this.isAdmin) {
         console.log('[RemoteDebugPanel] Not admin/dispatcher, hiding panel');
@@ -35,7 +35,7 @@ const RemoteDebugPanel = {
         return;
       }
 
-      console.log('[RemoteDebugPanel] Showing panel for', currentProfile.role);
+      console.log('[RemoteDebugPanel] Showing panel for', currentUser.role);
 
       // Show toggle button
       const toggleBtn = document.getElementById('debug-toggle-btn');
@@ -50,7 +50,7 @@ const RemoteDebugPanel = {
         debugEvents.innerHTML = '<div style="color:#64748b;text-align:center;padding:40px 20px;">Loading recent events...</div>';
       }
 
-      console.log('[RemoteDebugPanel] Panel initialized for', currentProfile.role);
+      console.log('[RemoteDebugPanel] Panel initialized for', currentUser.role);
 
       // Set up event filters
       document.getElementById('debug-filter-source')?.addEventListener('change', () => this.render());
