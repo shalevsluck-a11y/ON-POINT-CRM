@@ -235,9 +235,9 @@ const App = (() => {
     const syncBtn = document.getElementById('btn-sync');
     if (syncBtn) syncBtn.classList.toggle('hidden', !Auth.isAdminOrDisp());
 
-    // Show Balance to admin only
+    // Show Balance to admin and dispatcher
     const balanceNav = document.getElementById('nav-balance');
-    if (balanceNav) balanceNav.classList.toggle('hidden', !Auth.isAdmin());
+    if (balanceNav) balanceNav.classList.toggle('hidden', !Auth.isAdminOrDisp());
 
     // Show Settings to admin and dispatcher (for notification settings)
     const isAdmin = Auth.isAdmin();
@@ -326,9 +326,9 @@ const App = (() => {
       return;
     }
 
-    // Role guard: only admins can access balance reports
-    if (viewName === 'balance' && !Auth.isAdmin()) {
-      showToast('Only admins can access Balance reports', 'error');
+    // Role guard: only admins and dispatchers can access balance reports
+    if (viewName === 'balance' && !Auth.isAdminOrDisp()) {
+      showToast('You do not have permission to access Balance reports', 'error');
       navigate('dashboard');
       return;
     }

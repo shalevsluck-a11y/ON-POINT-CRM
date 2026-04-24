@@ -143,7 +143,16 @@ const Balance = (function() {
   }
 
   function filterJobs(jobs, dateRange, status) {
+    // Get current user to check for dispatcher lead source filtering
+    const currentUser = Auth.getUser();
+    const assignedLeadSource = currentUser?.assignedLeadSource;
+
     return jobs.filter(job => {
+      // Dispatcher filter: only show jobs from their assigned lead source
+      if (assignedLeadSource && job.source !== assignedLeadSource) {
+        return false;
+      }
+
       // Filter by date (use paidAt for paid jobs, or updatedAt for closed jobs)
       const jobDate = job.paidAt ? new Date(job.paidAt) : new Date(job.updatedAt);
       if (jobDate < dateRange.start || jobDate > dateRange.end) {
@@ -166,10 +175,20 @@ const Balance = (function() {
     const periodLabel = dateRange.label;
     const statusLabel = status === 'all' ? 'All Jobs' : status === 'paid' ? 'Paid Only' : 'Unpaid Only';
 
+    // Show lead source for dispatchers
+    const currentUser = Auth.getUser();
+    const assignedLeadSource = currentUser?.assignedLeadSource;
+
     let html = `
       <div class="report-header">
         <h2>Overall Balance Report</h2>
         <div class="report-meta">
+          ${assignedLeadSource ? `
+            <div class="report-meta-item">
+              <span class="report-meta-label">Lead Source:</span>
+              <span class="report-meta-value">${assignedLeadSource}</span>
+            </div>
+          ` : ''}
           <div class="report-meta-item">
             <span class="report-meta-label">Period:</span>
             <span class="report-meta-value">${periodLabel}</span>
@@ -258,6 +277,10 @@ const Balance = (function() {
     const periodLabel = dateRange.label;
     const statusLabel = status === 'all' ? 'All Jobs' : status === 'paid' ? 'Paid Only' : 'Unpaid Only';
 
+    // Show lead source for dispatchers
+    const currentUser = Auth.getUser();
+    const assignedLeadSource = currentUser?.assignedLeadSource;
+
     // Calculate per-job averages
     const avgJobValue = stats.totalJobs > 0 ? stats.totalCollected / stats.totalJobs : 0;
     const avgPayout = stats.totalJobs > 0 ? stats.techPayout / stats.totalJobs : 0;
@@ -266,6 +289,12 @@ const Balance = (function() {
       <div class="report-header">
         <h2>Tech Balance Report</h2>
         <div class="report-meta">
+          ${assignedLeadSource ? `
+            <div class="report-meta-item">
+              <span class="report-meta-label">Lead Source:</span>
+              <span class="report-meta-value">${assignedLeadSource}</span>
+            </div>
+          ` : ''}
           <div class="report-meta-item">
             <span class="report-meta-label">Tech:</span>
             <span class="report-meta-value">${techName}</span>
@@ -431,11 +460,18 @@ const Balance = (function() {
     const stats = calculateStats(jobs);
     const periodLabel = dateRange.label;
 
+    // Get current user for lead source
+    const currentUser = Auth.getUser();
+    const assignedLeadSource = currentUser?.assignedLeadSource;
+
     let text = '';
 
     if (type === 'overall') {
       text = `📊 OVERALL BALANCE REPORT\n`;
       text += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+      if (assignedLeadSource) {
+        text += `Lead Source: ${assignedLeadSource}\n`;
+      }
       text += `Period: ${periodLabel}\n`;
       text += `Date: ${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}\n`;
       text += `Status: ${status === 'all' ? 'All Jobs' : status === 'paid' ? 'Paid Only' : 'Unpaid Only'}\n\n`;
@@ -468,6 +504,9 @@ const Balance = (function() {
 
       text = `👤 TECH BALANCE REPORT\n`;
       text += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+      if (assignedLeadSource) {
+        text += `Lead Source: ${assignedLeadSource}\n`;
+      }
       text += `Tech: ${techName}\n`;
       text += `Period: ${periodLabel}\n`;
       text += `Date: ${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}\n\n`;
