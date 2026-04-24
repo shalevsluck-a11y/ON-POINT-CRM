@@ -8,9 +8,21 @@ const RemoteDebugPanel = {
   maxEvents: 100,
 
   async init() {
-    // Check if user is admin
-    const user = await this.getCurrentUser();
-    if (!user) return;
+    // Wait for auth to complete (retry up to 30 seconds)
+    let user = await this.getCurrentUser();
+    let retries = 0;
+    while (!user && retries < 60) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      user = await this.getCurrentUser();
+      retries++;
+    }
+
+    if (!user) {
+      console.warn('[RemoteDebugPanel] No user found after 30s, hiding panel');
+      return;
+    }
+
+    console.log('[RemoteDebugPanel] User found:', user.id);
 
     const { data: profile } = await window.supabaseClient
       .from('profiles')
@@ -20,16 +32,24 @@ const RemoteDebugPanel = {
 
     this.isAdmin = profile?.role === 'admin' || profile?.role === 'dispatcher';
 
+    console.log('[RemoteDebugPanel] User role:', profile?.role, 'isAdmin:', this.isAdmin);
+
     if (!this.isAdmin) {
+      console.log('[RemoteDebugPanel] Not admin/dispatcher, hiding panel');
       // Hide debug panel for techs only
       document.getElementById('remote-debug-panel')?.remove();
       document.getElementById('debug-toggle-btn')?.remove();
       return;
     }
 
+    console.log('[RemoteDebugPanel] Showing panel for', profile?.role);
+
     // Show toggle button
     const toggleBtn = document.getElementById('debug-toggle-btn');
-    if (toggleBtn) toggleBtn.classList.remove('hidden');
+    if (toggleBtn) {
+      toggleBtn.classList.remove('hidden');
+      console.log('[RemoteDebugPanel] Toggle button shown');
+    }
 
     // Show panel by default for admins
     const panel = document.getElementById('remote-debug-panel');
@@ -37,6 +57,9 @@ const RemoteDebugPanel = {
       panel.classList.remove('hidden');
       // Push content down to avoid overlap
       document.body.style.paddingTop = '40vh';
+      console.log('[RemoteDebugPanel] Panel shown at top, body padded');
+    } else {
+      console.error('[RemoteDebugPanel] Panel element not found!');
     }
 
     // Set up event filters
