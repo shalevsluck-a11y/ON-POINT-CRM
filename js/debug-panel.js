@@ -31,8 +31,11 @@ const DebugPanel = (() => {
     }
   }
 
-  // Create panel UI
+  // Create panel UI (DISABLED - using new RemoteDebugPanel instead)
   function createPanel() {
+    // Old debug panel disabled in favor of remote debug panel
+    return;
+
     if (panel) return;
 
     panel = document.createElement('div');
