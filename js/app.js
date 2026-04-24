@@ -235,6 +235,10 @@ const App = (() => {
     const syncBtn = document.getElementById('btn-sync');
     if (syncBtn) syncBtn.classList.toggle('hidden', !Auth.isAdminOrDisp());
 
+    // Show Balance to admin only
+    const balanceNav = document.getElementById('nav-balance');
+    if (balanceNav) balanceNav.classList.toggle('hidden', !Auth.isAdmin());
+
     // Show Settings to admin and dispatcher (for notification settings)
     const isAdmin = Auth.isAdmin();
     const canAccessSettings = Auth.isAdminOrDisp();
@@ -310,7 +314,7 @@ const App = (() => {
     'dashboard':  'Dashboard',
     'jobs':       'All Jobs',
     'new-job':    'New Job',
-    'calendar':   'Calendar',
+    'balance':    'Balance Reports',
     'settings':   'Settings',
     'job-detail': 'Job Detail',
   };
@@ -319,6 +323,13 @@ const App = (() => {
     // Role guard: only admins and dispatchers can access the new-job view
     if (viewName === 'new-job' && !Auth.canCreateJobs()) {
       showToast('Only admins and dispatchers can create jobs', 'error');
+      return;
+    }
+
+    // Role guard: only admins can access balance reports
+    if (viewName === 'balance' && !Auth.isAdmin()) {
+      showToast('Only admins can access Balance reports', 'error');
+      navigate('dashboard');
       return;
     }
 
