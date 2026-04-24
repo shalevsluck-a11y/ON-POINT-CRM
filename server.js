@@ -229,17 +229,40 @@ app.post('/auth/magic-session', async (req, res) => {
       return res.status(400).json({ error: 'Missing magic_token' });
     }
 
-    console.log(`[MAGIC SESSION] Verifying token: ${magic_token.substring(0, 10)}...`);
+    console.log(`[MAGIC SESSION] Login attempt: ${magic_token.substring(0, 10)}...`);
 
-    // Verify magic token and get profile
-    let { data: profile, error: profileError } = await supabaseAdmin
+    // ✅ FLEXIBLE LOGIN: Accept EITHER 32-char token OR simple username
+    let profile, profileError;
+
+    // Try 1: Lookup by exact magic_token (32-char hash)
+    const tokenQuery = await supabaseAdmin
       .from('profiles')
       .select('id, name, role, magic_token, allowed_lead_sources, assigned_lead_source, phone, color, zip_codes, default_tech_percent, zelle_handle, is_owner')
       .eq('magic_token', magic_token)
       .single();
 
+    if (tokenQuery.data) {
+      profile = tokenQuery.data;
+      console.log(`[MAGIC SESSION] ✅ Matched by token`);
+    } else {
+      // Try 2: Lookup by name (case-insensitive, simple username)
+      console.log(`[MAGIC SESSION] Token not found, trying as username...`);
+      const nameQuery = await supabaseAdmin
+        .from('profiles')
+        .select('id, name, role, magic_token, allowed_lead_sources, assigned_lead_source, phone, color, zip_codes, default_tech_percent, zelle_handle, is_owner')
+        .ilike('name', magic_token)
+        .single();
+
+      if (nameQuery.data) {
+        profile = nameQuery.data;
+        console.log(`[MAGIC SESSION] ✅ Matched by username: ${profile.name}`);
+      } else {
+        profileError = nameQuery.error;
+      }
+    }
+
     if (profileError || !profile) {
-      console.error(`[MAGIC SESSION] Invalid token:`, profileError);
+      console.error(`[MAGIC SESSION] ❌ Login failed for: ${magic_token}`);
       return res.status(401).json({ error: 'Invalid login code' });
     }
 
