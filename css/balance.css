@@ -6,22 +6,28 @@
 .balance-container {
   max-width: 800px;
   margin: 0 auto;
+  padding: 0 16px 16px 16px;
 }
 
 .balance-card {
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 12px;
-  padding: 24px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-md);
+  padding: 28px 20px;
   margin-bottom: 16px;
   cursor: pointer;
   transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
-.balance-card:hover {
-  background: #2d3748;
-  border-color: #2563eb;
-  transform: translateY(-2px);
+.balance-card:active {
+  background: var(--color-surface-2);
+  border-color: var(--color-primary);
+  transform: scale(0.98);
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
 }
 
@@ -85,19 +91,25 @@
 
 .balance-select {
   width: 100%;
-  padding: 12px 16px;
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 8px;
-  color: #e2e8f0;
+  padding: 14px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-2);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
   font-size: 16px;
   cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  padding-right: 44px;
 }
 
 .balance-select:focus {
   outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-glow);
 }
 
 /* Report Styles */
@@ -323,8 +335,8 @@
 }
 
 .balance-actions button {
-  padding: 14px 24px;
-  border-radius: 8px;
+  padding: 16px 24px;
+  border-radius: var(--radius-sm);
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
@@ -334,6 +346,8 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
+  min-height: 52px;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .btn-primary {

@@ -49,6 +49,9 @@ const Balance = (function() {
         return;
       }
 
+      // Show for admins
+      filterDiv.style.display = 'block';
+
       // Get lead sources from settings
       const settings = DB.getSettings();
       const leadSources = settings.leadSources || [];
@@ -63,6 +66,8 @@ const Balance = (function() {
         option.textContent = source.name;
         select.appendChild(option);
       });
+
+      console.log('[Balance] Lead source filter populated with', leadSources.length, 'sources');
     } catch (err) {
       console.error('[Balance] Failed to load lead sources:', err);
     }

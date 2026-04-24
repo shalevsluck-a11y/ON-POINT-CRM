@@ -888,15 +888,27 @@
     <button class="nav-item nav-add" data-view="new-job" onclick="App.navigate('new-job')">
       <span class="nav-icon">+</span>
     </button>
-    <button class="nav-item" data-view="balance" onclick="App.navigate('balance')" id="nav-balance">
-      <span class="nav-icon">💰</span>
-      <span class="nav-label">Balance</span>
+    <button class="nav-item" data-view="calendar" onclick="App.navigate('calendar')">
+      <span class="nav-icon">&#128197;</span>
+      <span class="nav-label">Schedule</span>
     </button>
-    <button class="nav-item" data-view="settings" onclick="App.navigate('settings')">
-      <span class="nav-icon">&#9881;</span>
-      <span class="nav-label">Settings</span>
+    <button class="nav-item" data-view="more" onclick="App.toggleMoreMenu(event)" id="nav-more">
+      <span class="nav-icon">&#8942;</span>
+      <span class="nav-label">More</span>
     </button>
   </nav>
+
+  <!-- More Menu (Balance + Settings) -->
+  <div id="more-menu" class="more-menu hidden">
+    <button class="more-menu-item" onclick="App.navigate('balance'); App.hideMoreMenu()" id="more-balance">
+      <span class="more-icon">💰</span>
+      <span>Balance</span>
+    </button>
+    <button class="more-menu-item" onclick="App.navigate('settings'); App.hideMoreMenu()">
+      <span class="more-icon">&#9881;</span>
+      <span>Settings</span>
+    </button>
+  </div>
 
   <!-- ══════════════════════════════════════════ -->
   <!-- MODALS                                     -->
