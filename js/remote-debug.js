@@ -105,13 +105,16 @@ const RemoteDebug = {
   // Get current auth token (returns null if not authenticated)
   async getAuthToken() {
     try {
-      // Check if supabaseClient exists
-      if (!window.supabaseClient) {
+      // Check for SupabaseClient (main app) or window.supabaseClient (fallback)
+      const client = typeof SupabaseClient !== 'undefined' ? SupabaseClient :
+                     (typeof window !== 'undefined' && window.supabaseClient) || null;
+
+      if (!client) {
         return null;
       }
 
       // Try to get the session
-      const { data } = await window.supabaseClient.auth.getSession();
+      const { data } = await client.auth.getSession();
       if (data?.session?.access_token) {
         return data.session.access_token;
       }
@@ -126,8 +129,11 @@ const RemoteDebug = {
   // Get current user
   async getCurrentUser() {
     try {
-      if (typeof window !== 'undefined' && window.supabaseClient) {
-        const { data } = await window.supabaseClient.auth.getUser();
+      const client = typeof SupabaseClient !== 'undefined' ? SupabaseClient :
+                     (typeof window !== 'undefined' && window.supabaseClient) || null;
+
+      if (client) {
+        const { data } = await client.auth.getUser();
         return data?.user || null;
       }
       return null;

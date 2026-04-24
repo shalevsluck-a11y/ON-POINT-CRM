@@ -86,21 +86,20 @@ const RemoteDebugPanel = {
 
   async getCurrentUser() {
     try {
-      // Wait for supabaseClient to exist
-      if (!window.supabaseClient) {
-        console.log('[RemoteDebugPanel] supabaseClient not ready yet');
+      if (typeof SupabaseClient === 'undefined') {
+        console.log('[RemoteDebugPanel] SupabaseClient not ready yet');
         return null;
       }
 
       // Try getUser() first
-      const { data: userData } = await window.supabaseClient.auth.getUser();
+      const { data: userData } = await SupabaseClient.auth.getUser();
       if (userData?.user) {
         console.log('[RemoteDebugPanel] getUser() returned user:', userData.user.id);
         return userData.user;
       }
 
       // Fallback: try getSession()
-      const { data: sessionData } = await window.supabaseClient.auth.getSession();
+      const { data: sessionData } = await SupabaseClient.auth.getSession();
       if (sessionData?.session?.user) {
         console.log('[RemoteDebugPanel] getSession() returned user:', sessionData.session.user.id);
         return sessionData.session.user;
@@ -116,11 +115,11 @@ const RemoteDebugPanel = {
 
   async loadRecentEvents() {
     try {
-      if (!window.supabaseClient) {
+      if (typeof SupabaseClient === 'undefined') {
         throw new Error('Supabase client not initialized');
       }
 
-      const { data, error } = await window.supabaseClient
+      const { data, error } = await SupabaseClient
         .from('remote_debug_logs')
         .select('*')
         .order('created_at', { ascending: false })
@@ -140,12 +139,12 @@ const RemoteDebugPanel = {
   },
 
   subscribeToLogs() {
-    if (!window.supabaseClient) {
+    if (typeof SupabaseClient === 'undefined') {
       console.error('[RemoteDebugPanel] Cannot subscribe: Supabase client not initialized');
       return;
     }
 
-    this.subscription = window.supabaseClient
+    this.subscription = SupabaseClient
       .channel('remote_debug_logs')
       .on('postgres_changes', {
         event: 'INSERT',
