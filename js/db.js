@@ -180,12 +180,62 @@ const DB = (() => {
     }
     console.log('[DB] _upsertJobRemote - Upsert SUCCESS, returned data:', data);
 
+    // Send push notification for NEW jobs (created_at ~= updated_at indicates INSERT, not UPDATE)
+    if (data && data[0]) {
+      const createdAt = new Date(data[0].created_at).getTime();
+      const updatedAt = new Date(data[0].updated_at).getTime();
+      const isNewJob = Math.abs(createdAt - updatedAt) < 5000; // Within 5 seconds = new job
+
+      if (isNewJob) {
+        console.log('[DB] New job detected, sending push notification');
+        _sendJobNotification(job.jobId, job.customerName).catch(err => {
+          console.error('[DB] Push notification failed (non-blocking):', err);
+        });
+      }
+    }
+
     // Handle zelle memo (admin-only table)
     if (Auth.isAdmin() && job.zelleMemo !== undefined) {
       await supa.from('job_zelle').upsert({
         job_id:     job.jobId,
         zelle_memo: job.zelleMemo || '',
       });
+    }
+  }
+
+  async function _sendJobNotification(jobId, customerName) {
+    try {
+      const { data: { session } } = await supa.auth.getSession();
+      if (!session?.access_token) {
+        console.warn('[DB] No auth session, skipping push notification');
+        return;
+      }
+
+      console.log('[DB] Calling Edge Function for job notification:', jobId);
+      const response = await fetch('https://api.onpointprodoors.com/functions/v1/send-push', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          broadcast: true,
+          roles: ['admin', 'dispatcher'],
+          title: 'New Job Added',
+          body: `Job #${jobId} - ${customerName || 'Customer'}`,
+          jobId: jobId
+        })
+      });
+
+      const result = await response.json();
+      console.log('[DB] Push notification response:', response.status, result);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${JSON.stringify(result)}`);
+      }
+    } catch (err) {
+      console.error('[DB] Push notification error:', err.message);
+      // Don't throw - notification failure should not block job creation
     }
   }
 
