@@ -116,6 +116,10 @@ const RemoteDebugPanel = {
 
   async loadRecentEvents() {
     try {
+      if (!window.supabaseClient) {
+        throw new Error('Supabase client not initialized');
+      }
+
       const { data, error } = await window.supabaseClient
         .from('remote_debug_logs')
         .select('*')
@@ -128,10 +132,19 @@ const RemoteDebugPanel = {
       this.render();
     } catch (error) {
       console.error('[RemoteDebugPanel] Failed to load recent events:', error);
+      const debugEvents = document.getElementById('debug-events');
+      if (debugEvents) {
+        debugEvents.innerHTML = `<div style="color:#ef4444;text-align:center;padding:40px 20px;">❌ Remote debug client unavailable<br><span style="color:#94a3b8;font-size:12px;margin-top:8px;display:block;">${this.escapeHtml(error.message)}</span></div>`;
+      }
     }
   },
 
   subscribeToLogs() {
+    if (!window.supabaseClient) {
+      console.error('[RemoteDebugPanel] Cannot subscribe: Supabase client not initialized');
+      return;
+    }
+
     this.subscription = window.supabaseClient
       .channel('remote_debug_logs')
       .on('postgres_changes', {
