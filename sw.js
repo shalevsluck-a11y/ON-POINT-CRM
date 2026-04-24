@@ -4,6 +4,9 @@
 const CACHE_VERSION = 'v20260424-push-logs';
 const CACHE_NAME = `onpoint-${CACHE_VERSION}`;
 
+// Import remote debug logger
+importScripts('/js/remote-debug.js');
+
 // Inline offline HTML — guaranteed fallback even with empty cache
 const OFFLINE_HTML = `<!DOCTYPE html>
 <html lang="en">
@@ -40,13 +43,21 @@ const OFFLINE_HTML = `<!DOCTYPE html>
 // Only cache the offline fallback — no pre-caching of app shell.
 // This prevents a single failing asset from breaking the entire install.
 self.addEventListener('install', (event) => {
+  RemoteDebug.logServiceWorkerEvent('sw_install', 'Service worker installing', { cacheVersion: CACHE_VERSION });
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.put(
         '/offline.html',
         new Response(OFFLINE_HTML, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
       ))
-      .then(() => self.skipWaiting())
+      .then(() => {
+        RemoteDebug.logServiceWorkerEvent('sw_install_complete', 'Service worker installed', { cacheVersion: CACHE_VERSION });
+        return self.skipWaiting();
+      })
+      .catch(error => {
+        RemoteDebug.logError('service_worker', 'Install failed', error);
+        throw error;
+      })
   );
 });
 
@@ -56,12 +67,20 @@ self.addEventListener('install', (event) => {
 // (cache:'no-cache'), so the next navigation automatically gets fresh code.
 // Force-reloading mid-auth causes the blue screen to stick.
 self.addEventListener('activate', (event) => {
+  RemoteDebug.logServiceWorkerEvent('sw_activate', 'Service worker activating', { cacheVersion: CACHE_VERSION });
   event.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
         keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
       ))
-      .then(() => self.clients.claim())
+      .then(() => {
+        RemoteDebug.logServiceWorkerEvent('sw_activate_complete', 'Service worker activated and claimed clients', { cacheVersion: CACHE_VERSION });
+        return self.clients.claim();
+      })
+      .catch(error => {
+        RemoteDebug.logError('service_worker', 'Activate failed', error);
+        throw error;
+      })
   );
 });
 
@@ -188,6 +207,13 @@ self.addEventListener('push', (event) => {
   console.log('[SW Push] Raw data:', event.data);
   console.log('[SW Push] Has data:', !!event.data);
 
+  // 🔍 REMOTE DEBUG: Push received
+  RemoteDebug.logPushEvent('push_received', 'Push event received in service worker', {
+    timestamp: timestamp,
+    hasData: !!event.data,
+    rawData: event.data ? event.data.text() : null
+  });
+
   let data = { title: 'On Point CRM', body: 'You have a new notification.' };
   let parseError = null;
 
@@ -195,14 +221,20 @@ self.addEventListener('push', (event) => {
     if (event.data) {
       data = event.data.json();
       console.log('[SW Push] ✅ Parsed JSON data:', data);
+      // 🔍 REMOTE DEBUG: JSON parsed successfully
+      RemoteDebug.logPushEvent('push_data_parsed', 'Push data parsed successfully', data);
     } else {
       console.warn('[SW Push] ⚠️ No data in push event, using defaults');
+      // 🔍 REMOTE DEBUG: No data
+      RemoteDebug.logPushEvent('push_no_data', 'Push event had no data, using defaults', null);
     }
   } catch (_e) {
     parseError = _e.message;
     console.error('[SW Push] ❌ Failed to parse JSON:', _e.message);
     data.body = event.data ? event.data.text() : data.body;
     console.log('[SW Push] Fallback text data:', data.body);
+    // 🔍 REMOTE DEBUG: Parse error
+    RemoteDebug.logPushEvent('push_parse_error', 'Failed to parse push data as JSON', { fallbackText: data.body }, _e);
   }
 
   console.log('[SW Push] Final notification data:', { title: data.title, body: data.body, jobId: data.jobId });
@@ -226,6 +258,9 @@ self.addEventListener('push', (event) => {
 
         // Show notification
         console.log('[SW Push] Calling showNotification...');
+        // 🔍 REMOTE DEBUG: About to show notification
+        RemoteDebug.logPushEvent('notification_showing', 'Calling showNotification', { title: data.title, body: data.body, jobId: data.jobId });
+
         await self.registration.showNotification(data.title || 'On Point CRM', {
           body:    data.body || '',
           icon:    '/assets/icon.svg',
@@ -240,6 +275,14 @@ self.addEventListener('push', (event) => {
 
         execLog.push({ step: 'NOTIFICATION_SHOWN', time: new Date().toISOString() });
         console.log('[SW Push] ✅ showNotification completed successfully');
+
+        // 🔍 REMOTE DEBUG: Notification shown successfully
+        RemoteDebug.logPushEvent('notification_shown', '✅ Notification displayed successfully', {
+          title: data.title,
+          body: data.body,
+          jobId: data.jobId,
+          tag: data.jobId ? `job-${data.jobId}` : 'onpoint-notif'
+        });
 
         // ✅ DURABLE LOG: Notification shown
         await logPushEvent({
@@ -272,6 +315,14 @@ self.addEventListener('push', (event) => {
         console.error('[SW Push] ❌ Exception in push handler:', error);
         console.error('[SW Push] Error name:', error.name);
         console.error('[SW Push] Error message:', error.message);
+
+        // 🔍 REMOTE DEBUG: Push handler error
+        RemoteDebug.logPushEvent('push_error', '❌ Exception in push handler', {
+          errorName: error.name,
+          errorMessage: error.message,
+          data: data,
+          execLog: execLog
+        }, error);
 
         // ✅ DURABLE LOG: Error occurred
         await logPushEvent({
@@ -312,15 +363,24 @@ self.addEventListener('notificationclick', (event) => {
   const jobId = event.notification.data?.jobId;
   const targetUrl = jobId ? `/?job=${jobId}` : '/';
 
+  // 🔍 REMOTE DEBUG: Notification clicked
+  RemoteDebug.logPushEvent('notification_click', 'User clicked notification', {
+    jobId: jobId,
+    targetUrl: targetUrl,
+    notificationTag: event.notification.tag
+  });
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
       for (const client of windowClients) {
         if (client.url.includes(self.location.origin) && 'focus' in client) {
           client.focus();
           if (jobId) client.postMessage({ type: 'OPEN_JOB', jobId });
+          RemoteDebug.logPushEvent('notification_click_focused', 'Focused existing window', { jobId, clientUrl: client.url });
           return;
         }
       }
+      RemoteDebug.logPushEvent('notification_click_new_window', 'Opening new window', { targetUrl });
       return clients.openWindow(targetUrl);
     })
   );
