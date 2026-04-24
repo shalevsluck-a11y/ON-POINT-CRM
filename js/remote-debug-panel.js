@@ -1,6 +1,8 @@
 // Remote Debug Panel - PC viewer for iPhone debug events
 // Shows real-time debug logs from iPhone app and service worker
 
+console.log('[RemoteDebugPanel] Script loaded');
+
 const RemoteDebugPanel = {
   isAdmin: false,
   subscription: null,
@@ -263,10 +265,21 @@ const RemoteDebugPanel = {
 };
 
 // Auto-initialize when DOM is ready
+console.log('[RemoteDebugPanel] Setting up initialization, readyState:', document.readyState);
+
 if (document.readyState === 'loading') {
+  console.log('[RemoteDebugPanel] Waiting for DOMContentLoaded');
   document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => RemoteDebugPanel.init(), 1000);
+    console.log('[RemoteDebugPanel] DOMContentLoaded fired, starting init in 1s');
+    setTimeout(() => {
+      console.log('[RemoteDebugPanel] Calling init() now');
+      RemoteDebugPanel.init();
+    }, 1000);
   });
 } else {
-  setTimeout(() => RemoteDebugPanel.init(), 1000);
+  console.log('[RemoteDebugPanel] DOM already ready, starting init in 1s');
+  setTimeout(() => {
+    console.log('[RemoteDebugPanel] Calling init() now');
+    RemoteDebugPanel.init();
+  }, 1000);
 }
