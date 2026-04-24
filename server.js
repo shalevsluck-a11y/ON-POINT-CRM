@@ -231,15 +231,32 @@ app.post('/auth/magic-session', async (req, res) => {
 
     console.log(`[MAGIC SESSION] Login attempt: ${magic_token.substring(0, 10)}...`);
 
+    // DEBUG: List all magic tokens in database
+    const { data: allProfiles } = await supabaseAdmin
+      .from('profiles')
+      .select('name, magic_token');
+    console.log(`[MAGIC SESSION] DEBUG: Found ${allProfiles?.length || 0} profiles in database`);
+    if (allProfiles) {
+      allProfiles.forEach(p => {
+        console.log(`[MAGIC SESSION] - ${p.name}: ${p.magic_token?.substring(0, 10)}...`);
+      });
+    }
+
     // ✅ FLEXIBLE LOGIN: Accept EITHER 32-char token OR simple username
     let profile, profileError;
 
     // Try 1: Lookup by exact magic_token (32-char hash)
+    console.log(`[MAGIC SESSION] Querying profiles WHERE magic_token = '${magic_token.substring(0, 10)}...'`);
+
     const tokenQuery = await supabaseAdmin
       .from('profiles')
       .select('id, name, role, magic_token, allowed_lead_sources, assigned_lead_source, phone, color, zip_codes, default_tech_percent, zelle_handle, is_owner')
       .eq('magic_token', magic_token)
       .single();
+
+    console.log(`[MAGIC SESSION] Token query returned:`, tokenQuery.data ? `Found: ${tokenQuery.data.name}` : 'Not found');
+    console.log(`[MAGIC SESSION] Token query error:`, tokenQuery.error?.message || 'none');
+    console.log(`[MAGIC SESSION] Error code:`, tokenQuery.error?.code || 'none');
 
     if (tokenQuery.data) {
       profile = tokenQuery.data;
