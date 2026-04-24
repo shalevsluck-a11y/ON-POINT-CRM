@@ -107,9 +107,30 @@ const RemoteDebugPanel = {
 
   async getCurrentUser() {
     try {
-      const { data } = await window.supabaseClient.auth.getUser();
-      return data?.user || null;
+      // Wait for supabaseClient to exist
+      if (!window.supabaseClient) {
+        console.log('[RemoteDebugPanel] supabaseClient not ready yet');
+        return null;
+      }
+
+      // Try getUser() first
+      const { data: userData } = await window.supabaseClient.auth.getUser();
+      if (userData?.user) {
+        console.log('[RemoteDebugPanel] getUser() returned user:', userData.user.id);
+        return userData.user;
+      }
+
+      // Fallback: try getSession()
+      const { data: sessionData } = await window.supabaseClient.auth.getSession();
+      if (sessionData?.session?.user) {
+        console.log('[RemoteDebugPanel] getSession() returned user:', sessionData.session.user.id);
+        return sessionData.session.user;
+      }
+
+      console.log('[RemoteDebugPanel] No user found in auth');
+      return null;
     } catch (e) {
+      console.error('[RemoteDebugPanel] Error getting user:', e);
       return null;
     }
   },
