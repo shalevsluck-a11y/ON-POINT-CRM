@@ -10,86 +10,98 @@ const RemoteDebugPanel = {
   maxEvents: 100,
 
   async init() {
-    // Wait for auth to complete (retry up to 30 seconds)
-    let user = await this.getCurrentUser();
-    let retries = 0;
-    while (!user && retries < 60) {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      user = await this.getCurrentUser();
-      retries++;
-    }
+    try {
+      console.log('[RemoteDebugPanel] init() started');
 
-    if (!user) {
-      console.warn('[RemoteDebugPanel] No user found after 30s, hiding panel');
-      return;
-    }
+      // Wait for auth to complete (retry up to 30 seconds)
+      console.log('[RemoteDebugPanel] Getting current user...');
+      let user = await this.getCurrentUser();
+      console.log('[RemoteDebugPanel] First getCurrentUser result:', user);
 
-    console.log('[RemoteDebugPanel] User found:', user.id);
-
-    const { data: profile } = await window.supabaseClient
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    this.isAdmin = profile?.role === 'admin' || profile?.role === 'dispatcher';
-
-    console.log('[RemoteDebugPanel] User role:', profile?.role, 'isAdmin:', this.isAdmin);
-
-    if (!this.isAdmin) {
-      console.log('[RemoteDebugPanel] Not admin/dispatcher, hiding panel');
-      // Hide debug panel for techs only
-      document.getElementById('remote-debug-panel')?.remove();
-      document.getElementById('debug-toggle-btn')?.remove();
-      return;
-    }
-
-    console.log('[RemoteDebugPanel] Showing panel for', profile?.role);
-
-    // Show toggle button
-    const toggleBtn = document.getElementById('debug-toggle-btn');
-    if (toggleBtn) {
-      toggleBtn.classList.remove('hidden');
-      console.log('[RemoteDebugPanel] Toggle button shown');
-    }
-
-    // Show panel by default for admins
-    const panel = document.getElementById('remote-debug-panel');
-    if (panel) {
-      panel.classList.remove('hidden');
-      // Push content down to avoid overlap
-      document.body.style.paddingTop = '40vh';
-      console.log('[RemoteDebugPanel] Panel shown at top, body padded');
-    } else {
-      console.error('[RemoteDebugPanel] Panel element not found!');
-    }
-
-    // Set up event filters
-    document.getElementById('debug-filter-source')?.addEventListener('change', () => this.render());
-    document.getElementById('debug-filter-type')?.addEventListener('change', () => this.render());
-
-    // Load recent events
-    await this.loadRecentEvents();
-
-    // Subscribe to realtime updates
-    this.subscribeToLogs();
-
-    // Listen for service worker push events
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data?.type === 'PUSH_RECEIVED' || event.data?.type === 'PUSH_ERROR') {
-          this.addEvent({
-            source: 'service_worker',
-            event_type: event.data.type.toLowerCase(),
-            message: event.data.type === 'PUSH_RECEIVED' ? 'Push received by service worker' : 'Push error in service worker',
-            payload_json: event.data.data || event.data,
-            error_json: event.data.error ? { message: event.data.error } : null,
-            created_at: event.data.timestamp || new Date().toISOString(),
-            device_id: RemoteDebug.deviceId,
-            platform: 'ios'
-          });
+      let retries = 0;
+      while (!user && retries < 60) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        user = await this.getCurrentUser();
+        retries++;
+        if (retries % 10 === 0) {
+          console.log('[RemoteDebugPanel] Still waiting for user, retry', retries);
         }
-      });
+      }
+
+      if (!user) {
+        console.warn('[RemoteDebugPanel] No user found after 30s, hiding panel');
+        return;
+      }
+
+      console.log('[RemoteDebugPanel] User found:', user.id);
+
+      const { data: profile } = await window.supabaseClient
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      this.isAdmin = profile?.role === 'admin' || profile?.role === 'dispatcher';
+
+      console.log('[RemoteDebugPanel] User role:', profile?.role, 'isAdmin:', this.isAdmin);
+
+      if (!this.isAdmin) {
+        console.log('[RemoteDebugPanel] Not admin/dispatcher, hiding panel');
+        // Hide debug panel for techs only
+        document.getElementById('remote-debug-panel')?.remove();
+        document.getElementById('debug-toggle-btn')?.remove();
+        return;
+      }
+
+      console.log('[RemoteDebugPanel] Showing panel for', profile?.role);
+
+      // Show toggle button
+      const toggleBtn = document.getElementById('debug-toggle-btn');
+      if (toggleBtn) {
+        toggleBtn.classList.remove('hidden');
+        console.log('[RemoteDebugPanel] Toggle button shown');
+      }
+
+      // Show panel by default for admins
+      const panel = document.getElementById('remote-debug-panel');
+      if (panel) {
+        panel.classList.remove('hidden');
+        // Push content down to avoid overlap
+        document.body.style.paddingTop = '40vh';
+        console.log('[RemoteDebugPanel] Panel shown at top, body padded');
+      } else {
+        console.error('[RemoteDebugPanel] Panel element not found!');
+      }
+
+      // Set up event filters
+      document.getElementById('debug-filter-source')?.addEventListener('change', () => this.render());
+      document.getElementById('debug-filter-type')?.addEventListener('change', () => this.render());
+
+      // Load recent events
+      await this.loadRecentEvents();
+
+      // Subscribe to realtime updates
+      this.subscribeToLogs();
+
+      // Listen for service worker push events
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          if (event.data?.type === 'PUSH_RECEIVED' || event.data?.type === 'PUSH_ERROR') {
+            this.addEvent({
+              source: 'service_worker',
+              event_type: event.data.type.toLowerCase(),
+              message: event.data.type === 'PUSH_RECEIVED' ? 'Push received by service worker' : 'Push error in service worker',
+              payload_json: event.data.data || event.data,
+              error_json: event.data.error ? { message: event.data.error } : null,
+              created_at: event.data.timestamp || new Date().toISOString(),
+              device_id: RemoteDebug.deviceId,
+              platform: 'ios'
+            });
+          }
+        });
+      }
+    } catch (error) {
+      console.error('[RemoteDebugPanel] Error in init():', error);
     }
   },
 
