@@ -247,11 +247,16 @@ app.post('/auth/magic-session', async (req, res) => {
     } else {
       // Try 2: Lookup by name (case-insensitive, simple username)
       console.log(`[MAGIC SESSION] Token not found, trying as username...`);
+      console.log(`[MAGIC SESSION] Looking for name: "${magic_token}"`);
+
       const nameQuery = await supabaseAdmin
         .from('profiles')
         .select('id, name, role, magic_token, allowed_lead_sources, assigned_lead_source, phone, color, zip_codes, default_tech_percent, zelle_handle, is_owner')
         .ilike('name', magic_token)
         .single();
+
+      console.log(`[MAGIC SESSION] Name query result:`, nameQuery.data ? 'Found' : 'Not found');
+      console.log(`[MAGIC SESSION] Name query error:`, nameQuery.error?.message || 'none');
 
       if (nameQuery.data) {
         profile = nameQuery.data;
