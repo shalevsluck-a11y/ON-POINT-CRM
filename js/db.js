@@ -297,7 +297,7 @@ const DB = (() => {
     }
   }
 
-  // FINAL ARCHITECTURE: Save technicians via RPC to bypass schema cache
+  // FINAL SOLUTION: Call Edge Function to bypass all client-side caching
   async function saveTechniciansOnly(techs) {
     if (!Auth.isAdmin()) return;
 
@@ -308,21 +308,26 @@ const DB = (() => {
     console.log('[DB.saveTechniciansOnly] ║ Tech data:', JSON.stringify(standaloneTechs));
     console.log('[DB.saveTechniciansOnly] ╚══════════════════════════════════════════════════════════');
 
-    // Save to database via RPC (bypasses schema cache issue)
+    // Call Edge Function (bypasses client schema cache entirely)
     try {
-      console.log('[DB.saveTechniciansOnly] 💾 Calling RPC: update_app_settings_technicians...');
-      const { data, error } = await supa.rpc('update_app_settings_technicians', {
-        techs_json: standaloneTechs
+      console.log('[DB.saveTechniciansOnly] 💾 Calling Edge Function: update-technicians...');
+      const { data, error } = await supa.functions.invoke('update-technicians', {
+        body: { technicians: standaloneTechs }
       });
 
       if (error) {
-        console.error('[DB.saveTechniciansOnly] ❌ RPC CALL FAILED:', error);
+        console.error('[DB.saveTechniciansOnly] ❌ EDGE FUNCTION FAILED:', error);
         throw error;
       }
 
-      console.log('[DB.saveTechniciansOnly] ✅ RPC SUCCESS - Database updated');
+      if (data?.error) {
+        console.error('[DB.saveTechniciansOnly] ❌ FUNCTION RETURNED ERROR:', data.error);
+        throw new Error(data.error);
+      }
+
+      console.log('[DB.saveTechniciansOnly] ✅ EDGE FUNCTION SUCCESS - Database updated');
     } catch (dbError) {
-      console.error('[DB.saveTechniciansOnly] ❌ DATABASE ERROR:', dbError.message);
+      console.error('[DB.saveTechniciansOnly] ❌ ERROR:', dbError.message);
       throw new Error('Failed to save to database: ' + dbError.message);
     }
 

@@ -96,12 +96,8 @@ const Balance = (function() {
         return;
       }
 
-      if (allowedSources.length === 1) {
-        filterDiv.style.display = 'none';
-        select.dataset.lockedSource = allowedSources[0].name;
-        console.log('[Balance] 🔒 Exactly 1 source - locked to:', allowedSources[0].name);
-        return;
-      }
+      // Note: Even with 1 source, admins should see it in the dropdown
+      // Removed early return - always build dropdown options below
 
       // 2+ sources - show dropdown
       console.log('[Balance] 📋 Showing dropdown for', allowedSources.length, 'sources');

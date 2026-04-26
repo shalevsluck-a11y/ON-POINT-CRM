@@ -3560,11 +3560,10 @@ const App = (() => {
       console.log('[saveTech] 🔍 Technician data:', JSON.stringify(updated));
       console.log('[saveTech] 🔍 Total technicians:', techs.length);
 
-      // Save via saveSettings (uses same path as lead sources - known working)
-      console.log('[saveTech] 💾 Saving to database via saveSettings...');
-      await DB.saveSettings({ technicians: techs });
+      // Save via Edge Function (bypasses client schema cache)
+      console.log('[saveTech] 💾 Saving to database via Edge Function...');
+      await DB.saveTechniciansOnly(techs);
       console.log('[saveTech] ✅ Database save successful');
-      console.log('[saveTech] ✅ localStorage updated');
 
       // Re-render UI
       _renderTechList(techs);
