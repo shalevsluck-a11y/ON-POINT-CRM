@@ -297,7 +297,7 @@ const DB = (() => {
     }
   }
 
-  // FINAL SOLUTION: Call RPC directly (Edge Functions deployment is broken)
+  // Call Edge Function update-technicians (manually deployed via Supabase Dashboard)
   async function saveTechniciansOnly(techs) {
     if (!Auth.isAdmin()) return;
 
@@ -305,41 +305,38 @@ const DB = (() => {
     console.log('[DB.saveTechniciansOnly] ╔══════════════════════════════════════════════════════════');
     console.log('[DB.saveTechniciansOnly] ║ SAVE TECHNICIAN START');
     console.log('[DB.saveTechniciansOnly] ║ Total techs to save:', standaloneTechs.length);
-    console.log('[DB.saveTechniciansOnly] ║ Tech data:', JSON.stringify(standaloneTechs));
     console.log('[DB.saveTechniciansOnly] ╚══════════════════════════════════════════════════════════');
 
-    // Call RPC directly - auth.uid() is available with user client
     try {
-      console.log('[DB.saveTechniciansOnly] 💾 Calling RPC: update_app_settings_technicians...');
+      console.log('[DB.saveTechniciansOnly] 💾 Calling Edge Function: update-technicians...');
 
-      const { data, error } = await supa.rpc('update_app_settings_technicians', {
-        techs_json: standaloneTechs
+      const { data, error } = await supa.functions.invoke('update-technicians', {
+        body: { technicians: standaloneTechs }
       });
 
       if (error) {
-        console.error('[DB.saveTechniciansOnly] ❌ RPC ERROR:', JSON.stringify(error, null, 2));
-        console.error('[DB.saveTechniciansOnly] Error message:', error.message);
-        console.error('[DB.saveTechniciansOnly] Error details:', error.details);
-        console.error('[DB.saveTechniciansOnly] Error hint:', error.hint);
-        throw new Error(error.message || 'RPC call failed');
+        console.error('[DB.saveTechniciansOnly] ❌ Edge Function error:', error);
+        throw error;
       }
 
-      console.log('[DB.saveTechniciansOnly] ✅ RPC SUCCESS - Database updated');
+      if (data?.error) {
+        console.error('[DB.saveTechniciansOnly] ❌ Function returned error:', data.error);
+        throw new Error(data.error);
+      }
+
+      console.log('[DB.saveTechniciansOnly] ✅ SUCCESS - Database updated');
     } catch (dbError) {
-      console.error('[DB.saveTechniciansOnly] ❌ CATCH BLOCK - Full error:', dbError);
-      console.error('[DB.saveTechniciansOnly] Error stack:', dbError.stack);
-      throw new Error('Failed to save to database: ' + dbError.message);
+      console.error('[DB.saveTechniciansOnly] ❌ ERROR:', dbError);
+      throw new Error('Failed to save: ' + dbError.message);
     }
 
     // Update localStorage cache
-    console.log('[DB.saveTechniciansOnly] 💾 Updating localStorage cache...');
+    console.log('[DB.saveTechniciansOnly] 💾 Updating localStorage...');
     const settings = Storage.getSettings();
     Storage.saveSettings({ ...settings, technicians: standaloneTechs });
-    console.log('[DB.saveTechniciansOnly] ✅ localStorage updated');
 
-    // Verify
     const verification = Storage.getSettings();
-    console.log('[DB.saveTechniciansOnly] ✅ VERIFICATION - localStorage now has', verification.technicians?.length, 'technicians');
+    console.log('[DB.saveTechniciansOnly] ✅ Saved', verification.technicians?.length, 'technicians');
     console.log('[DB.saveTechniciansOnly] ═══════════════════════════════════════════════════════════');
   }
 
