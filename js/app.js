@@ -3560,9 +3560,9 @@ const App = (() => {
       console.log('[saveTech] 🔍 Technician data:', JSON.stringify(updated));
       console.log('[saveTech] 🔍 Total technicians:', techs.length);
 
-      // Save via Edge Function (bypasses client schema cache)
-      console.log('[saveTech] 💾 Saving to database via Edge Function...');
-      await DB.saveTechniciansOnly(techs);
+      // Save via DB.saveSettings (same pattern as lead sources)
+      console.log('[saveTech] 💾 Saving to database...');
+      await DB.saveSettings({ technicians: techs });
       console.log('[saveTech] ✅ Database save successful');
 
       // Re-render UI

@@ -99,10 +99,21 @@ const DB = (() => {
       }));
 
       // Get standalone technicians from database (non-user profiles)
-      const standaloneTechs = settings.technicians || [];
+      // SAFETY: Only use DB value if it's a valid array. Otherwise preserve cached standalone techs.
+      let standaloneTechs;
+      if (Array.isArray(settings.technicians)) {
+        standaloneTechs = settings.technicians;
+      } else {
+        // DB field missing/invalid - preserve existing standalone techs from cache
+        const cachedTechs = current.technicians || [];
+        standaloneTechs = cachedTechs.filter(t => !t.isUserAccount);
+        console.warn('[DB._syncSettingsDown] ⚠️  technicians field missing/invalid in DB, preserving cache');
+      }
+
       console.log('[DB._syncSettingsDown] ╔══════════════════════════════════════════════════════════');
       console.log('[DB._syncSettingsDown] ║ TECHNICIAN LOAD FROM DATABASE');
-      console.log('[DB._syncSettingsDown] ║ Standalone techs from DB:', standaloneTechs.length);
+      console.log('[DB._syncSettingsDown] ║ DB field valid?', Array.isArray(settings.technicians));
+      console.log('[DB._syncSettingsDown] ║ Standalone techs:', standaloneTechs.length);
       console.log('[DB._syncSettingsDown] ║ Standalone tech data:', JSON.stringify(standaloneTechs));
       console.log('[DB._syncSettingsDown] ║ User account techs:', userTechs.length);
       console.log('[DB._syncSettingsDown] ╚══════════════════════════════════════════════════════════');
@@ -295,50 +306,6 @@ const DB = (() => {
       if (error) throw new Error(error.message);
       console.log('[DB.saveSettings] ✓ Saved successfully');
     }
-  }
-
-  // Call Edge Function update-technicians via separate client (custom domain routing broken)
-  async function saveTechniciansOnly(techs) {
-    if (!Auth.isAdmin()) return;
-
-    const standaloneTechs = techs.filter(t => !t.isUserAccount);
-    console.log('[DB.saveTechniciansOnly] ╔══════════════════════════════════════════════════════════');
-    console.log('[DB.saveTechniciansOnly] ║ SAVE TECHNICIAN START');
-    console.log('[DB.saveTechniciansOnly] ║ Total techs to save:', standaloneTechs.length);
-    console.log('[DB.saveTechniciansOnly] ╚══════════════════════════════════════════════════════════');
-
-    try {
-      console.log('[DB.saveTechniciansOnly] 💾 Calling Edge Function: update-technicians...');
-
-      // Use EdgeFunctionsClient (direct supabase.co URL) instead of main client
-      const { data, error } = await EdgeFunctionsClient.functions.invoke('update-technicians', {
-        body: { technicians: standaloneTechs }
-      });
-
-      if (error) {
-        console.error('[DB.saveTechniciansOnly] ❌ Edge Function error:', error);
-        throw error;
-      }
-
-      if (data?.error) {
-        console.error('[DB.saveTechniciansOnly] ❌ Function returned error:', data.error);
-        throw new Error(data.error);
-      }
-
-      console.log('[DB.saveTechniciansOnly] ✅ SUCCESS - Database updated');
-    } catch (dbError) {
-      console.error('[DB.saveTechniciansOnly] ❌ ERROR:', dbError);
-      throw new Error('Failed to save: ' + dbError.message);
-    }
-
-    // Update localStorage cache
-    console.log('[DB.saveTechniciansOnly] 💾 Updating localStorage...');
-    const settings = Storage.getSettings();
-    Storage.saveSettings({ ...settings, technicians: standaloneTechs });
-
-    const verification = Storage.getSettings();
-    console.log('[DB.saveTechniciansOnly] ✅ Saved', verification.technicians?.length, 'technicians');
-    console.log('[DB.saveTechniciansOnly] ═══════════════════════════════════════════════════════════');
   }
 
   // Update settings in localStorage cache without remote sync
@@ -776,7 +743,6 @@ const DB = (() => {
     // Settings
     getSettings,
     saveSettings,
-    saveTechniciansOnly,
     updateSettingsCache,
     updateTechProfile,
     deleteProfile,
