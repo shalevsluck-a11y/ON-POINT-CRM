@@ -25,8 +25,8 @@ const Balance = (function() {
 
   async function populateTechSelector() {
     try {
-      const users = await Auth.listUsers();
-      const techs = users.filter(u => u.role === 'tech' || u.role === 'contractor');
+      const profiles = await Auth.getAllProfiles();
+      const techs = profiles.filter(p => p.role === 'tech' || p.role === 'contractor');
 
       const select = document.getElementById('balance-tech-select');
       if (!select) return;
@@ -96,10 +96,19 @@ const Balance = (function() {
         return;
       }
 
-      // Note: Even with 1 source, admins should see it in the dropdown
-      // Removed early return - always build dropdown options below
+      // NON-ADMIN with exactly 1 source: auto-select and LOCK
+      if (!isAdmin && allowedSources.length === 1) {
+        console.log('[Balance] 🔒 Non-admin with 1 source - locking to:', allowedSources[0].name);
+        filterDiv.style.display = 'none';  // Hide the entire filter section
+        select.dataset.lockedSource = allowedSources[0].name;
+        select.innerHTML = `<option value="${allowedSources[0].name}">${allowedSources[0].name}</option>`;
+        select.disabled = true;
+        select.value = allowedSources[0].name;
+        console.log('[Balance] ✅ Locked source:', select.value);
+        return;  // Done - user cannot change source
+      }
 
-      // 2+ sources - show dropdown
+      // ADMIN or NON-ADMIN with 2+ sources: show dropdown
       console.log('[Balance] 📋 Showing dropdown for', allowedSources.length, 'sources');
       filterDiv.style.display = 'block';
       select.dataset.lockedSource = '';
@@ -110,8 +119,9 @@ const Balance = (function() {
         select.innerHTML = '<option value="">All Sources</option>';
         console.log('[Balance] ✅ Added "All Sources" for admin');
       } else {
+        // Non-admin with 2+ sources: NO "All Sources" option
         select.innerHTML = '';
-        console.log('[Balance] ⚠️ No "All Sources" for non-admin');
+        console.log('[Balance] ⚠️ Non-admin - no "All Sources" option');
       }
 
       allowedSources.forEach(source => {
@@ -122,10 +132,10 @@ const Balance = (function() {
         console.log('[Balance] ✅ Added option:', source.name);
       });
 
-      // Auto-select first real source for non-admin
+      // Auto-select first source for non-admin (they have 2+ at this point)
       if (!isAdmin && select.options.length > 0) {
         select.selectedIndex = 0;
-        console.log('[Balance] 🎯 Auto-selected:', select.value);
+        console.log('[Balance] 🎯 Auto-selected first source:', select.value);
       }
 
       // Add change handler

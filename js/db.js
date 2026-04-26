@@ -311,23 +311,33 @@ const DB = (() => {
     // Call Edge Function (bypasses client schema cache entirely)
     try {
       console.log('[DB.saveTechniciansOnly] 💾 Calling Edge Function: update-technicians...');
-      const { data, error } = await supa.functions.invoke('update-technicians', {
+      console.log('[DB.saveTechniciansOnly] Auth status:', await supa.auth.getSession());
+
+      const response = await supa.functions.invoke('update-technicians', {
         body: { technicians: standaloneTechs }
       });
 
+      console.log('[DB.saveTechniciansOnly] 📦 Full response:', JSON.stringify(response, null, 2));
+      const { data, error } = response;
+
       if (error) {
-        console.error('[DB.saveTechniciansOnly] ❌ EDGE FUNCTION FAILED:', error);
+        console.error('[DB.saveTechniciansOnly] ❌ EDGE FUNCTION ERROR OBJECT:', JSON.stringify(error, null, 2));
+        console.error('[DB.saveTechniciansOnly] Error name:', error.name);
+        console.error('[DB.saveTechniciansOnly] Error message:', error.message);
+        console.error('[DB.saveTechniciansOnly] Error context:', error.context);
         throw error;
       }
 
       if (data?.error) {
-        console.error('[DB.saveTechniciansOnly] ❌ FUNCTION RETURNED ERROR:', data.error);
+        console.error('[DB.saveTechniciansOnly] ❌ FUNCTION RETURNED ERROR IN DATA:', JSON.stringify(data, null, 2));
         throw new Error(data.error);
       }
 
       console.log('[DB.saveTechniciansOnly] ✅ EDGE FUNCTION SUCCESS - Database updated');
+      console.log('[DB.saveTechniciansOnly] Response data:', JSON.stringify(data, null, 2));
     } catch (dbError) {
-      console.error('[DB.saveTechniciansOnly] ❌ ERROR:', dbError.message);
+      console.error('[DB.saveTechniciansOnly] ❌ CATCH BLOCK - Full error:', dbError);
+      console.error('[DB.saveTechniciansOnly] Error stack:', dbError.stack);
       throw new Error('Failed to save to database: ' + dbError.message);
     }
 
