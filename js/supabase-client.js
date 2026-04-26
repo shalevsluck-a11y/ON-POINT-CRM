@@ -2,10 +2,9 @@
    SUPABASE-CLIENT.JS — Supabase client initialization
    ============================================================ */
 
-// REVERT: Custom domain required for magic link auth (different JWT secret)
-// Custom domain works for everything except RPC, but that's OK for now
-const SUPABASE_URL  = 'https://api.onpointprodoors.com';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODI5Mjg5LCJleHAiOjE5MzQ1MDkyODl9.E8NSAZFNAMAUvWpLLR3xBVmrwnTDwawMYIMy9V_pWyU';
+// Use direct Supabase URL for Edge Functions (custom domain routing broken for new functions)
+const SUPABASE_URL  = 'https://nmmpemjcnncjfpooytpv.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5tbXBlbWpjbm5jamZwb295dHB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzNjU3NzYsImV4cCI6MjA5MTk0MTc3Nn0.MqfDrG7-Ay4A01hQBs6Qkpj8KPe8zBNJBJiGP0dqXLI';
 
 // Detect if running in PWA mode vs regular browser
 const isPWA = window.navigator.standalone === true ||
