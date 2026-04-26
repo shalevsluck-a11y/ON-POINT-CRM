@@ -56,9 +56,33 @@ const App = (() => {
     document.getElementById('app-shell')?.remove();
   }
 
+  // Force service worker to check for updates
+  function _checkServiceWorkerUpdate() {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistration().then(reg => {
+        if (reg) {
+          console.log('[App] Checking for service worker updates...');
+          reg.update();
+        }
+      });
+
+      // Listen for service worker update messages
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data.type === 'SW_UPDATED') {
+          console.log('[App] Service worker updated to version:', event.data.version);
+          console.log('[App] Reloading to apply updates...');
+          window.location.reload();
+        }
+      });
+    }
+  }
+
   async function _onAuthenticated() {
     if (_initialized) return;
     _initialized = true;
+
+    // Force service worker update check
+    _checkServiceWorkerUpdate();
 
     // Show app immediately from localStorage cache — do NOT await DB.init() first
     LoginScreen.hide();

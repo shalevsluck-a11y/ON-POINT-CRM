@@ -1,7 +1,7 @@
 // On Point Pro Doors CRM — Service Worker
 // CACHE_VERSION is stamped by the deploy script on every push so the
 // browser always sees a changed sw.js file and installs the new version.
-const CACHE_VERSION = 'v20260426-critical-fixes';
+const CACHE_VERSION = 'v20260426-force-reload';
 const CACHE_NAME = `onpoint-${CACHE_VERSION}`;
 
 // Import remote debug logger
@@ -63,9 +63,7 @@ self.addEventListener('install', (event) => {
 
 // ── ACTIVATE ──────────────────────────────────────────────
 // Delete every old cache bucket and claim all clients immediately.
-// We do NOT force-reload clients here — JS/CSS are already network-first
-// (cache:'no-cache'), so the next navigation automatically gets fresh code.
-// Force-reloading mid-auth causes the blue screen to stick.
+// Then force all clients to reload to pick up new code.
 self.addEventListener('activate', (event) => {
   RemoteDebug.logServiceWorkerEvent('sw_activate', 'Service worker activating', { cacheVersion: CACHE_VERSION });
   event.waitUntil(
@@ -73,9 +71,13 @@ self.addEventListener('activate', (event) => {
       .then(keys => Promise.all(
         keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
       ))
+      .then(() => self.clients.claim())
       .then(() => {
-        RemoteDebug.logServiceWorkerEvent('sw_activate_complete', 'Service worker activated and claimed clients', { cacheVersion: CACHE_VERSION });
-        return self.clients.claim();
+        RemoteDebug.logServiceWorkerEvent('sw_activate_complete', 'Service worker activated, forcing reload', { cacheVersion: CACHE_VERSION });
+        // Force all clients to reload to pick up new code
+        return self.clients.matchAll({ type: 'window' }).then(clients => {
+          clients.forEach(client => client.postMessage({ type: 'SW_UPDATED', version: CACHE_VERSION }));
+        });
       })
       .catch(error => {
         RemoteDebug.logError('service_worker', 'Activate failed', error);
