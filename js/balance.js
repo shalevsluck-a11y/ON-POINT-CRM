@@ -62,24 +62,29 @@ const Balance = (function() {
         }
       }
 
-      // If user has NO allowed sources, hide the filter
-      if (allowedSources.length === 0) {
-        filterDiv.style.display = 'none';
-        return;
-      }
+      // Admins ALWAYS see the dropdown (even if only 1 source exists)
+      if (Auth.isAdmin()) {
+        filterDiv.style.display = 'block';
+        select.dataset.lockedSource = ''; // Admins are never locked
+      } else {
+        // Non-admin logic: hide if no sources or lock if exactly 1 source
+        if (allowedSources.length === 0) {
+          filterDiv.style.display = 'none';
+          return;
+        }
 
-      // If user has exactly 1 allowed source, auto-select it and hide dropdown
-      if (allowedSources.length === 1) {
-        filterDiv.style.display = 'none';
-        // Store the locked source for report generation
-        select.dataset.lockedSource = allowedSources[0].name;
-        console.log('[Balance] User locked to single source:', allowedSources[0].name);
-        return;
-      }
+        if (allowedSources.length === 1) {
+          filterDiv.style.display = 'none';
+          // Store the locked source for report generation
+          select.dataset.lockedSource = allowedSources[0].name;
+          console.log('[Balance] User locked to single source:', allowedSources[0].name);
+          return;
+        }
 
-      // User has multiple allowed sources - show dropdown
-      filterDiv.style.display = 'block';
-      select.dataset.lockedSource = ''; // Clear any locked source
+        // User has multiple allowed sources - show dropdown
+        filterDiv.style.display = 'block';
+        select.dataset.lockedSource = '';
+      }
 
       // Populate with allowed sources only
       if (Auth.isAdmin()) {
