@@ -297,17 +297,14 @@ const DB = (() => {
         techs_json: techniciansToSave
       });
       if (error) {
-        console.error('[DB.saveSettings] RPC failed, trying direct update...', error.message);
-        // Fallback: try direct update anyway
-        try {
-          const { error: directError } = await supa.from('app_settings')
-            .update({ technicians: techniciansToSave })
-            .eq('id', 1);
-          if (directError) throw directError;
-        } catch (e) {
-          throw new Error('Failed to save technicians: ' + e.message);
+        console.error('[DB.saveSettings] RPC failed:', error);
+        // Check if it's a schema cache error
+        if (error.message && error.message.includes('schema cache')) {
+          throw new Error('Schema cache error - please refresh your browser (Cmd+Shift+R or Ctrl+Shift+R) and try again');
         }
+        throw new Error('Failed to save technicians: ' + error.message);
       }
+      console.log('[DB.saveSettings] ✓ Technicians saved via RPC successfully');
     }
 
     console.log('[DB.saveSettings] ✓ Saved to database successfully');

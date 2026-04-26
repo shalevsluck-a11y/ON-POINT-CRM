@@ -47,16 +47,17 @@ const Balance = (function() {
       const user = Auth.getUser();
       const settings = DB.getSettings();
       const allLeadSources = settings.leadSources || [];
+      const isAdmin = Auth.isAdmin();
 
       console.log('[Balance] ═══ Lead Source Selector Debug ═══');
-      console.log('[Balance] User:', user?.name, 'Role:', user?.role);
+      console.log('[Balance] User:', user?.name, 'Role:', user?.role, 'IsAdmin:', isAdmin);
       console.log('[Balance] All lead sources:', JSON.stringify(allLeadSources));
       console.log('[Balance] Total sources count:', allLeadSources.length);
 
       // Determine which sources this user can access
       let allowedSources = [];
 
-      if (Auth.isAdmin()) {
+      if (isAdmin) {
         // Admin can see all sources
         allowedSources = allLeadSources;
         console.log('[Balance] Admin mode - showing all sources');
@@ -71,36 +72,32 @@ const Balance = (function() {
 
       console.log('[Balance] Allowed sources after filtering:', allowedSources.length, JSON.stringify(allowedSources));
 
-      // Admins ALWAYS see the dropdown (even if only 1 source exists)
-      if (Auth.isAdmin()) {
-        filterDiv.style.display = 'block';
-        select.dataset.lockedSource = ''; // Admins are never locked
-      } else {
-        // Non-admin logic: hide if no sources or lock if exactly 1 source
-        if (allowedSources.length === 0) {
-          filterDiv.style.display = 'none';
-          console.log('[Balance] Hiding filter - no allowed sources');
-          return;
-        }
-
-        if (allowedSources.length === 1) {
-          filterDiv.style.display = 'none';
-          // Store the locked source for report generation
-          select.dataset.lockedSource = allowedSources[0].name;
-          console.log('[Balance] User locked to single source:', allowedSources[0].name);
-          return;
-        }
-
-        // User has multiple allowed sources - show dropdown
-        filterDiv.style.display = 'block';
+      // Apply permission-based logic
+      if (allowedSources.length === 0) {
+        // No sources - hide filter entirely
+        filterDiv.style.display = 'none';
         select.dataset.lockedSource = '';
+        console.log('[Balance] No sources available - hiding filter');
+        return;
       }
 
-      // Populate with allowed sources only
-      if (Auth.isAdmin()) {
+      if (allowedSources.length === 1) {
+        // Exactly 1 source - auto-select and lock (hide selector)
+        filterDiv.style.display = 'none';
+        select.dataset.lockedSource = allowedSources[0].name;
+        console.log('[Balance] Exactly 1 source - locked to:', allowedSources[0].name);
+        return;
+      }
+
+      // 2+ sources - show dropdown with ONLY permitted sources
+      filterDiv.style.display = 'block';
+      select.dataset.lockedSource = '';
+
+      // Populate dropdown - admin gets "All Sources", non-admin does NOT
+      if (isAdmin) {
         select.innerHTML = '<option value="">All Sources</option>';
       } else {
-        select.innerHTML = '<option value="">Select Source</option>';
+        select.innerHTML = ''; // No "All Sources" for non-admin
       }
 
       allowedSources.forEach(source => {
@@ -110,6 +107,11 @@ const Balance = (function() {
         select.appendChild(option);
         console.log('[Balance] Added source option:', source.name);
       });
+
+      // Auto-select first source for non-admin (no "All Sources" default)
+      if (!isAdmin && select.options.length > 0) {
+        select.selectedIndex = 0;
+      }
 
       console.log('[Balance] ✓ Dropdown populated with', select.options.length, 'total options');
       console.log('[Balance] ═══════════════════════════════════');

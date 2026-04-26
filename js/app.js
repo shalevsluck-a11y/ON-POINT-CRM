@@ -3548,13 +3548,18 @@ const App = (() => {
       const updated = { id: techId, name, phone, color, percent: pct, zelle, zipCodes, isOwner, isUserAccount: false };
       if (idx >= 0) techs[idx] = updated; else techs.push(updated);
 
-      // CRITICAL FIX: Save to database, not just localStorage
+      console.log('[saveTech] Saving technician to database via RPC...');
+      // Save to database using RPC (bypasses schema cache)
       await DB.saveSettings({ ...settings, technicians: techs });
 
       // Re-fetch from database to confirm it was saved
+      console.log('[saveTech] Re-fetching settings from database...');
       await DB.syncSettingsFromRemote();
 
-      _renderTechList(DB.getSettings().technicians);
+      const savedSettings = DB.getSettings();
+      console.log('[saveTech] ✓ Technicians after save:', savedSettings.technicians?.length || 0);
+
+      _renderTechList(savedSettings.technicians);
       _renderTechSelector();
       closeModal();
       showToast(`${name} saved`, 'success');
