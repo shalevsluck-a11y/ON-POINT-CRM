@@ -3560,23 +3560,24 @@ const App = (() => {
       console.log('[saveTech] 🔍 Technician data:', JSON.stringify(updated));
       console.log('[saveTech] 🔍 Total technicians:', techs.length);
 
-      // Save via server endpoint (bypasses PostgREST schema cache)
+      // Save via Edge Function (bypasses PostgREST schema cache)
       console.log('[saveTech] 💾 Saving to database...');
-      const session = await SupabaseClient.auth.getSession();
       const standaloneTechs = techs.filter(t => !t.isUserAccount);
+      const session = await SupabaseClient.auth.getSession();
 
-      const response = await fetch('/api/save-technicians', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.data.session.access_token}`
-        },
-        body: JSON.stringify({ technicians: standaloneTechs })
+      const { data, error } = await EdgeFunctionsClient.functions.invoke('update-technicians', {
+        headers: { Authorization: `Bearer ${session.data.session.access_token}` },
+        body: { technicians: standaloneTechs }
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Save failed');
+      if (error) {
+        console.error('[saveTech] Edge Function error:', error);
+        throw new Error(error.message || 'Save failed');
+      }
+
+      if (data?.error) {
+        console.error('[saveTech] Function returned error:', data.error);
+        throw new Error(data.error);
       }
 
       // Update localStorage cache
@@ -3609,30 +3610,28 @@ const App = (() => {
       okLabel: 'Remove',
       onOk: async () => {
         try {
-          // Try to delete user profile if this is a user account
-          try {
+          // Only delete from profiles if this is a user account
+          if (tech?.isUserAccount) {
+            console.log('[deleteTech] Deleting user profile:', techId);
             await DB.deleteProfile(techId);
-          } catch (e) {
-            console.log('[deleteTech] Not a user profile, deleting standalone tech');
+          } else {
+            console.log('[deleteTech] Standalone tech, not deleting from profiles');
           }
 
           // Remove from technicians list
           const updated = (settings.technicians || []).filter(t => t.id !== techId);
 
-          // Save via server endpoint (bypasses PostgREST schema cache)
+          // Save via Edge Function (bypasses PostgREST schema cache)
           const session = await SupabaseClient.auth.getSession();
           const standaloneTechs = updated.filter(t => !t.isUserAccount);
 
-          const response = await fetch('/api/save-technicians', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${session.data.session.access_token}`
-            },
-            body: JSON.stringify({ technicians: standaloneTechs })
+          const { data, error } = await EdgeFunctionsClient.functions.invoke('update-technicians', {
+            headers: { Authorization: `Bearer ${session.data.session.access_token}` },
+            body: { technicians: standaloneTechs }
           });
 
-          if (!response.ok) throw new Error('Delete save failed');
+          if (error) throw new Error(error.message || 'Delete save failed');
+          if (data?.error) throw new Error(data.error);
 
           // Update localStorage cache
           DB.updateSettingsCache({ ...DB.getSettings(), technicians: updated });

@@ -292,14 +292,10 @@ const DB = (() => {
     if (updates.appsScriptUrl  !== undefined) row.apps_script_url = updates.appsScriptUrl;
     if (updates.leadSources    !== undefined) row.lead_sources    = updates.leadSources;
 
-    // Save technicians same way as lead sources (direct table update)
-    if (updates.technicians !== undefined) {
-      // Filter out user-account techs (they're stored in profiles table)
-      const standaloneTechs = updates.technicians.filter(t => !t.isUserAccount);
-      row.technicians = standaloneTechs;
-    }
+    // NOTE: Technicians are saved via Edge Function only (update-technicians)
+    // Do NOT save via this path - PostgREST has stale schema cache for technicians column
 
-    // Save all fields including technicians
+    // Save all fields (except technicians)
     if (Object.keys(row).length > 0) {
       console.log('[DB.saveSettings] Saving to database:', Object.keys(row));
       const { error } = await supa.from('app_settings').update(row).eq('id', 1);
