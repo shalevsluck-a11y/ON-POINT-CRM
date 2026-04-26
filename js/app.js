@@ -3563,10 +3563,8 @@ const App = (() => {
       // Save via Edge Function (bypasses PostgREST schema cache)
       console.log('[saveTech] 💾 Saving to database...');
       const standaloneTechs = techs.filter(t => !t.isUserAccount);
-      const session = await SupabaseClient.auth.getSession();
 
-      const { data, error } = await EdgeFunctionsClient.functions.invoke('update-technicians', {
-        headers: { Authorization: `Bearer ${session.data.session.access_token}` },
+      const { data, error } = await SupabaseClient.functions.invoke('update-technicians', {
         body: { technicians: standaloneTechs }
       });
 
@@ -3622,11 +3620,9 @@ const App = (() => {
           const updated = (settings.technicians || []).filter(t => t.id !== techId);
 
           // Save via Edge Function (bypasses PostgREST schema cache)
-          const session = await SupabaseClient.auth.getSession();
           const standaloneTechs = updated.filter(t => !t.isUserAccount);
 
-          const { data, error } = await EdgeFunctionsClient.functions.invoke('update-technicians', {
-            headers: { Authorization: `Bearer ${session.data.session.access_token}` },
+          const { data, error } = await SupabaseClient.functions.invoke('update-technicians', {
             body: { technicians: standaloneTechs }
           });
 
