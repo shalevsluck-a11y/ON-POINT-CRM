@@ -113,6 +113,16 @@ const Balance = (function() {
         select.selectedIndex = 0;
       }
 
+      // Add change event listener to regenerate report when source changes
+      select.onchange = function() {
+        console.log('[Balance] Source changed to:', this.value);
+        // If a report is currently showing, regenerate it with new source
+        const reportSection = document.getElementById('balance-report');
+        if (reportSection && !reportSection.classList.contains('hidden')) {
+          generateReport();
+        }
+      };
+
       console.log('[Balance] ✓ Dropdown populated with', select.options.length, 'total options');
       console.log('[Balance] ═══════════════════════════════════');
     } catch (err) {
