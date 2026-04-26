@@ -9,12 +9,17 @@ const Balance = (function() {
   let currentReportData = null;
 
   function init() {
-    console.log('[Balance] Module initialized');
+    console.log('[Balance] 🚀 Module initialized');
+
+    // Verify elements exist before populating
+    const filterDiv = document.getElementById('balance-source-filter');
+    const select = document.getElementById('balance-source-select');
+    console.log('[Balance] 🔍 Elements check - filterDiv:', !!filterDiv, 'select:', !!select);
 
     // Populate tech selector
     populateTechSelector();
 
-    // Populate lead source selector (admin only)
+    // Populate lead source selector
     populateLeadSourceSelector();
   }
 
