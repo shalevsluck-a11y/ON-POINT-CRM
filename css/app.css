@@ -286,26 +286,48 @@ a { color: var(--color-primary); text-decoration: none; }
 .nav-item.active::before { background: var(--color-primary-glow); }
 .nav-item:active { opacity: 0.5; }
 
-.nav-icon  { font-size: 22px; line-height: 1; position: relative; z-index: 1; }
-.nav-label { font-size: 10px; font-weight: 600; letter-spacing: 0.2px; position: relative; z-index: 1; }
+.nav-icon  {
+  width: 24px;
+  height: 24px;
+  position: relative;
+  z-index: 1;
+  stroke-width: 2;
+  transition: stroke-width 0.15s;
+}
+.nav-item.active .nav-icon {
+  stroke-width: 2.5;
+}
+.nav-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  position: relative;
+  z-index: 1;
+  margin-top: 2px;
+}
 
 .nav-add {
   background: var(--color-primary) !important;
   color: #ffffff !important;
   border-radius: 50%;
-  width: 54px; height: 54px;
-  min-width: 54px;
+  width: 56px;
+  height: 56px;
+  min-width: 56px;
   flex: none;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.22), 0 2px 6px rgba(0,0,0,0.14) !important;
+  box-shadow: 0 4px 20px rgba(59,130,246,0.3), 0 2px 8px rgba(59,130,246,0.2) !important;
   padding: 0;
-  margin-bottom: 6px;
-  transition: transform 0.14s cubic-bezier(0.34,1.6,0.64,1), box-shadow 0.15s !important;
+  margin-bottom: 8px;
+  transition: transform 0.2s cubic-bezier(0.34,1.6,0.64,1), box-shadow 0.2s !important;
 }
 .nav-add::before { display: none; }
-.nav-add .nav-icon { font-size: 30px; font-weight: 200; }
+.nav-add .nav-icon {
+  width: 28px;
+  height: 28px;
+  stroke-width: 2.5;
+}
 .nav-add:active {
-  transform: scale(0.91) !important;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.18), 0 1px 4px rgba(0,0,0,0.1) !important;
+  transform: scale(0.88) !important;
+  box-shadow: 0 2px 12px rgba(59,130,246,0.25), 0 1px 4px rgba(59,130,246,0.15) !important;
   opacity: 1 !important;
 }
 
@@ -355,9 +377,9 @@ a { color: var(--color-primary); text-decoration: none; }
 }
 
 .more-icon {
-  font-size: 20px;
-  width: 24px;
-  text-align: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
 }
 
 /* ── BUTTONS ─────────────────────────────────────────────── */

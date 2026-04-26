@@ -40,34 +40,62 @@ const Balance = (function() {
 
   function populateLeadSourceSelector() {
     try {
-      // Only show for admins
       const filterDiv = document.getElementById('balance-source-filter');
-      if (!filterDiv) return;
+      const select = document.getElementById('balance-source-select');
+      if (!filterDiv || !select) return;
 
-      if (!Auth.isAdmin()) {
+      const user = Auth.getUser();
+      const settings = DB.getSettings();
+      const allLeadSources = settings.leadSources || [];
+
+      // Determine which sources this user can access
+      let allowedSources = [];
+
+      if (Auth.isAdmin()) {
+        // Admin can see all sources
+        allowedSources = allLeadSources;
+      } else {
+        // Non-admin: check their allowed_lead_sources
+        const userAllowedSources = user?.allowedLeadSources;
+        if (userAllowedSources && Array.isArray(userAllowedSources) && userAllowedSources.length > 0) {
+          allowedSources = allLeadSources.filter(s => userAllowedSources.includes(s.name));
+        }
+      }
+
+      // If user has NO allowed sources, hide the filter
+      if (allowedSources.length === 0) {
         filterDiv.style.display = 'none';
         return;
       }
 
-      // Show for admins
+      // If user has exactly 1 allowed source, auto-select it and hide dropdown
+      if (allowedSources.length === 1) {
+        filterDiv.style.display = 'none';
+        // Store the locked source for report generation
+        select.dataset.lockedSource = allowedSources[0].name;
+        console.log('[Balance] User locked to single source:', allowedSources[0].name);
+        return;
+      }
+
+      // User has multiple allowed sources - show dropdown
       filterDiv.style.display = 'block';
+      select.dataset.lockedSource = ''; // Clear any locked source
 
-      // Get lead sources from settings
-      const settings = DB.getSettings();
-      const leadSources = settings.leadSources || [];
+      // Populate with allowed sources only
+      if (Auth.isAdmin()) {
+        select.innerHTML = '<option value="">All Sources</option>';
+      } else {
+        select.innerHTML = '<option value="">Select Source</option>';
+      }
 
-      const select = document.getElementById('balance-source-select');
-      if (!select) return;
-
-      select.innerHTML = '<option value="">All Sources</option>';
-      leadSources.forEach(source => {
+      allowedSources.forEach(source => {
         const option = document.createElement('option');
         option.value = source.name;
         option.textContent = source.name;
         select.appendChild(option);
       });
 
-      console.log('[Balance] Lead source filter populated with', leadSources.length, 'sources');
+      console.log('[Balance] Lead source filter populated with', allowedSources.length, 'allowed sources');
     } catch (err) {
       console.error('[Balance] Failed to load lead sources:', err);
     }
@@ -102,7 +130,14 @@ const Balance = (function() {
     try {
       const period = document.getElementById('balance-period').value;
       const status = document.getElementById('balance-status').value;
-      const sourceFilter = Auth.isAdmin() ? document.getElementById('balance-source-select')?.value : null;
+      const select = document.getElementById('balance-source-select');
+
+      // Get source filter - either from dropdown or locked source
+      let sourceFilter = null;
+      if (select) {
+        sourceFilter = select.dataset.lockedSource || select.value || null;
+      }
+
       const techId = currentReportType === 'tech'
         ? document.getElementById('balance-tech-select').value
         : null;

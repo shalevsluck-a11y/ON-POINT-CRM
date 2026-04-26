@@ -82,20 +82,28 @@ const DB = (() => {
       const isAdmin = Auth.isAdmin();
       console.log('[DB._syncSettingsDown] User is admin?', isAdmin);
 
-      // Build technician list — only tech/contractor roles, only Zelle for admin
-      const techList = (techs || []).filter(t => t.role === 'tech' || t.role === 'contractor').map(t => ({
+      // Build technician list from two sources:
+      // 1. User profiles with tech/contractor role
+      // 2. Standalone technician profiles from app_settings.technicians
+      const userTechs = (techs || []).filter(t => t.role === 'tech' || t.role === 'contractor').map(t => ({
         id:        t.id,
         name:      t.name,
         phone:     t.phone,
         color:     t.color || '#3B82F6',
         zipCodes:  t.zip_codes || [],
         percent:   t.default_tech_percent || 60,
-        // Zelle handle is payment-identity data — only admin should see it in cache
         zelle:     isAdmin ? (t.zelle_handle || '') : '',
         isOwner:   t.is_owner || false,
         role:      t.role,
+        isUserAccount: true,
       }));
-      console.log('[DB._syncSettingsDown] Built tech list, count:', techList.length);
+
+      // Get standalone technicians from database (non-user profiles)
+      const standaloneTechs = settings.technicians || [];
+
+      // Merge both lists - user accounts first, then standalone techs
+      const techList = [...userTechs, ...standaloneTechs];
+      console.log('[DB._syncSettingsDown] Built tech list - users:', userTechs.length, 'standalone:', standaloneTechs.length, 'total:', techList.length);
 
       const newSettings = {
         ...current,
@@ -265,10 +273,20 @@ const DB = (() => {
     if (updates.appsScriptUrl  !== undefined) row.apps_script_url = updates.appsScriptUrl;
     if (updates.leadSources    !== undefined) row.lead_sources    = updates.leadSources;
 
-    if (Object.keys(row).length === 0) return; // nothing to persist (e.g. technicians-only update)
+    // CRITICAL FIX: Save standalone technicians to database
+    if (updates.technicians !== undefined) {
+      // Filter out user-account techs (they're stored in profiles table)
+      // Only save standalone technicians that don't have isUserAccount flag
+      const standaloneTechs = updates.technicians.filter(t => !t.isUserAccount);
+      row.technicians = standaloneTechs;
+    }
 
+    if (Object.keys(row).length === 0) return; // nothing to persist
+
+    console.log('[DB.saveSettings] Saving to database:', row);
     const { error } = await supa.from('app_settings').update(row).eq('id', 1);
     if (error) throw new Error(error.message);
+    console.log('[DB.saveSettings] ✓ Saved to database successfully');
   }
 
   async function updateTechProfile(id, profileData) {

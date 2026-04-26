@@ -3521,15 +3521,21 @@ const App = (() => {
       const techs = [...(settings.technicians || [])];
       if (isOwner) techs.forEach(t => { if (t.id !== techId) t.isOwner = false; });
       const idx = techs.findIndex(t => t.id === techId);
-      const updated = { id: techId, name, phone, color, percent: pct, zelle, zipCodes, isOwner };
+      const updated = { id: techId, name, phone, color, percent: pct, zelle, zipCodes, isOwner, isUserAccount: false };
       if (idx >= 0) techs[idx] = updated; else techs.push(updated);
-      Storage.saveSettings({ ...settings, technicians: techs });
 
-      _renderTechList(techs);
+      // CRITICAL FIX: Save to database, not just localStorage
+      await DB.saveSettings({ ...settings, technicians: techs });
+
+      // Re-fetch from database to confirm it was saved
+      await DB.syncSettingsFromRemote();
+
+      _renderTechList(DB.getSettings().technicians);
       _renderTechSelector();
       closeModal();
       showToast(`${name} saved`, 'success');
     } catch (e) {
+      console.error('[saveTech] Error:', e);
       showToast('Failed to save technician: ' + (e.message || 'unknown error'), 'error');
     }
   }
@@ -3548,14 +3554,28 @@ const App = (() => {
       okLabel: 'Remove',
       onOk: async () => {
         try {
-          await DB.deleteProfile(techId);
+          // Try to delete user profile if this is a user account
+          try {
+            await DB.deleteProfile(techId);
+          } catch (e) {
+            console.log('[deleteTech] Not a user profile, deleting standalone tech');
+          }
+
+          // Remove from technicians list
           const updated = (settings.technicians || []).filter(t => t.id !== techId);
           const s = DB.getSettings();
-          Storage.saveSettings({ ...s, technicians: updated });
-          _renderTechList(updated);
+
+          // CRITICAL FIX: Save to database, not just localStorage
+          await DB.saveSettings({ ...s, technicians: updated });
+
+          // Re-fetch from database
+          await DB.syncSettingsFromRemote();
+
+          _renderTechList(DB.getSettings().technicians);
           _renderTechSelector();
           showToast('Technician removed', 'success');
         } catch (e) {
+          console.error('[deleteTech] Error:', e);
           showToast('Failed to remove: ' + (e.message || 'unknown error'), 'error');
         }
       }
