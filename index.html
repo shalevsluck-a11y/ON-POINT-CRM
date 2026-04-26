@@ -604,8 +604,13 @@
 
         <!-- Report options -->
         <div id="balance-options" class="balance-container hidden">
-          <div class="balance-back" onclick="Balance.showMenu()">← Back</div>
-          <h2 id="balance-options-title" style="margin: 16px 0; color: #e2e8f0;"></h2>
+          <div class="balance-back" onclick="Balance.showMenu()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+            Back
+          </div>
+          <h2 id="balance-options-title" class="balance-section-title"></h2>
 
           <div class="balance-filters">
             <div class="filter-group">
@@ -633,17 +638,24 @@
                 <option value="">All Sources</option>
               </select>
             </div>
+
+            <!-- Tech selector (only for tech reports) -->
+            <div id="balance-tech-selector" class="filter-group hidden">
+              <label>Select Tech</label>
+              <select id="balance-tech-select" class="balance-select">
+                <option value="">All Techs</option>
+              </select>
+            </div>
           </div>
 
-          <!-- Tech selector (only for tech reports) -->
-          <div id="balance-tech-selector" class="filter-group hidden">
-            <label>Select Tech</label>
-            <select id="balance-tech-select" class="balance-select">
-              <option value="">All Techs</option>
-            </select>
-          </div>
-
-          <button class="btn-primary" onclick="Balance.generateReport()" style="width: 100%; margin-top: 16px;">
+          <button class="balance-btn-generate" onclick="Balance.generateReport()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
             Generate Report
           </button>
         </div>

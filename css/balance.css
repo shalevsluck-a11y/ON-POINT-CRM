@@ -11,105 +11,149 @@
 
 .balance-card {
   background: var(--color-surface);
-  border: 1px solid var(--color-border-2);
-  border-radius: var(--radius-md);
-  padding: 28px 20px;
+  border: 1.5px solid var(--color-border-2);
+  border-radius: 16px;
+  padding: 32px 24px;
   margin-bottom: 16px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   -webkit-tap-highlight-color: transparent;
-  min-height: 120px;
+  min-height: 140px;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.balance-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-dark));
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
 }
 
 .balance-card:active {
   background: var(--color-surface-2);
   border-color: var(--color-primary);
-  transform: scale(0.98);
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.2);
+}
+
+.balance-card:active::before {
+  transform: scaleX(1);
 }
 
 .balance-card-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
+  font-size: 52px;
+  margin-bottom: 16px;
   text-align: center;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
 }
 
 .balance-card-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: #e2e8f0;
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--color-text);
   margin-bottom: 8px;
   text-align: center;
+  letter-spacing: -0.3px;
 }
 
 .balance-card-desc {
   font-size: 14px;
-  color: #94a3b8;
+  font-weight: 500;
+  color: var(--color-text-muted);
   text-align: center;
+  line-height: 1.4;
 }
 
 .balance-back {
-  color: #3b82f6;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-primary);
   cursor: pointer;
-  margin-bottom: 16px;
-  font-size: 16px;
-  display: inline-block;
+  margin-bottom: 24px;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.balance-back:hover {
-  color: #60a5fa;
-  text-decoration: underline;
+.balance-back:active {
+  background: var(--color-surface-2);
+  transform: scale(0.97);
+}
+
+.balance-back svg {
+  flex-shrink: 0;
+}
+
+.balance-section-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 28px 0;
+  letter-spacing: -0.5px;
 }
 
 .balance-filters {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-@media (max-width: 640px) {
-  .balance-filters {
-    grid-template-columns: 1fr;
-  }
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 24px;
 }
 
 .filter-group {
-  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .filter-group label {
-  display: block;
-  font-size: 14px;
-  font-weight: 500;
-  color: #cbd5e1;
-  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .balance-select {
   width: 100%;
-  padding: 14px 16px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border-2);
-  border-radius: var(--radius-sm);
+  padding: 16px 20px;
+  background: var(--color-surface-2);
+  border: 1.5px solid var(--color-border-2);
+  border-radius: 12px;
   color: var(--color-text);
   font-size: 16px;
+  font-weight: 500;
   cursor: pointer;
   -webkit-appearance: none;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 16px center;
-  padding-right: 44px;
+  background-position: right 18px center;
+  padding-right: 50px;
+  transition: all 0.2s ease;
 }
 
 .balance-select:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-primary-glow);
+  background-color: var(--color-surface-3);
+  box-shadow: 0 0 0 4px var(--color-primary-glow);
+}
+
+.balance-select:active {
+  transform: scale(0.99);
 }
 
 /* Report Styles */
