@@ -48,19 +48,28 @@ const Balance = (function() {
       const settings = DB.getSettings();
       const allLeadSources = settings.leadSources || [];
 
+      console.log('[Balance] ═══ Lead Source Selector Debug ═══');
+      console.log('[Balance] User:', user?.name, 'Role:', user?.role);
+      console.log('[Balance] All lead sources:', JSON.stringify(allLeadSources));
+      console.log('[Balance] Total sources count:', allLeadSources.length);
+
       // Determine which sources this user can access
       let allowedSources = [];
 
       if (Auth.isAdmin()) {
         // Admin can see all sources
         allowedSources = allLeadSources;
+        console.log('[Balance] Admin mode - showing all sources');
       } else {
         // Non-admin: check their allowed_lead_sources
         const userAllowedSources = user?.allowedLeadSources;
+        console.log('[Balance] User allowed sources:', userAllowedSources);
         if (userAllowedSources && Array.isArray(userAllowedSources) && userAllowedSources.length > 0) {
           allowedSources = allLeadSources.filter(s => userAllowedSources.includes(s.name));
         }
       }
+
+      console.log('[Balance] Allowed sources after filtering:', allowedSources.length, JSON.stringify(allowedSources));
 
       // Admins ALWAYS see the dropdown (even if only 1 source exists)
       if (Auth.isAdmin()) {
@@ -70,6 +79,7 @@ const Balance = (function() {
         // Non-admin logic: hide if no sources or lock if exactly 1 source
         if (allowedSources.length === 0) {
           filterDiv.style.display = 'none';
+          console.log('[Balance] Hiding filter - no allowed sources');
           return;
         }
 
@@ -98,9 +108,11 @@ const Balance = (function() {
         option.value = source.name;
         option.textContent = source.name;
         select.appendChild(option);
+        console.log('[Balance] Added source option:', source.name);
       });
 
-      console.log('[Balance] Lead source filter populated with', allowedSources.length, 'allowed sources');
+      console.log('[Balance] ✓ Dropdown populated with', select.options.length, 'total options');
+      console.log('[Balance] ═══════════════════════════════════');
     } catch (err) {
       console.error('[Balance] Failed to load lead sources:', err);
     }

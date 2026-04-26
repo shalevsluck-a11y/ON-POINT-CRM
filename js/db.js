@@ -274,18 +274,42 @@ const DB = (() => {
     if (updates.leadSources    !== undefined) row.lead_sources    = updates.leadSources;
 
     // CRITICAL FIX: Save standalone technicians to database
+    let techniciansToSave = null;
     if (updates.technicians !== undefined) {
       // Filter out user-account techs (they're stored in profiles table)
       // Only save standalone technicians that don't have isUserAccount flag
       const standaloneTechs = updates.technicians.filter(t => !t.isUserAccount);
-      row.technicians = standaloneTechs;
+      techniciansToSave = standaloneTechs;
+      // Don't add to row yet - we'll use RPC to avoid schema cache issues
     }
 
-    if (Object.keys(row).length === 0) return; // nothing to persist
+    // Save all fields EXCEPT technicians using regular update
+    if (Object.keys(row).length > 0) {
+      console.log('[DB.saveSettings] Saving standard fields to database:', row);
+      const { error } = await supa.from('app_settings').update(row).eq('id', 1);
+      if (error) throw new Error(error.message);
+    }
 
-    console.log('[DB.saveSettings] Saving to database:', row);
-    const { error } = await supa.from('app_settings').update(row).eq('id', 1);
-    if (error) throw new Error(error.message);
+    // Save technicians separately using RPC to bypass schema cache
+    if (techniciansToSave !== null) {
+      console.log('[DB.saveSettings] Saving technicians via RPC to bypass schema cache...');
+      const { error } = await supa.rpc('update_app_settings_technicians', {
+        techs_json: techniciansToSave
+      });
+      if (error) {
+        console.error('[DB.saveSettings] RPC failed, trying direct update...', error.message);
+        // Fallback: try direct update anyway
+        try {
+          const { error: directError } = await supa.from('app_settings')
+            .update({ technicians: techniciansToSave })
+            .eq('id', 1);
+          if (directError) throw directError;
+        } catch (e) {
+          throw new Error('Failed to save technicians: ' + e.message);
+        }
+      }
+    }
+
     console.log('[DB.saveSettings] ✓ Saved to database successfully');
   }
 
