@@ -1,6 +1,5 @@
 -- ════════════════════════════════════════════════════════════════
 -- CREATE MISSING RPC FUNCTION FOR UPDATING TECHNICIANS
--- RUN THIS ON PRODUCTION: api.onpointprodoors.com
 -- ════════════════════════════════════════════════════════════════
 
 CREATE OR REPLACE FUNCTION update_app_settings_technicians(techs_json JSONB)
