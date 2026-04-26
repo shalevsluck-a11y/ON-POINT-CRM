@@ -3684,23 +3684,6 @@ const App = (() => {
 
     try {
       await DB.saveSettings({ leadSources: sources });
-
-      // Update contractor assignment
-      const selectedContractorId = document.getElementById('m-source-contractor')?.value;
-      const allUsers = await Auth.getUsersForAdmin().catch(() => []);
-
-      // Clear this lead source from any contractor that previously had it
-      for (const user of allUsers) {
-        if (user.role === 'contractor' && user.assignedLeadSource === name && user.id !== selectedContractorId) {
-          await Auth.updateUserRole(user.id, 'contractor', { assigned_lead_source: null });
-        }
-      }
-
-      // Assign lead source to selected contractor
-      if (selectedContractorId) {
-        await Auth.updateUserRole(selectedContractorId, 'contractor', { assigned_lead_source: name });
-      }
-
       _renderSourceList(sources);
       _populateSourceDropdown();
       closeModal();

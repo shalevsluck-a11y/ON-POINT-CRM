@@ -273,59 +273,39 @@ const DB = (() => {
     if (updates.appsScriptUrl  !== undefined) row.apps_script_url = updates.appsScriptUrl;
     if (updates.leadSources    !== undefined) row.lead_sources    = updates.leadSources;
 
-    // CRITICAL FIX: Save standalone technicians to database
-    let techniciansToSave = null;
+    // Save technicians same way as lead sources (direct table update)
     if (updates.technicians !== undefined) {
       // Filter out user-account techs (they're stored in profiles table)
-      // Only save standalone technicians that don't have isUserAccount flag
       const standaloneTechs = updates.technicians.filter(t => !t.isUserAccount);
-      techniciansToSave = standaloneTechs;
-      // Don't add to row yet - we'll use RPC to avoid schema cache issues
+      row.technicians = standaloneTechs;
     }
 
-    // Save all fields EXCEPT technicians using regular update
+    // Save all fields including technicians
     if (Object.keys(row).length > 0) {
-      console.log('[DB.saveSettings] Saving standard fields to database:', row);
+      console.log('[DB.saveSettings] Saving to database:', Object.keys(row));
       const { error } = await supa.from('app_settings').update(row).eq('id', 1);
       if (error) throw new Error(error.message);
+      console.log('[DB.saveSettings] ✓ Saved successfully');
     }
-
-    // Save technicians separately using RPC to bypass schema cache
-    if (techniciansToSave !== null) {
-      console.log('[DB.saveSettings] Saving technicians via RPC to bypass schema cache...');
-      console.log('[DB.saveSettings] Technicians to save:', JSON.stringify(techniciansToSave));
-
-      const { data, error } = await supa.rpc('update_app_settings_technicians', {
-        techs_json: techniciansToSave
-      });
-
-      if (error) {
-        console.error('[DB.saveSettings] RPC failed:', error);
-        throw new Error('Failed to save technicians: ' + (error.message || 'RPC error'));
-      }
-
-      console.log('[DB.saveSettings] ✓ Technicians saved via RPC successfully');
-    }
-
-    console.log('[DB.saveSettings] ✓ Saved to database successfully');
   }
 
-  // Save ONLY technicians via RPC (bypasses schema cache completely)
+  // Save ONLY technicians (same approach as lead sources)
   async function saveTechniciansOnly(techs) {
     if (!Auth.isAdmin()) return;
 
     // Filter out user-account techs (they're in profiles table)
     const standaloneTechs = techs.filter(t => !t.isUserAccount);
 
-    console.log('[DB.saveTechniciansOnly] Saving via RPC:', standaloneTechs.length, 'technicians');
+    console.log('[DB.saveTechniciansOnly] Saving', standaloneTechs.length, 'technicians to database');
 
-    const { error } = await supa.rpc('update_app_settings_technicians', {
-      techs_json: standaloneTechs
-    });
+    const { error } = await supa
+      .from('app_settings')
+      .update({ technicians: standaloneTechs })
+      .eq('id', 1);
 
     if (error) {
-      console.error('[DB.saveTechniciansOnly] RPC failed:', error);
-      throw new Error('Failed to save technicians: ' + (error.message || 'RPC error'));
+      console.error('[DB.saveTechniciansOnly] Save failed:', error);
+      throw new Error('Failed to save technicians: ' + (error.message || 'Database error'));
     }
 
     console.log('[DB.saveTechniciansOnly] ✓ Saved successfully');
