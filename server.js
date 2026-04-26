@@ -5,9 +5,16 @@ const { createClient } = require('@supabase/supabase-js');
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
-// Supabase admin client
+// Supabase admin client (custom domain for main operations)
 const supabaseAdmin = createClient(
   process.env.SUPABASE_URL || 'https://api.onpointprodoors.com',
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  { auth: { persistSession: false } }
+);
+
+// Direct project URL admin client (bypasses custom domain PostgREST cache)
+const supabaseDirectAdmin = createClient(
+  'https://nmmpemjcnncjfpooytpv.supabase.co',
   process.env.SUPABASE_SERVICE_ROLE_KEY,
   { auth: { persistSession: false } }
 );
@@ -631,16 +638,18 @@ app.post('/api/save-technicians', async (req, res) => {
       return res.status(400).json({ error: 'technicians must be array' });
     }
 
-    // Call RPC to bypass PostgREST schema cache
-    const { error: rpcError } = await supabaseAdmin.rpc('update_app_settings_technicians', {
-      techs_json: technicians
-    });
+    // Use direct project URL client (bypasses custom domain PostgREST cache)
+    const { error: updateError } = await supabaseDirectAdmin
+      .from('app_settings')
+      .update({ technicians })
+      .eq('id', 1);
 
-    if (rpcError) {
-      console.error('[SAVE TECHS] RPC error:', rpcError);
-      return res.status(500).json({ error: rpcError.message });
+    if (updateError) {
+      console.error('[SAVE TECHS] Update error:', updateError);
+      return res.status(500).json({ error: updateError.message });
     }
 
+    console.log('[SAVE TECHS] ✅ Technicians saved:', technicians.length);
     res.json({ success: true });
   } catch (error) {
     console.error('[SAVE TECHS] Exception:', error);
