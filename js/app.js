@@ -81,6 +81,18 @@ const App = (() => {
     if (_initialized) return;
     _initialized = true;
 
+    // Check for post-reload success messages
+    const techSaveSuccess = sessionStorage.getItem('techSaveSuccess');
+    if (techSaveSuccess) {
+      sessionStorage.removeItem('techSaveSuccess');
+      setTimeout(() => showToast(`${techSaveSuccess} saved`, 'success'), 800);
+    }
+    const techSaveError = sessionStorage.getItem('techSaveError');
+    if (techSaveError) {
+      sessionStorage.removeItem('techSaveError');
+      setTimeout(() => showToast(techSaveError, 'info'), 800);
+    }
+
     // Force service worker update check
     _checkServiceWorkerUpdate();
 
