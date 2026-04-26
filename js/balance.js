@@ -696,4 +696,7 @@ const Balance = (function() {
   };
 })();
 
+// Make Balance accessible globally
+window.Balance = Balance;
+
 // Do NOT auto-initialize — app.js will call Balance.init() after auth is ready
