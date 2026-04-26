@@ -69,6 +69,24 @@ const _edgeFunctionsClient = window.supabase.createClient(EDGE_FUNCTIONS_URL, ED
   },
 });
 
+// Helper: invoke Edge Function with auth (custom domain broken, needs direct URL + session)
+async function invokeAuthenticatedFunction(functionName, body) {
+  const session = await _supa.auth.getSession();
+  if (!session?.data?.session?.access_token) {
+    throw new Error('No active session for Edge Function call');
+  }
+
+  const authClient = window.supabase.createClient(EDGE_FUNCTIONS_URL, EDGE_FUNCTIONS_ANON, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${session.data.session.access_token}`
+      }
+    }
+  });
+
+  return await authClient.functions.invoke(functionName, { body });
+}
+
 // Single export used throughout the app
 const SupabaseClient = _supa;
 const EdgeFunctionsClient = _edgeFunctionsClient;

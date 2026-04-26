@@ -3564,8 +3564,8 @@ const App = (() => {
       console.log('[saveTech] 💾 Saving to database...');
       const standaloneTechs = techs.filter(t => !t.isUserAccount);
 
-      const { data, error } = await SupabaseClient.functions.invoke('update-technicians', {
-        body: { technicians: standaloneTechs }
+      const { data, error } = await invokeAuthenticatedFunction('update-technicians', {
+        technicians: standaloneTechs
       });
 
       if (error) {
@@ -3622,8 +3622,8 @@ const App = (() => {
           // Save via Edge Function (bypasses PostgREST schema cache)
           const standaloneTechs = updated.filter(t => !t.isUserAccount);
 
-          const { data, error } = await SupabaseClient.functions.invoke('update-technicians', {
-            body: { technicians: standaloneTechs }
+          const { data, error } = await invokeAuthenticatedFunction('update-technicians', {
+            technicians: standaloneTechs
           });
 
           if (error) throw new Error(error.message || 'Delete save failed');
