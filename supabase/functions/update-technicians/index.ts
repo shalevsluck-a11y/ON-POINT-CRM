@@ -44,16 +44,16 @@ Deno.serve(async (req) => {
     // Get technicians from request body
     const { technicians } = await req.json()
 
-    // Update app_settings using service role (bypasses RLS and schema cache)
+    // Update using RAW SQL (bypasses PostgREST schema cache entirely)
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { error } = await supabaseAdmin
-      .from('app_settings')
-      .update({ technicians })
-      .eq('id', 1)
+    // Use RPC to execute raw SQL UPDATE
+    const { error } = await supabaseAdmin.rpc('update_app_settings_technicians', {
+      techs_json: technicians
+    })
 
     if (error) {
       return new Response(JSON.stringify({ error: error.message }), {
