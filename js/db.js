@@ -297,7 +297,7 @@ const DB = (() => {
     }
   }
 
-  // Save technicians to localStorage only (schema cache prevents DB save)
+  // FINAL ARCHITECTURE: Save technicians via RPC to bypass schema cache
   async function saveTechniciansOnly(techs) {
     if (!Auth.isAdmin()) return;
 
@@ -308,34 +308,31 @@ const DB = (() => {
     console.log('[DB.saveTechniciansOnly] ║ Tech data:', JSON.stringify(standaloneTechs));
     console.log('[DB.saveTechniciansOnly] ╚══════════════════════════════════════════════════════════');
 
-    // CRITICAL FIX: Save to database FIRST so it persists across sessions
+    // Save to database via RPC (bypasses schema cache issue)
     try {
-      console.log('[DB.saveTechniciansOnly] 💾 Saving to DATABASE (Supabase)...');
-      const { data, error } = await supa
-        .from('app_settings')
-        .update({ technicians: standaloneTechs })
-        .eq('id', 1)
-        .select();
+      console.log('[DB.saveTechniciansOnly] 💾 Calling RPC: update_app_settings_technicians...');
+      const { data, error } = await supa.rpc('update_app_settings_technicians', {
+        techs_json: standaloneTechs
+      });
 
       if (error) {
-        console.error('[DB.saveTechniciansOnly] ❌ DATABASE SAVE FAILED:', error);
+        console.error('[DB.saveTechniciansOnly] ❌ RPC CALL FAILED:', error);
         throw error;
       }
 
-      console.log('[DB.saveTechniciansOnly] ✅ DATABASE SAVE SUCCESS');
-      console.log('[DB.saveTechniciansOnly] Database returned:', data);
+      console.log('[DB.saveTechniciansOnly] ✅ RPC SUCCESS - Database updated');
     } catch (dbError) {
       console.error('[DB.saveTechniciansOnly] ❌ DATABASE ERROR:', dbError.message);
       throw new Error('Failed to save to database: ' + dbError.message);
     }
 
-    // Then update localStorage cache
+    // Update localStorage cache
     console.log('[DB.saveTechniciansOnly] 💾 Updating localStorage cache...');
     const settings = Storage.getSettings();
     Storage.saveSettings({ ...settings, technicians: standaloneTechs });
     console.log('[DB.saveTechniciansOnly] ✅ localStorage updated');
 
-    // Verify it saved
+    // Verify
     const verification = Storage.getSettings();
     console.log('[DB.saveTechniciansOnly] ✅ VERIFICATION - localStorage now has', verification.technicians?.length, 'technicians');
     console.log('[DB.saveTechniciansOnly] ═══════════════════════════════════════════════════════════');
