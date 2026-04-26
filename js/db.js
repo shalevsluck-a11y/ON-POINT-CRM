@@ -100,10 +100,18 @@ const DB = (() => {
 
       // Get standalone technicians from database (non-user profiles)
       const standaloneTechs = settings.technicians || [];
+      console.log('[DB._syncSettingsDown] ╔══════════════════════════════════════════════════════════');
+      console.log('[DB._syncSettingsDown] ║ TECHNICIAN LOAD FROM DATABASE');
+      console.log('[DB._syncSettingsDown] ║ Standalone techs from DB:', standaloneTechs.length);
+      console.log('[DB._syncSettingsDown] ║ Standalone tech data:', JSON.stringify(standaloneTechs));
+      console.log('[DB._syncSettingsDown] ║ User account techs:', userTechs.length);
+      console.log('[DB._syncSettingsDown] ╚══════════════════════════════════════════════════════════');
 
       // Merge both lists - user accounts first, then standalone techs
       const techList = [...userTechs, ...standaloneTechs];
       console.log('[DB._syncSettingsDown] Built tech list - users:', userTechs.length, 'standalone:', standaloneTechs.length, 'total:', techList.length);
+      console.log('[DB._syncSettingsDown] ⚠️  ABOUT TO OVERWRITE LOCALSTORAGE WITH THIS TECH LIST');
+      console.log('[DB._syncSettingsDown] Final tech list:', JSON.stringify(techList));
 
       const newSettings = {
         ...current,
@@ -294,13 +302,43 @@ const DB = (() => {
     if (!Auth.isAdmin()) return;
 
     const standaloneTechs = techs.filter(t => !t.isUserAccount);
-    console.log('[DB.saveTechniciansOnly] 💾 Saving', standaloneTechs.length, 'technicians to localStorage');
+    console.log('[DB.saveTechniciansOnly] ╔══════════════════════════════════════════════════════════');
+    console.log('[DB.saveTechniciansOnly] ║ SAVE TECHNICIAN START');
+    console.log('[DB.saveTechniciansOnly] ║ Total techs to save:', standaloneTechs.length);
+    console.log('[DB.saveTechniciansOnly] ║ Tech data:', JSON.stringify(standaloneTechs));
+    console.log('[DB.saveTechniciansOnly] ╚══════════════════════════════════════════════════════════');
 
-    // Save to localStorage - this is the source of truth until hard refresh
+    // CRITICAL FIX: Save to database FIRST so it persists across sessions
+    try {
+      console.log('[DB.saveTechniciansOnly] 💾 Saving to DATABASE (Supabase)...');
+      const { data, error } = await supa
+        .from('app_settings')
+        .update({ technicians: standaloneTechs })
+        .eq('id', 1)
+        .select();
+
+      if (error) {
+        console.error('[DB.saveTechniciansOnly] ❌ DATABASE SAVE FAILED:', error);
+        throw error;
+      }
+
+      console.log('[DB.saveTechniciansOnly] ✅ DATABASE SAVE SUCCESS');
+      console.log('[DB.saveTechniciansOnly] Database returned:', data);
+    } catch (dbError) {
+      console.error('[DB.saveTechniciansOnly] ❌ DATABASE ERROR:', dbError.message);
+      throw new Error('Failed to save to database: ' + dbError.message);
+    }
+
+    // Then update localStorage cache
+    console.log('[DB.saveTechniciansOnly] 💾 Updating localStorage cache...');
     const settings = Storage.getSettings();
     Storage.saveSettings({ ...settings, technicians: standaloneTechs });
+    console.log('[DB.saveTechniciansOnly] ✅ localStorage updated');
 
-    console.log('[DB.saveTechniciansOnly] ✅ Saved to localStorage (persists until hard refresh)');
+    // Verify it saved
+    const verification = Storage.getSettings();
+    console.log('[DB.saveTechniciansOnly] ✅ VERIFICATION - localStorage now has', verification.technicians?.length, 'technicians');
+    console.log('[DB.saveTechniciansOnly] ═══════════════════════════════════════════════════════════');
   }
 
   // Update settings in localStorage cache without remote sync

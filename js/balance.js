@@ -57,9 +57,18 @@ const Balance = (function() {
       const allLeadSources = settings.leadSources || [];
       const isAdmin = Auth.isAdmin();
 
-      console.log('[Balance] 🔍 DEBUG ═══════════════');
-      console.log('[Balance] User:', user?.name, 'Role:', user?.role, 'IsAdmin:', isAdmin);
-      console.log('[Balance] settings.leadSources:', JSON.stringify(allLeadSources));
+      console.log('[Balance] ╔══════════════════════════════════════════════════════════');
+      console.log('[Balance] ║ POPULATE LEAD SOURCE DROPDOWN');
+      console.log('[Balance] ╠══════════════════════════════════════════════════════════');
+      console.log('[Balance] ║ User:', user?.name, 'Role:', user?.role);
+      console.log('[Balance] ║ IsAdmin:', isAdmin);
+      console.log('[Balance] ║ FULL SETTINGS OBJECT:', JSON.stringify(settings));
+      console.log('[Balance] ╠══════════════════════════════════════════════════════════');
+      console.log('[Balance] ║ settings.leadSources:', JSON.stringify(allLeadSources));
+      console.log('[Balance] ║ settings.leadSources length:', allLeadSources.length);
+      console.log('[Balance] ║ settings.leadSources type:', typeof allLeadSources);
+      console.log('[Balance] ║ settings.leadSources is array?', Array.isArray(allLeadSources));
+      console.log('[Balance] ╚══════════════════════════════════════════════════════════');
 
       // CRITICAL FIX: Admin should ALWAYS see all sources
       let allowedSources = [];
@@ -686,7 +695,8 @@ const Balance = (function() {
     showReportOptions,
     generateReport,
     copyToClipboard,
-    shareWhatsApp
+    shareWhatsApp,
+    populateLeadSourceSelector  // Export so app.js can refresh after settings sync
   };
 })();
 

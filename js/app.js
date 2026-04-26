@@ -119,11 +119,18 @@ const App = (() => {
 
     // Background sync - don't block UI
     DB.init().then(() => {
+      console.log('[App] ✅ DB.init completed - refreshing UI with synced data');
       renderDashboard();
       renderJobList();
       _loadSettingsForm();
       _renderTechSelector();
       _populateSourceDropdown();
+
+      // CRITICAL FIX: Refresh Balance dropdown after settings sync completes
+      if (window.Balance && window.Balance.populateLeadSourceSelector) {
+        console.log('[App] 🔄 Refreshing Balance dropdown after settings sync');
+        Balance.populateLeadSourceSelector();
+      }
     }).catch(e => {
       console.warn('DB.init error:', e.message);
       showToast('Connection error — showing cached data', 'warning');
@@ -2825,10 +2832,18 @@ const App = (() => {
   // ══════════════════════════════════════════════════════════
 
   function _loadSettingsForm() {
+    console.log('[_loadSettingsForm] ╔══════════════════════════════════════════════════════════');
+    console.log('[_loadSettingsForm] ║ LOADING SETTINGS FORM');
+    console.log('[_loadSettingsForm] ╚══════════════════════════════════════════════════════════');
+
     // Reset users list loading state when entering Settings
     _usersListFetchInProgress = false;
 
     const s = DB.getSettings();
+    console.log('[_loadSettingsForm] Settings loaded from cache:', s);
+    console.log('[_loadSettingsForm] Technicians in settings:', s.technicians?.length || 0);
+    console.log('[_loadSettingsForm] Technician data:', JSON.stringify(s.technicians));
+
     const user = Auth.getUser();
     const isAdmin = Auth.isAdmin();
 
