@@ -600,6 +600,54 @@ app.options('/api/save-push-subscription', (req, res) => {
   res.sendStatus(200);
 });
 
+// Save technicians endpoint (bypasses PostgREST schema cache via RPC)
+app.post('/api/save-technicians', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Unauthorized - missing auth token' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Invalid auth token' });
+    }
+
+    // Verify admin role
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile || profile.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin only' });
+    }
+
+    const { technicians } = req.body;
+    if (!Array.isArray(technicians)) {
+      return res.status(400).json({ error: 'technicians must be array' });
+    }
+
+    // Call RPC to bypass PostgREST schema cache
+    const { error: rpcError } = await supabaseAdmin.rpc('update_app_settings_technicians', {
+      techs_json: technicians
+    });
+
+    if (rpcError) {
+      console.error('[SAVE TECHS] RPC error:', rpcError);
+      return res.status(500).json({ error: rpcError.message });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[SAVE TECHS] Exception:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Test push notification endpoint
 app.post('/api/test-push', async (req, res) => {
   try {

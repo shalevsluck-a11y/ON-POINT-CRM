@@ -3560,22 +3560,28 @@ const App = (() => {
       console.log('[saveTech] 🔍 Technician data:', JSON.stringify(updated));
       console.log('[saveTech] 🔍 Total technicians:', techs.length);
 
-      // Save via Edge Function (bypasses PostgREST schema cache)
+      // Save via server endpoint (bypasses PostgREST schema cache via RPC)
       console.log('[saveTech] 💾 Saving to database...');
       const standaloneTechs = techs.filter(t => !t.isUserAccount);
 
-      const { data, error } = await invokeAuthenticatedFunction('update-technicians', {
-        technicians: standaloneTechs
-      });
-
-      if (error) {
-        console.error('[saveTech] Edge Function error:', error);
-        throw new Error(error.message || 'Save failed');
+      const session = await SupabaseClient.auth.getSession();
+      if (!session?.data?.session?.access_token) {
+        throw new Error('No active session');
       }
 
-      if (data?.error) {
-        console.error('[saveTech] Function returned error:', data.error);
-        throw new Error(data.error);
+      const response = await fetch('/api/save-technicians', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.data.session.access_token}`
+        },
+        body: JSON.stringify({ technicians: standaloneTechs })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('[saveTech] Server error:', errorData);
+        throw new Error(errorData.error || `Save failed: ${response.status}`);
       }
 
       // Update localStorage cache
@@ -3619,15 +3625,27 @@ const App = (() => {
           // Remove from technicians list
           const updated = (settings.technicians || []).filter(t => t.id !== techId);
 
-          // Save via Edge Function (bypasses PostgREST schema cache)
+          // Save via server endpoint (bypasses PostgREST schema cache via RPC)
           const standaloneTechs = updated.filter(t => !t.isUserAccount);
 
-          const { data, error } = await invokeAuthenticatedFunction('update-technicians', {
-            technicians: standaloneTechs
+          const session = await SupabaseClient.auth.getSession();
+          if (!session?.data?.session?.access_token) {
+            throw new Error('No active session');
+          }
+
+          const response = await fetch('/api/save-technicians', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.data.session.access_token}`
+            },
+            body: JSON.stringify({ technicians: standaloneTechs })
           });
 
-          if (error) throw new Error(error.message || 'Delete save failed');
-          if (data?.error) throw new Error(data.error);
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `Delete save failed: ${response.status}`);
+          }
 
           // Update localStorage cache
           DB.updateSettingsCache({ ...DB.getSettings(), technicians: updated });
