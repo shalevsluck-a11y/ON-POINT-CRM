@@ -293,17 +293,17 @@ const DB = (() => {
     // Save technicians separately using RPC to bypass schema cache
     if (techniciansToSave !== null) {
       console.log('[DB.saveSettings] Saving technicians via RPC to bypass schema cache...');
-      const { error } = await supa.rpc('update_app_settings_technicians', {
+      console.log('[DB.saveSettings] Technicians to save:', JSON.stringify(techniciansToSave));
+
+      const { data, error } = await supa.rpc('update_app_settings_technicians', {
         techs_json: techniciansToSave
       });
+
       if (error) {
         console.error('[DB.saveSettings] RPC failed:', error);
-        // Check if it's a schema cache error
-        if (error.message && error.message.includes('schema cache')) {
-          throw new Error('Schema cache error - please refresh your browser (Cmd+Shift+R or Ctrl+Shift+R) and try again');
-        }
-        throw new Error('Failed to save technicians: ' + error.message);
+        throw new Error('Failed to save technicians: ' + (error.message || 'RPC error'));
       }
+
       console.log('[DB.saveSettings] ✓ Technicians saved via RPC successfully');
     }
 

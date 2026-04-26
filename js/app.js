@@ -3552,20 +3552,25 @@ const App = (() => {
       // Save to database using RPC (bypasses schema cache)
       await DB.saveSettings({ ...settings, technicians: techs });
 
-      // Re-fetch from database to confirm it was saved
-      console.log('[saveTech] Re-fetching settings from database...');
-      await DB.syncSettingsFromRemote();
+      console.log('[saveTech] ✓ Save successful');
 
-      const savedSettings = DB.getSettings();
-      console.log('[saveTech] ✓ Technicians after save:', savedSettings.technicians?.length || 0);
+      // Store success message for after reload
+      sessionStorage.setItem('techSaveSuccess', name);
 
-      _renderTechList(savedSettings.technicians);
-      _renderTechSelector();
-      closeModal();
-      showToast(`${name} saved`, 'success');
+      // Force page reload to refresh schema cache automatically
+      // This ensures the app picks up the new technicians data
+      console.log('[saveTech] Reloading page to refresh schema...');
+      window.location.reload(true);
     } catch (e) {
       console.error('[saveTech] Error:', e);
-      showToast('Failed to save technician: ' + (e.message || 'unknown error'), 'error');
+      // Auto-reload on schema cache errors
+      if (e.message && (e.message.includes('schema cache') || e.message.includes('column') || e.message.includes('technicians'))) {
+        console.log('[saveTech] Schema cache error detected - auto-reloading...');
+        sessionStorage.setItem('techSaveError', 'Updating app data...');
+        window.location.reload(true);
+      } else {
+        showToast('Failed to save technician: ' + (e.message || 'unknown error'), 'error');
+      }
     }
   }
 
