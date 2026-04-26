@@ -3560,9 +3560,27 @@ const App = (() => {
       console.log('[saveTech] 🔍 Technician data:', JSON.stringify(updated));
       console.log('[saveTech] 🔍 Total technicians:', techs.length);
 
-      // Save via DB.saveSettings (same pattern as lead sources)
+      // Save via server endpoint (bypasses PostgREST schema cache)
       console.log('[saveTech] 💾 Saving to database...');
-      await DB.saveSettings({ technicians: techs });
+      const session = await SupabaseClient.auth.getSession();
+      const standaloneTechs = techs.filter(t => !t.isUserAccount);
+
+      const response = await fetch('/api/save-technicians', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.data.session.access_token}`
+        },
+        body: JSON.stringify({ technicians: standaloneTechs })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Save failed');
+      }
+
+      // Update localStorage cache
+      DB.updateSettingsCache({ ...DB.getSettings(), technicians: techs });
       console.log('[saveTech] ✅ Database save successful');
 
       // Re-render UI
@@ -3600,13 +3618,24 @@ const App = (() => {
 
           // Remove from technicians list
           const updated = (settings.technicians || []).filter(t => t.id !== techId);
-          const s = DB.getSettings();
 
-          // CRITICAL FIX: Save to database, not just localStorage
-          await DB.saveSettings({ ...s, technicians: updated });
+          // Save via server endpoint (bypasses PostgREST schema cache)
+          const session = await SupabaseClient.auth.getSession();
+          const standaloneTechs = updated.filter(t => !t.isUserAccount);
 
-          // Re-fetch from database
-          await DB.syncSettingsFromRemote();
+          const response = await fetch('/api/save-technicians', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.data.session.access_token}`
+            },
+            body: JSON.stringify({ technicians: standaloneTechs })
+          });
+
+          if (!response.ok) throw new Error('Delete save failed');
+
+          // Update localStorage cache
+          DB.updateSettingsCache({ ...DB.getSettings(), technicians: updated });
 
           _renderTechList(DB.getSettings().technicians);
           _renderTechSelector();

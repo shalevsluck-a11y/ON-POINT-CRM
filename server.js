@@ -221,6 +221,53 @@ app.delete('/admin/delete-user/:id', async (req, res) => {
   }
 });
 
+// Save technicians - admin endpoint bypasses schema cache
+app.post('/api/save-technicians', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Missing authorization header' });
+    }
+
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (userError || !user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin only' });
+    }
+
+    const { technicians } = req.body;
+
+    // Use admin client with service role - bypasses PostgREST schema cache
+    const { error } = await supabaseAdmin
+      .from('app_settings')
+      .update({ technicians })
+      .eq('id', 1);
+
+    if (error) {
+      console.error('[SAVE TECHNICIANS] Error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    console.log('[SAVE TECHNICIANS] ✓ Saved', technicians.length, 'technicians');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[SAVE TECHNICIANS] Exception:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Exchange magic token for Supabase session
 app.post('/auth/magic-session', async (req, res) => {
   try {
