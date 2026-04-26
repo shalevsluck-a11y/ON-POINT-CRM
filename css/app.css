@@ -405,6 +405,10 @@ a { color: var(--color-primary); text-decoration: none; }
   font-size: 20px;
   transition: background 0.15s, color 0.15s;
   flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 .btn-icon:active { background: rgba(0,0,0,0.06); color: var(--color-text); }
 
