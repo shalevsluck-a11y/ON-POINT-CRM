@@ -297,7 +297,7 @@ const DB = (() => {
     }
   }
 
-  // Call Edge Function update-technicians (manually deployed via Supabase Dashboard)
+  // Call Edge Function update-technicians via separate client (custom domain routing broken)
   async function saveTechniciansOnly(techs) {
     if (!Auth.isAdmin()) return;
 
@@ -310,7 +310,8 @@ const DB = (() => {
     try {
       console.log('[DB.saveTechniciansOnly] 💾 Calling Edge Function: update-technicians...');
 
-      const { data, error } = await supa.functions.invoke('update-technicians', {
+      // Use EdgeFunctionsClient (direct supabase.co URL) instead of main client
+      const { data, error } = await EdgeFunctionsClient.functions.invoke('update-technicians', {
         body: { technicians: standaloneTechs }
       });
 

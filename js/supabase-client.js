@@ -2,9 +2,9 @@
    SUPABASE-CLIENT.JS — Supabase client initialization
    ============================================================ */
 
-// Use direct Supabase URL for Edge Functions (custom domain routing broken for new functions)
-const SUPABASE_URL  = 'https://nmmpemjcnncjfpooytpv.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5tbXBlbWpjbm5jamZwb295dHB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzNjU3NzYsImV4cCI6MjA5MTk0MTc3Nn0.MqfDrG7-Ay4A01hQBs6Qkpj8KPe8zBNJBJiGP0dqXLI';
+// Custom domain for auth (required for magic links)
+const SUPABASE_URL  = 'https://api.onpointprodoors.com';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODI5Mjg5LCJleHAiOjE5MzQ1MDkyODl9.E8NSAZFNAMAUvWpLLR3xBVmrwnTDwawMYIMy9V_pWyU';
 
 // Detect if running in PWA mode vs regular browser
 const isPWA = window.navigator.standalone === true ||
@@ -58,5 +58,17 @@ const _supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
 // Log realtime connection status
 console.log('[Realtime] Client configured with URL:', SUPABASE_URL);
 
+// Separate client for Edge Functions (custom domain routing broken for new functions)
+const EDGE_FUNCTIONS_URL = 'https://nmmpemjcnncjfpooytpv.supabase.co';
+const EDGE_FUNCTIONS_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5tbXBlbWpjbm5jamZwb295dHB2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzNjU3NzYsImV4cCI6MjA5MTk0MTc3Nn0.MqfDrG7-Ay4A01hQBs6Qkpj8KPe8zBNJBJiGP0dqXLI';
+
+const _edgeFunctionsClient = window.supabase.createClient(EDGE_FUNCTIONS_URL, EDGE_FUNCTIONS_ANON, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+});
+
 // Single export used throughout the app
 const SupabaseClient = _supa;
+const EdgeFunctionsClient = _edgeFunctionsClient;
