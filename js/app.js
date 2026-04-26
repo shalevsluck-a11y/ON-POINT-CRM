@@ -81,18 +81,6 @@ const App = (() => {
     if (_initialized) return;
     _initialized = true;
 
-    // Check for post-reload success messages
-    const techSaveSuccess = sessionStorage.getItem('techSaveSuccess');
-    if (techSaveSuccess) {
-      sessionStorage.removeItem('techSaveSuccess');
-      setTimeout(() => showToast(`${techSaveSuccess} saved`, 'success'), 800);
-    }
-    const techSaveError = sessionStorage.getItem('techSaveError');
-    if (techSaveError) {
-      sessionStorage.removeItem('techSaveError');
-      setTimeout(() => showToast(techSaveError, 'info'), 800);
-    }
-
     // Force service worker update check
     _checkServiceWorkerUpdate();
 
@@ -3561,28 +3549,23 @@ const App = (() => {
       if (idx >= 0) techs[idx] = updated; else techs.push(updated);
 
       console.log('[saveTech] Saving technician to database via RPC...');
-      // Save to database using RPC (bypasses schema cache)
-      await DB.saveSettings({ ...settings, technicians: techs });
+      // Save to database using RPC (bypasses schema cache entirely)
+      await DB.saveTechniciansOnly(techs);
 
-      console.log('[saveTech] ✓ Save successful');
+      console.log('[saveTech] ✓ Saved successfully, updating UI...');
 
-      // Store success message for after reload
-      sessionStorage.setItem('techSaveSuccess', name);
+      // Update localStorage immediately so UI shows new tech
+      const updatedSettings = { ...settings, technicians: techs };
+      DB.updateSettingsCache(updatedSettings);
 
-      // Force page reload to refresh schema cache automatically
-      // This ensures the app picks up the new technicians data
-      console.log('[saveTech] Reloading page to refresh schema...');
-      window.location.reload(true);
+      // Re-render UI with updated data
+      _renderTechList(techs);
+      _renderTechSelector();
+      closeModal();
+      showToast(`${name} saved`, 'success');
     } catch (e) {
       console.error('[saveTech] Error:', e);
-      // Auto-reload on schema cache errors
-      if (e.message && (e.message.includes('schema cache') || e.message.includes('column') || e.message.includes('technicians'))) {
-        console.log('[saveTech] Schema cache error detected - auto-reloading...');
-        sessionStorage.setItem('techSaveError', 'Updating app data...');
-        window.location.reload(true);
-      } else {
-        showToast('Failed to save technician: ' + (e.message || 'unknown error'), 'error');
-      }
+      showToast('Failed to save technician: ' + (e.message || 'unknown error'), 'error');
     }
   }
 

@@ -310,6 +310,32 @@ const DB = (() => {
     console.log('[DB.saveSettings] ✓ Saved to database successfully');
   }
 
+  // Save ONLY technicians via RPC (bypasses schema cache completely)
+  async function saveTechniciansOnly(techs) {
+    if (!Auth.isAdmin()) return;
+
+    // Filter out user-account techs (they're in profiles table)
+    const standaloneTechs = techs.filter(t => !t.isUserAccount);
+
+    console.log('[DB.saveTechniciansOnly] Saving via RPC:', standaloneTechs.length, 'technicians');
+
+    const { error } = await supa.rpc('update_app_settings_technicians', {
+      techs_json: standaloneTechs
+    });
+
+    if (error) {
+      console.error('[DB.saveTechniciansOnly] RPC failed:', error);
+      throw new Error('Failed to save technicians: ' + (error.message || 'RPC error'));
+    }
+
+    console.log('[DB.saveTechniciansOnly] ✓ Saved successfully');
+  }
+
+  // Update settings in localStorage cache without remote sync
+  function updateSettingsCache(settings) {
+    Storage.saveSettings(settings);
+  }
+
   async function updateTechProfile(id, profileData) {
     if (!Auth.isAdmin()) return;
     const row = {};
@@ -740,6 +766,8 @@ const DB = (() => {
     // Settings
     getSettings,
     saveSettings,
+    saveTechniciansOnly,
+    updateSettingsCache,
     updateTechProfile,
     deleteProfile,
     getOwnerTech,
