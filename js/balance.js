@@ -42,62 +42,71 @@ const Balance = (function() {
     try {
       const filterDiv = document.getElementById('balance-source-filter');
       const select = document.getElementById('balance-source-select');
-      if (!filterDiv || !select) return;
+      if (!filterDiv || !select) {
+        console.error('[Balance] ❌ MISSING ELEMENTS - filterDiv:', !!filterDiv, 'select:', !!select);
+        return;
+      }
 
       const user = Auth.getUser();
       const settings = DB.getSettings();
       const allLeadSources = settings.leadSources || [];
       const isAdmin = Auth.isAdmin();
 
-      console.log('[Balance] ═══ Lead Source Selector Debug ═══');
+      console.log('[Balance] 🔍 PRODUCTION DEBUG ═══════════════');
       console.log('[Balance] User:', user?.name, 'Role:', user?.role, 'IsAdmin:', isAdmin);
-      console.log('[Balance] All lead sources:', JSON.stringify(allLeadSources));
-      console.log('[Balance] Total sources count:', allLeadSources.length);
+      console.log('[Balance] User allowed sources:', user?.allowedLeadSources);
+      console.log('[Balance] All lead sources in system:', allLeadSources.map(s => s.name));
+      console.log('[Balance] Total sources:', allLeadSources.length);
 
       // Determine which sources this user can access
       let allowedSources = [];
 
       if (isAdmin) {
-        // Admin can see all sources
         allowedSources = allLeadSources;
-        console.log('[Balance] Admin mode - showing all sources');
+        console.log('[Balance] ✅ Admin - showing all', allowedSources.length, 'sources');
       } else {
-        // Non-admin: check their allowed_lead_sources
         const userAllowedSources = user?.allowedLeadSources;
-        console.log('[Balance] User allowed sources:', userAllowedSources);
+        console.log('[Balance] 🔍 Checking permissions for non-admin...');
+        console.log('[Balance] User.allowedLeadSources:', userAllowedSources);
+
         if (userAllowedSources && Array.isArray(userAllowedSources) && userAllowedSources.length > 0) {
           allowedSources = allLeadSources.filter(s => userAllowedSources.includes(s.name));
+          console.log('[Balance] ✅ Filtered to', allowedSources.length, 'permitted sources:', allowedSources.map(s => s.name));
+        } else {
+          console.log('[Balance] ⚠️ No allowed sources - user will see nothing');
         }
       }
 
-      console.log('[Balance] Allowed sources after filtering:', allowedSources.length, JSON.stringify(allowedSources));
+      console.log('[Balance] 📊 Final allowed sources:', allowedSources.map(s => s.name));
 
       // Apply permission-based logic
       if (allowedSources.length === 0) {
-        // No sources - hide filter entirely
         filterDiv.style.display = 'none';
         select.dataset.lockedSource = '';
-        console.log('[Balance] No sources available - hiding filter');
+        console.log('[Balance] ❌ No sources - hiding filter');
         return;
       }
 
       if (allowedSources.length === 1) {
-        // Exactly 1 source - auto-select and lock (hide selector)
         filterDiv.style.display = 'none';
         select.dataset.lockedSource = allowedSources[0].name;
-        console.log('[Balance] Exactly 1 source - locked to:', allowedSources[0].name);
+        console.log('[Balance] 🔒 Exactly 1 source - locked to:', allowedSources[0].name);
         return;
       }
 
-      // 2+ sources - show dropdown with ONLY permitted sources
+      // 2+ sources - show dropdown
+      console.log('[Balance] 📋 Showing dropdown for', allowedSources.length, 'sources');
       filterDiv.style.display = 'block';
       select.dataset.lockedSource = '';
+      select.disabled = false;
 
-      // Populate dropdown - admin gets "All Sources", non-admin does NOT
+      // Build dropdown options
       if (isAdmin) {
         select.innerHTML = '<option value="">All Sources</option>';
+        console.log('[Balance] ✅ Added "All Sources" for admin');
       } else {
-        select.innerHTML = ''; // No "All Sources" for non-admin
+        select.innerHTML = '';
+        console.log('[Balance] ⚠️ No "All Sources" for non-admin');
       }
 
       allowedSources.forEach(source => {
@@ -105,26 +114,29 @@ const Balance = (function() {
         option.value = source.name;
         option.textContent = source.name;
         select.appendChild(option);
-        console.log('[Balance] Added source option:', source.name);
+        console.log('[Balance] ✅ Added option:', source.name);
       });
 
-      // Auto-select first source for non-admin (no "All Sources" default)
+      // Auto-select first real source for non-admin
       if (!isAdmin && select.options.length > 0) {
         select.selectedIndex = 0;
+        console.log('[Balance] 🎯 Auto-selected:', select.value);
       }
 
-      // Add change event listener to regenerate report when source changes
+      // Add change handler
       select.onchange = function() {
-        console.log('[Balance] Source changed to:', this.value);
-        // If a report is currently showing, regenerate it with new source
+        console.log('[Balance] 🔄 Source changed to:', this.value);
         const reportSection = document.getElementById('balance-report');
         if (reportSection && !reportSection.classList.contains('hidden')) {
+          console.log('[Balance] 🔄 Regenerating report...');
           generateReport();
+        } else {
+          console.log('[Balance] ℹ️ No report visible, not regenerating');
         }
       };
 
-      console.log('[Balance] ✓ Dropdown populated with', select.options.length, 'total options');
-      console.log('[Balance] ═══════════════════════════════════');
+      console.log('[Balance] ✅ Dropdown ready - options:', select.options.length, 'disabled:', select.disabled);
+      console.log('[Balance] ══════════════════════════════════════');
     } catch (err) {
       console.error('[Balance] Failed to load lead sources:', err);
     }

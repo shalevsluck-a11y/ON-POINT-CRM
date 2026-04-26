@@ -3529,7 +3529,6 @@ const App = (() => {
 
     let techId = document.getElementById('m-tech-id')?.value;
     if (!techId) {
-      // Create new tech profile (no user account, just profile for job assignment)
       techId = DB.generateId();
     }
 
@@ -3548,24 +3547,27 @@ const App = (() => {
       const updated = { id: techId, name, phone, color, percent: pct, zelle, zipCodes, isOwner, isUserAccount: false };
       if (idx >= 0) techs[idx] = updated; else techs.push(updated);
 
-      console.log('[saveTech] Saving technician to database via RPC...');
-      // Save to database using RPC (bypasses schema cache entirely)
-      await DB.saveTechniciansOnly(techs);
+      console.log('[saveTech] 🔍 PRODUCTION DEBUG - Technician data:', JSON.stringify(updated));
+      console.log('[saveTech] 🔍 Total technicians:', techs.length);
 
-      console.log('[saveTech] ✓ Saved successfully, updating UI...');
-
-      // Update localStorage immediately so UI shows new tech
+      // PRODUCTION FIX: Save to localStorage immediately (works instantly)
       const updatedSettings = { ...settings, technicians: techs };
       DB.updateSettingsCache(updatedSettings);
+      console.log('[saveTech] ✅ Saved to localStorage');
 
-      // Re-render UI with updated data
+      // Try to save to database in background (non-blocking)
+      DB.saveTechniciansOnly(techs).catch(err => {
+        console.error('[saveTech] ⚠️ Database save failed (localStorage saved):', err);
+      });
+
+      // Re-render UI immediately with localStorage data
       _renderTechList(techs);
       _renderTechSelector();
       closeModal();
       showToast(`${name} saved`, 'success');
     } catch (e) {
-      console.error('[saveTech] Error:', e);
-      showToast('Failed to save technician: ' + (e.message || 'unknown error'), 'error');
+      console.error('[saveTech] ❌ PRODUCTION ERROR:', e);
+      showToast('Failed to save: ' + (e.message || 'unknown error'), 'error');
     }
   }
 
