@@ -44,14 +44,8 @@ Deno.serve(async (req) => {
     // Get technicians from request body
     const { technicians } = await req.json()
 
-    // Update using RAW SQL (bypasses PostgREST schema cache entirely)
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
-
-    // Use RPC to execute raw SQL UPDATE
-    const { error } = await supabaseAdmin.rpc('update_app_settings_technicians', {
+    // Call RPC with USER's auth (has auth.uid() context for admin check)
+    const { error } = await supabaseClient.rpc('update_app_settings_technicians', {
       techs_json: technicians
     })
 
