@@ -184,9 +184,9 @@ a { color: var(--color-primary); text-decoration: none; }
   position: relative;
 }
 
-.header-left  { width: 72px; display: flex; align-items: center; }
+.header-left  { width: 72px; display: flex; align-items: center; position: relative; z-index: 10; }
 .header-right { min-width: 72px; display: flex; align-items: center; justify-content: flex-end; gap: 2px; position: relative; }
-.header-center { flex: 1; text-align: center; }
+.header-center { flex: 1; text-align: center; position: relative; z-index: 5; }
 
 #app-header h1 {
   font-size: var(--font-lg);

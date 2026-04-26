@@ -545,9 +545,9 @@ const DB = (() => {
   function subscribeToProfiles(onUpdate) {
     return supa
       .channel('profiles-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, async () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, async (payload) => {
         await _syncSettingsDown();
-        if (onUpdate) onUpdate();
+        if (onUpdate) onUpdate(payload);
       })
       .subscribe();
   }

@@ -304,6 +304,38 @@ const Auth = (() => {
     }
   }
 
+  // ──────────────────────────────────────────────────────────
+  // REFRESH CURRENT USER — force reload from database
+  // ──────────────────────────────────────────────────────────
+  // Called when admin changes user's role/permissions
+  // Forces immediate refresh without requiring logout
+
+  async function refreshCurrentUserProfile() {
+    if (!_currentUser) return;
+
+    console.log('[Auth.refreshCurrentUserProfile] Refreshing profile for:', _currentUser.email);
+
+    try {
+      const { data: authUser } = await SupabaseClient.auth.getUser();
+      if (!authUser.user) {
+        console.warn('[Auth.refreshCurrentUserProfile] No auth user found');
+        return;
+      }
+
+      // Re-load profile from database
+      await _loadProfile(authUser.user);
+
+      console.log('[Auth.refreshCurrentUserProfile] ✓ Profile refreshed, new role:', _currentUser?.role);
+
+      // Trigger auth change callback to update UI
+      if (_onAuthChange && _currentUser) {
+        _onAuthChange(_currentUser);
+      }
+    } catch (e) {
+      console.error('[Auth.refreshCurrentUserProfile] Failed:', e.message);
+    }
+  }
+
   function _buildUser(authUser, profile) {
     return {
       id:                 authUser.id,
@@ -684,6 +716,7 @@ const Auth = (() => {
     canCreateJobs,
     canEditAllJobs,
     updateProfile,
+    refreshCurrentUserProfile,
     getAllProfiles,
     getUsersForAdmin,
     updateUserRole,

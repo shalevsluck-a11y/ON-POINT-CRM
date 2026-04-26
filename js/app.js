@@ -182,7 +182,27 @@ const App = (() => {
       _populateSourceDropdown();
       if (_state.currentView === 'settings') _loadSettingsForm();
     });
-    _profilesChannel = DB.subscribeToProfiles(() => {
+    _profilesChannel = DB.subscribeToProfiles(async (payload) => {
+      // Check if the changed profile is the current user
+      const currentUser = Auth.getUser();
+      const changedUserId = payload?.new?.id || payload?.old?.id;
+
+      if (currentUser && changedUserId === currentUser.id) {
+        console.log('[App] Current user profile changed, refreshing permissions...');
+        await Auth.refreshCurrentUserProfile();
+
+        // Re-apply role-based UI
+        _applyRoleUI();
+
+        // Show toast to notify user
+        showToast('Your permissions have been updated', 'info');
+
+        // Re-render current view to reflect new permissions
+        if (_state.currentView === 'dashboard') renderDashboard();
+        if (_state.currentView === 'jobs') renderJobList();
+      }
+
+      // Always refresh UI elements that depend on profiles
       _renderTechSelector();
       _populateSourceDropdown();
       if (_state.currentView === 'settings') _loadSettingsForm();
