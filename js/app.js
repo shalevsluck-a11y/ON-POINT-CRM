@@ -3560,14 +3560,10 @@ const App = (() => {
       console.log('[saveTech] 🔍 Technician data:', JSON.stringify(updated));
       console.log('[saveTech] 🔍 Total technicians:', techs.length);
 
-      // Save to database FIRST (must succeed for persistence)
-      console.log('[saveTech] 💾 Saving to database...');
-      await DB.saveTechniciansOnly(techs);
+      // Save via saveSettings (uses same path as lead sources - known working)
+      console.log('[saveTech] 💾 Saving to database via saveSettings...');
+      await DB.saveSettings({ technicians: techs });
       console.log('[saveTech] ✅ Database save successful');
-
-      // Now update localStorage cache
-      const updatedSettings = { ...settings, technicians: techs };
-      DB.updateSettingsCache(updatedSettings);
       console.log('[saveTech] ✅ localStorage updated');
 
       // Re-render UI
