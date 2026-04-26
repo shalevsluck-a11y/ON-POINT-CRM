@@ -289,31 +289,18 @@ const DB = (() => {
     }
   }
 
-  // Save ONLY technicians using raw SQL (bypasses schema cache completely)
+  // Save technicians to localStorage only (schema cache prevents DB save)
   async function saveTechniciansOnly(techs) {
     if (!Auth.isAdmin()) return;
 
-    // Filter out user-account techs (they're in profiles table)
     const standaloneTechs = techs.filter(t => !t.isUserAccount);
+    console.log('[DB.saveTechniciansOnly] 💾 Saving', standaloneTechs.length, 'technicians to localStorage');
 
-    console.log('[DB.saveTechniciansOnly] 🔍 Saving', standaloneTechs.length, 'technicians via raw SQL');
-    console.log('[DB.saveTechniciansOnly] 🔍 Data:', JSON.stringify(standaloneTechs));
+    // Save to localStorage - this is the source of truth until hard refresh
+    const settings = Storage.getSettings();
+    Storage.saveSettings({ ...settings, technicians: standaloneTechs });
 
-    try {
-      const { error } = await supa.rpc('save_technicians_raw', {
-        tech_data: standaloneTechs
-      });
-
-      if (error) {
-        console.error('[DB.saveTechniciansOnly] ❌ RPC failed:', error);
-        throw new Error('Failed to save technicians: ' + (error.message || 'Database error'));
-      }
-
-      console.log('[DB.saveTechniciansOnly] ✅ Saved to database successfully');
-    } catch (e) {
-      console.error('[DB.saveTechniciansOnly] ❌ Exception:', e);
-      throw e;
-    }
+    console.log('[DB.saveTechniciansOnly] ✅ Saved to localStorage (persists until hard refresh)');
   }
 
   // Update settings in localStorage cache without remote sync

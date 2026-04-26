@@ -57,32 +57,27 @@ const Balance = (function() {
       const allLeadSources = settings.leadSources || [];
       const isAdmin = Auth.isAdmin();
 
-      console.log('[Balance] 🔍 PRODUCTION DEBUG ═══════════════');
+      console.log('[Balance] 🔍 DEBUG ═══════════════');
       console.log('[Balance] User:', user?.name, 'Role:', user?.role, 'IsAdmin:', isAdmin);
-      console.log('[Balance] User allowed sources:', user?.allowedLeadSources);
-      console.log('[Balance] All lead sources in system:', allLeadSources.map(s => s.name));
-      console.log('[Balance] Total sources:', allLeadSources.length);
+      console.log('[Balance] settings.leadSources:', JSON.stringify(allLeadSources));
 
-      // Determine which sources this user can access
+      // CRITICAL FIX: Admin should ALWAYS see all sources
       let allowedSources = [];
 
       if (isAdmin) {
-        allowedSources = allLeadSources;
-        console.log('[Balance] ✅ Admin - showing all', allowedSources.length, 'sources');
+        // Admin sees ALL sources from settings
+        allowedSources = [...allLeadSources];
+        console.log('[Balance] ✅ Admin - showing ALL', allowedSources.length, 'sources:', allowedSources.map(s => s.name));
       } else {
+        // Non-admin: filter by permissions
         const userAllowedSources = user?.allowedLeadSources;
-        console.log('[Balance] 🔍 Checking permissions for non-admin...');
-        console.log('[Balance] User.allowedLeadSources:', userAllowedSources);
+        console.log('[Balance] Non-admin permissions:', userAllowedSources);
 
         if (userAllowedSources && Array.isArray(userAllowedSources) && userAllowedSources.length > 0) {
           allowedSources = allLeadSources.filter(s => userAllowedSources.includes(s.name));
-          console.log('[Balance] ✅ Filtered to', allowedSources.length, 'permitted sources:', allowedSources.map(s => s.name));
-        } else {
-          console.log('[Balance] ⚠️ No allowed sources - user will see nothing');
+          console.log('[Balance] ✅ Filtered:', allowedSources.map(s => s.name));
         }
       }
-
-      console.log('[Balance] 📊 Final allowed sources:', allowedSources.map(s => s.name));
 
       // Apply permission-based logic
       if (allowedSources.length === 0) {

@@ -114,52 +114,47 @@ const App = (() => {
     const dateField = document.getElementById('f-date');
     if (dateField && !dateField.value) dateField.value = dateStr;
 
-    // Sync fresh data from Supabase in background, then re-render
-    try { await DB.init(); } catch(e) {
-      console.warn('DB.init error:', e.message);
-      showToast('Connection error — showing cached data. Pull to refresh.', 'warning');
-    }
-    renderDashboard();
-    renderJobList();
-    _loadSettingsForm();
-    _renderTechSelector();
-    _populateSourceDropdown();
-
-    // Always land on dashboard after login — never restore a previous session's screen
+    // Always land on dashboard after login
     navigate('dashboard');
 
-    // CRITICAL: Force sync from remote database to get fresh data
-    console.log('[App] Syncing jobs from remote database...');
-    await DB.syncJobsFromRemote();
-    renderDashboard();
-    renderJobList();
-    console.log('[App] Fresh data loaded from database');
+    // Background sync - don't block UI
+    DB.init().then(() => {
+      renderDashboard();
+      renderJobList();
+      _loadSettingsForm();
+      _renderTechSelector();
+      _populateSourceDropdown();
+    }).catch(e => {
+      console.warn('DB.init error:', e.message);
+      showToast('Connection error — showing cached data', 'warning');
+    });
 
-    // Start notification bell + real-time banner toasts
-    try { await Notifications.init(); } catch(e) { console.warn('Notifications.init error:', e.message); }
+    // Background sync jobs - don't block
+    DB.syncJobsFromRemote().then(() => {
+      renderDashboard();
+      renderJobList();
+    }).catch(e => console.warn('Job sync error:', e));
 
-    // Subscribe to push notifications (requests permission once)
-    // Initialize aggressive push subscription enforcer
+    // Background init - don't block
+    Notifications.init().catch(e => console.warn('Notifications error:', e));
+
+    // Non-blocking inits
     if (window.PushSubscriptionEnforcer) {
-      PushSubscriptionEnforcer.init();
+      setTimeout(() => PushSubscriptionEnforcer.init(), 2000);
     }
 
-    // Start background overdue-job checker (admin/dispatcher only)
     Reminders.init();
 
-    // Initialize Balance reports (admin/dispatcher only)
     if (window.Balance) {
       Balance.init();
     }
 
-    // Initialize live data enhancements
     if (window.RealtimeManager) {
       RealtimeManager.init();
-      console.log('[App] RealtimeManager initialized');
     }
+
     if (window.OfflineQueue) {
-      await OfflineQueue.init();
-      console.log('[App] OfflineQueue initialized');
+      OfflineQueue.init().catch(e => console.warn('OfflineQueue error:', e));
     }
 
     // Subscribe to live job changes from other sessions
