@@ -42,8 +42,29 @@ const DB = (() => {
 
       const isAdmin = role === 'admin';
       const isTechLike = role === 'tech' || role === 'contractor';
-      const jobs = (data || []).map(row => _dbRowToJob(row, zelleMap, isAdmin, isTechLike));
-      Storage.saveJobs(jobs);
+      const serverJobs = (data || []).map(row => _dbRowToJob(row, zelleMap, isAdmin, isTechLike));
+
+      // Merge with local: preserve local jobs that are newer than server (race condition protection)
+      const localJobs = Storage.getJobs();
+      const localMap = {};
+      localJobs.forEach(j => { localMap[j.jobId] = j; });
+
+      const merged = serverJobs.map(serverJob => {
+        const localJob = localMap[serverJob.jobId];
+        if (!localJob) return serverJob;
+
+        // If local job was modified in last 5 seconds, keep local version (pending write)
+        const localTime = localJob.updatedAt ? new Date(localJob.updatedAt).getTime() : 0;
+        const now = Date.now();
+        if (now - localTime < 5000) {
+          console.log('[DB._syncJobsDown] Keeping local version of job', serverJob.jobId, '- recent edit');
+          return localJob;
+        }
+
+        return serverJob;
+      });
+
+      Storage.saveJobs(merged);
     } catch (e) {
       console.warn('DB._syncJobsDown error (using cache):', e.message);
     }
@@ -172,9 +193,11 @@ const DB = (() => {
   async function saveJob(job) {
     console.log('[DB] saveJob START - Job ID:', job.jobId, 'Customer:', job.customerName);
     console.log('[DB] saveJob CALLER STACK:', new Error().stack);
+    // Add timestamp to track when job was last modified locally
+    job.updatedAt = new Date().toISOString();
     // Write to cache immediately
     Storage.saveJob(job);
-    console.log('[DB] saveJob - Saved to localStorage');
+    console.log('[DB] saveJob - Saved to localStorage with updatedAt:', job.updatedAt);
     // Push to Supabase in background
     _upsertJobRemote(job)
       .then(() => console.log('[DB] saveJob - Synced to Supabase SUCCESS for job', job.jobId))
