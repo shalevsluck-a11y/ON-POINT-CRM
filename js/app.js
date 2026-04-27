@@ -4282,13 +4282,24 @@ const App = (() => {
       const myTotal      = isSelf ? ownerPayout + techPayout : ownerPayout;
 
       lines.push('');
-      lines.push('*── Financials ──*');
+      lines.push('*━━━━━━━━━━━━━━━━━━*');
+      lines.push('*💰 FINANCIAL BREAKDOWN*');
+      lines.push('*━━━━━━━━━━━━━━━━━━*');
+      lines.push('');
       lines.push(`*Job Total:* $${jobTotal.toFixed(2)}`);
       if (taxAmt > 0)    lines.push(`*Tax:* -$${taxAmt.toFixed(2)}`);
       if (parts > 0)     lines.push(`*Parts:* -$${parts.toFixed(2)}`);
-      if (tech && !isSelf) lines.push(`*Tech (${tech.name}):* $${techPayout.toFixed(2)}`);
-      if (contrFee > 0)  lines.push(`*Contractor Fee:* $${contrFee.toFixed(2)}`);
-      lines.push(`*My Revenue:* $${myTotal.toFixed(2)}`);
+      lines.push('');
+      lines.push('*Split:*');
+      if (tech && !isSelf) lines.push(`  • Tech (${tech.name}): $${techPayout.toFixed(2)}`);
+      if (isSelf) lines.push(`  • Tech (Owner): $${techPayout.toFixed(2)}`);
+      if (contrFee > 0) {
+        const leadSource = job.contractorName || job.source || 'Lead Source';
+        lines.push(`  • ${leadSource}: $${contrFee.toFixed(2)}`);
+      }
+      lines.push(`  • Owner Revenue: $${ownerPayout.toFixed(2)}`);
+      lines.push('');
+      lines.push(`*✅ My Total: $${myTotal.toFixed(2)}*`);
       if (job.paymentMethod) lines.push(`*Payment:* ${job.paymentMethod.charAt(0).toUpperCase() + job.paymentMethod.slice(1)}`);
     } else {
       lines.push('');
@@ -4318,20 +4329,34 @@ const App = (() => {
     const ownerPhone = settings.ownerPhone || '(929) 429-2429';
 
     const lines = [
-      'New Job Assignment — On Point Pro Doors',
+      '*━━━━━━━━━━━━━━━━━━*',
+      '*📋 NEW JOB ASSIGNMENT*',
+      '*━━━━━━━━━━━━━━━━━━*',
       '',
-      `Customer: ${job.customerName || 'N/A'}`,
-      `Phone: ${job.phone || 'N/A'}`,
-      `Address: ${fullAddress}`,
-      `Service: ${job.description || 'Garage Door Service'}`,
-      `Date: ${dateLine}`,
-      `Time: ${timeLine}`,
+      '*👤 CUSTOMER INFO*',
+      `  • Name: ${job.customerName || 'N/A'}`,
+      `  • Phone: ${job.phone || 'N/A'}`,
+      `  • Address: ${fullAddress}`,
+      '',
+      '*🔧 JOB DETAILS*',
+      `  • Service: ${job.description || 'Garage Door Service'}`,
+      `  • Date: ${dateLine}`,
+      `  • Time: ${timeLine}`,
     ];
 
-    if (job.notes) lines.push(`Notes: ${job.notes}`);
+    if (job.notes) {
+      lines.push(`  • Notes: ${job.notes}`);
+    }
 
     const techPayout = parseFloat(job.techPayout) || parseFloat(job.contractorFee) || 0;
-    if (techPayout > 0) lines.push('', `Your cut: $${techPayout.toFixed(2)}`);
+    if (techPayout > 0) {
+      lines.push('');
+      lines.push('*💰 YOUR PAYOUT*');
+      lines.push(`  *✅ $${techPayout.toFixed(2)}*`);
+    }
+
+    lines.push('');
+    lines.push('*━━━━━━━━━━━━━━━━━━*');
 
     return lines.join('\n');
   }
