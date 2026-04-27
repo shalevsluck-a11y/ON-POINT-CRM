@@ -4281,6 +4281,11 @@ const App = (() => {
       const isSelf       = job.isSelfAssigned === true || job.isSelfAssigned === 'true';
       const myTotal      = isSelf ? ownerPayout + techPayout : ownerPayout;
 
+      // Calculate percentages
+      const techPct  = jobTotal > 0 ? (techPayout / jobTotal) * 100 : 0;
+      const contrPct = jobTotal > 0 ? (contrFee / jobTotal) * 100 : 0;
+      const ownerPct = jobTotal > 0 ? (ownerPayout / jobTotal) * 100 : 0;
+
       lines.push('');
       lines.push('*━━━━━━━━━━━━━━━━━━*');
       lines.push('*💰 FINANCIAL BREAKDOWN*');
@@ -4291,13 +4296,13 @@ const App = (() => {
       if (parts > 0)     lines.push(`*Parts:* -$${parts.toFixed(2)}`);
       lines.push('');
       lines.push('*Split:*');
-      if (tech && !isSelf) lines.push(`  • Tech (${tech.name}): $${techPayout.toFixed(2)}`);
-      if (isSelf) lines.push(`  • Tech (Owner): $${techPayout.toFixed(2)}`);
+      if (tech && !isSelf) lines.push(`  • Tech (${tech.name}): $${techPayout.toFixed(2)} (${techPct.toFixed(1)}%)`);
+      if (isSelf) lines.push(`  • Tech (Owner): $${techPayout.toFixed(2)} (${techPct.toFixed(1)}%)`);
       if (contrFee > 0) {
         const leadSource = job.contractorName || job.source || 'Lead Source';
-        lines.push(`  • ${leadSource}: $${contrFee.toFixed(2)}`);
+        lines.push(`  • ${leadSource}: $${contrFee.toFixed(2)} (${contrPct.toFixed(1)}%)`);
       }
-      lines.push(`  • Owner Revenue: $${ownerPayout.toFixed(2)}`);
+      lines.push(`  • Owner Revenue: $${ownerPayout.toFixed(2)} (${ownerPct.toFixed(1)}%)`);
       lines.push('');
       lines.push(`*✅ My Total: $${myTotal.toFixed(2)}*`);
       if (job.paymentMethod) lines.push(`*Payment:* ${job.paymentMethod.charAt(0).toUpperCase() + job.paymentMethod.slice(1)}`);
