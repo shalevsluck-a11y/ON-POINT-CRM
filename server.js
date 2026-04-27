@@ -15,7 +15,7 @@ const supabaseAdmin = createClient(
 // Direct project URL admin client (bypasses custom domain PostgREST cache)
 const supabaseDirectAdmin = createClient(
   'https://nmmpemjcnncjfpooytpv.supabase.co',
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  '***REDACTED-SUPABASE-SERVICE-KEY***',
   { auth: { persistSession: false } }
 );
 
