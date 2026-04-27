@@ -243,6 +243,20 @@ const Balance = (function() {
     }
   }
 
+  function toggleCustomDates() {
+    const period = document.getElementById('balance-period').value;
+    const customDates = document.getElementById('balance-custom-dates');
+    if (customDates) {
+      if (period === 'custom') {
+        customDates.classList.remove('hidden');
+        customDates.style.display = 'block';
+      } else {
+        customDates.classList.add('hidden');
+        customDates.style.display = 'none';
+      }
+    }
+  }
+
   function getDateRange(period) {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -274,6 +288,25 @@ const Balance = (function() {
           start: startOfMonth,
           end: endOfMonth,
           label: 'This Month'
+        };
+
+      case 'custom':
+        const startInput = document.getElementById('balance-custom-start')?.value;
+        const endInput = document.getElementById('balance-custom-end')?.value;
+
+        if (!startInput || !endInput) {
+          alert('Please select both start and end dates');
+          return { start: today, end: new Date(today.getTime() + 24 * 60 * 60 * 1000), label: 'Today' };
+        }
+
+        const start = new Date(startInput);
+        const end = new Date(endInput);
+        end.setHours(23, 59, 59, 999);
+
+        return {
+          start,
+          end,
+          label: `${formatDate(start)} - ${formatDate(end)}`
         };
 
       default:
@@ -711,6 +744,7 @@ const Balance = (function() {
     showMenu,
     showReportOptions,
     generateReport,
+    toggleCustomDates,
     copyToClipboard,
     shareWhatsApp,
     populateLeadSourceSelector  // Export so app.js can refresh after settings sync

@@ -611,11 +611,22 @@
           <div class="balance-filters">
             <div class="filter-group">
               <label>Time Period</label>
-              <select id="balance-period" class="balance-select">
+              <select id="balance-period" class="balance-select" onchange="Balance.toggleCustomDates()">
                 <option value="daily">Today</option>
                 <option value="weekly">This Week</option>
                 <option value="monthly" selected>This Month</option>
+                <option value="custom">Custom Range</option>
               </select>
+            </div>
+
+            <!-- Custom date range inputs (hidden by default) -->
+            <div id="balance-custom-dates" class="filter-group hidden" style="display:none">
+              <label>Custom Date Range</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="date" id="balance-custom-start" class="balance-select" style="flex:1">
+                <span style="color:var(--color-text-muted)">to</span>
+                <input type="date" id="balance-custom-end" class="balance-select" style="flex:1">
+              </div>
             </div>
 
             <div class="filter-group">
