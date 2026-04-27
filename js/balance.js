@@ -26,10 +26,9 @@ const Balance = (function() {
   async function populateTechSelector() {
     try {
       console.log('[Balance] ═══ TECH SELECTOR START ═══');
-      const profiles = await Auth.getAllProfiles();
-      console.log('[Balance] Got profiles:', profiles?.length || 0);
-      const techs = profiles.filter(p => p.role === 'tech' || p.role === 'contractor');
-      console.log('[Balance] Filtered techs:', techs?.length || 0, techs);
+      const settings = DB.getSettings();
+      const techs = settings.technicians || [];
+      console.log('[Balance] Got techs from settings:', techs?.length || 0, techs);
 
       const select = document.getElementById('balance-tech-select');
       if (!select) {
