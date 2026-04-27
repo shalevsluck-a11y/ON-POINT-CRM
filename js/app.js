@@ -650,12 +650,12 @@ const App = (() => {
         <div class="tech-today-list">${jobCards}</div>
       </div>
       <div class="revenue-grid" style="margin-top:12px">
-        <div class="revenue-card">
+        <div class="revenue-card revenue-card-static">
           <div class="rev-label">This Week Earnings</div>
           <div class="rev-amount" style="color:var(--color-success)">${_fmt(weekEarnings)}</div>
           <div class="rev-count">${thisWeekPaid.length} paid job${thisWeekPaid.length !== 1 ? 's' : ''}</div>
         </div>
-        <div class="revenue-card">
+        <div class="revenue-card revenue-card-static">
           <div class="rev-label">My Total Jobs</div>
           <div class="rev-amount">${myJobs.length}</div>
           <div class="rev-count">all time</div>
@@ -2356,6 +2356,10 @@ const App = (() => {
     }).catch(() => {});
 
     closeModal();
+
+    // Update dashboard revenue in real-time
+    renderDashboard();
+    renderJobList();
 
     // Different success messages for tech vs admin
     if (Auth.isTech()) {
