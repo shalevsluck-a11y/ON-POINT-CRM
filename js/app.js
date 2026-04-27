@@ -2505,9 +2505,9 @@ const App = (() => {
     }
     const job = DB.getJobById(jobId);
     if (!job) return;
-    if (job.status === 'paid') { showToast('Cannot edit a paid job', 'warning'); return; }
 
     const settings = DB.getSettings();
+    const isPaid = job.status === 'paid';
 
     // Build modal using close-job modal slot (reuse)
     const body = document.getElementById('modal-close-job-body');
@@ -2515,51 +2515,52 @@ const App = (() => {
     if (titleEl) titleEl.textContent = 'Edit Job';
 
     body.innerHTML = `
+      ${isPaid ? '<div style="padding:8px;background:var(--color-warning-bg);color:var(--color-warning);border-radius:6px;margin-bottom:12px;font-size:13px">⚠️ Paid job - only tech assignment can be changed</div>' : ''}
       <div class="field-group">
         <label class="field-label">Customer Name</label>
-        <input type="text" id="edit-name" class="field-input" value="${_esc(job.customerName || '')}">
+        <input type="text" id="edit-name" class="field-input" value="${_esc(job.customerName || '')}" ${isPaid ? 'disabled' : ''}>
       </div>
       <div class="field-group">
         <label class="field-label">Phone</label>
-        <input type="tel" id="edit-phone" class="field-input" value="${_esc(job.phone || '')}">
+        <input type="tel" id="edit-phone" class="field-input" value="${_esc(job.phone || '')}" ${isPaid ? 'disabled' : ''}>
       </div>
       <div class="field-group">
         <label class="field-label">Address</label>
-        <input type="text" id="edit-address" class="field-input" value="${_esc(job.address || '')}">
+        <input type="text" id="edit-address" class="field-input" value="${_esc(job.address || '')}" ${isPaid ? 'disabled' : ''}>
       </div>
       <div class="field-row">
         <div class="field-group" style="flex:2">
           <label class="field-label">City</label>
-          <input type="text" id="edit-city" class="field-input" value="${_esc(job.city || '')}">
+          <input type="text" id="edit-city" class="field-input" value="${_esc(job.city || '')}" ${isPaid ? 'disabled' : ''}>
         </div>
         <div class="field-group" style="flex:1">
           <label class="field-label">State</label>
-          <select id="edit-state" class="field-input">
+          <select id="edit-state" class="field-input" ${isPaid ? 'disabled' : ''}>
             ${['AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'].map(s => `<option value="${s}" ${(job.state||'NY')===s?'selected':''}>${s}</option>`).join('')}
           </select>
         </div>
         <div class="field-group" style="flex:1">
           <label class="field-label">ZIP</label>
-          <input type="text" id="edit-zip" class="field-input" value="${_esc(job.zip || '')}" maxlength="5">
+          <input type="text" id="edit-zip" class="field-input" value="${_esc(job.zip || '')}" maxlength="5" ${isPaid ? 'disabled' : ''}>
         </div>
       </div>
       <div class="field-row">
         <div class="field-group" style="flex:1">
           <label class="field-label">Date</label>
-          <input type="date" id="edit-date" class="field-input" value="${job.scheduledDate || ''}">
+          <input type="date" id="edit-date" class="field-input" value="${job.scheduledDate || ''}" ${isPaid ? 'disabled' : ''}>
         </div>
         <div class="field-group" style="flex:1">
           <label class="field-label">Time</label>
-          <input type="time" id="edit-time" class="field-input" value="${job.scheduledTime || ''}">
+          <input type="time" id="edit-time" class="field-input" value="${job.scheduledTime || ''}" ${isPaid ? 'disabled' : ''}>
         </div>
       </div>
       <div class="field-group">
         <label class="field-label">Description</label>
-        <textarea id="edit-desc" class="field-input field-textarea" rows="2">${_esc(job.description || '')}</textarea>
+        <textarea id="edit-desc" class="field-input field-textarea" rows="2" ${isPaid ? 'disabled' : ''}>${_esc(job.description || '')}</textarea>
       </div>
       <div class="field-group">
         <label class="field-label">Notes</label>
-        <textarea id="edit-notes" class="field-input field-textarea" rows="2">${_esc(job.notes || '')}</textarea>
+        <textarea id="edit-notes" class="field-input field-textarea" rows="2" ${isPaid ? 'disabled' : ''}>${_esc(job.notes || '')}</textarea>
       </div>
       <div class="field-group">
         <label class="field-label">Assign Technician</label>
@@ -2570,7 +2571,7 @@ const App = (() => {
       </div>
       <div class="field-group">
         <label class="field-label">Tech Payout %</label>
-        <input type="number" id="edit-tech-pct" class="field-input" value="${job.techPercent || 0}" min="0" max="100">
+        <input type="number" id="edit-tech-pct" class="field-input" value="${job.techPercent || 0}" min="0" max="100" ${isPaid ? 'disabled' : ''}>
       </div>
       <div style="display:flex;gap:8px;margin-top:8px">
         <button class="btn btn-secondary" style="flex:1" onclick="App.closeModal()">Cancel</button>
@@ -2593,23 +2594,31 @@ const App = (() => {
     const techId = document.getElementById('edit-tech-id')?.value || null;
     const tech = techId ? settings.technicians.find(t => t.id === techId) : null;
 
-    const updated = {
-      ...job,
-      customerName:    document.getElementById('edit-name')?.value?.trim()    || job.customerName,
-      phone:           document.getElementById('edit-phone')?.value?.trim()   || job.phone,
-      address:         document.getElementById('edit-address')?.value?.trim() || job.address,
-      city:            document.getElementById('edit-city')?.value?.trim()    || job.city,
-      state:           document.getElementById('edit-state')?.value           || job.state,
-      zip:             document.getElementById('edit-zip')?.value?.trim()     || job.zip,
-      scheduledDate:   document.getElementById('edit-date')?.value            || job.scheduledDate,
-      scheduledTime:   document.getElementById('edit-time')?.value            || job.scheduledTime,
-      description:     document.getElementById('edit-desc')?.value?.trim()   || job.description,
-      notes:           document.getElementById('edit-notes')?.value?.trim()   || job.notes,
-      techPercent:     parseFloat(document.getElementById('edit-tech-pct')?.value) || job.techPercent,
-      assignedTechId:  techId,
-      assignedTechName: tech ? tech.name : '',
-      isSelfAssigned:  tech ? tech.isOwner : false,
-    };
+    // For paid jobs, only allow tech assignment changes
+    const updated = job.status === 'paid'
+      ? {
+          ...job,
+          assignedTechId:   techId,
+          assignedTechName: tech ? tech.name : '',
+          isSelfAssigned:   tech ? tech.isOwner : false,
+        }
+      : {
+          ...job,
+          customerName:     document.getElementById('edit-name')?.value?.trim()    || job.customerName,
+          phone:            document.getElementById('edit-phone')?.value?.trim()   || job.phone,
+          address:          document.getElementById('edit-address')?.value?.trim() || job.address,
+          city:             document.getElementById('edit-city')?.value?.trim()    || job.city,
+          state:            document.getElementById('edit-state')?.value           || job.state,
+          zip:              document.getElementById('edit-zip')?.value?.trim()     || job.zip,
+          scheduledDate:    document.getElementById('edit-date')?.value            || job.scheduledDate,
+          scheduledTime:    document.getElementById('edit-time')?.value            || job.scheduledTime,
+          description:      document.getElementById('edit-desc')?.value?.trim()    || job.description,
+          notes:            document.getElementById('edit-notes')?.value?.trim()   || job.notes,
+          techPercent:      parseFloat(document.getElementById('edit-tech-pct')?.value) || job.techPercent,
+          assignedTechId:   techId,
+          assignedTechName: tech ? tech.name : '',
+          isSelfAssigned:   tech ? tech.isOwner : false,
+        };
 
     DB.saveJob(updated);
     SyncManager.queueJob(jobId);
