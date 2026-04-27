@@ -528,10 +528,6 @@ const App = (() => {
     const revSection = document.getElementById('revenue-section');
     if (revSection) revSection.classList.toggle('hidden', !Auth.isAdmin());
 
-    // Only admin sees technician performance section
-    const techPerfTitle = document.getElementById('tech-perf-section');
-    if (techPerfTitle) techPerfTitle.classList.toggle('hidden', !Auth.isAdmin());
-
     if (Auth.canSeeFinancials()) {
       // Admin: show owner revenue (ownerPayout + selfBonus for self-assigned)
       const toOwnerRev = arr => arr.reduce((s, j) => {
