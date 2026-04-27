@@ -2390,7 +2390,7 @@ const App = (() => {
         : calc.ownerPayout;
       showToast(calc.isSelfAssigned
         ? `Paid! Your take: ${_fmt(_myTake)}`
-        : `Paid! Owner: ${_fmt(calc.ownerPayout)} · Tech: ${_fmt(calc.techPayout)}`,
+        : `Paid! On Point: ${_fmt(calc.ownerPayout)} · Tech: ${_fmt(calc.techPayout)}`,
         'success');
     }
 
@@ -4463,7 +4463,7 @@ const App = (() => {
         const leadSource = job.contractorName || job.source || 'Lead Source';
         lines.push(`  • ${leadSource}: $${contrFee.toFixed(2)} (${contrPct.toFixed(1)}%)`);
       }
-      lines.push(`  • Owner Revenue: $${ownerPayout.toFixed(2)} (${ownerPct.toFixed(1)}%)`);
+      lines.push(`  • On Point Revenue: $${ownerPayout.toFixed(2)} (${ownerPct.toFixed(1)}%)`);
       lines.push('');
       lines.push(`*✅ My Total: $${myTotal.toFixed(2)}*`);
       if (job.paymentMethod) lines.push(`*Payment:* ${job.paymentMethod.charAt(0).toUpperCase() + job.paymentMethod.slice(1)}`);
