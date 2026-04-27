@@ -415,7 +415,8 @@ const Balance = (function() {
 
     if (techId) {
       techJobs = jobs.filter(j => j.assignedTechId === techId);
-      const tech = Auth.getUserById(techId);
+      const settings = DB.getSettings();
+      const tech = settings.technicians?.find(t => t.id === techId);
       techName = tech ? tech.name : 'Unknown Tech';
     }
 
@@ -648,7 +649,9 @@ const Balance = (function() {
 
     } else {
       const techId = currentReportData.techId;
-      const techName = techId ? (Auth.getUserById(techId)?.name || 'Unknown Tech') : 'All Techs';
+      const settings = DB.getSettings();
+      const tech = techId ? settings.technicians?.find(t => t.id === techId) : null;
+      const techName = tech ? tech.name : (techId ? 'Unknown Tech' : 'All Techs');
       const avgJobValue = stats.totalJobs > 0 ? stats.totalCollected / stats.totalJobs : 0;
 
       text = `👤 TECH BALANCE REPORT\n`;
