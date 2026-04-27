@@ -711,6 +711,10 @@ app.post('/api/save-job', async (req, res) => {
     }
 
     // Admin/dispatcher: full upsert
+    // Only set assigned_tech_id if it's a valid UUID (user account tech)
+    // Standalone techs have non-UUID IDs, set to null and use assigned_tech_name only
+    const isValidUUID = job.assignedTechId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(job.assignedTechId);
+
     const row = {
       job_id:               job.jobId,
       status:               job.status,
@@ -727,7 +731,7 @@ app.post('/api/save-job', async (req, res) => {
       source:               job.source || 'my_lead',
       contractor_name:      job.contractorName || '',
       contractor_pct:       parseFloat(job.contractorPct) || 0,
-      assigned_tech_id:     job.assignedTechId || null,
+      assigned_tech_id:     isValidUUID ? job.assignedTechId : null,
       assigned_tech_name:   job.assignedTechName || '',
       is_self_assigned:     job.isSelfAssigned || false,
       tech_percent:         parseFloat(job.techPercent) || 0,
