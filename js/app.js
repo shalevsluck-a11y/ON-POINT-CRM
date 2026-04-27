@@ -562,9 +562,12 @@ const App = (() => {
       }
     }
 
-    _setText('rev-today-count', `${todayJobs.length} job${todayJobs.length !== 1 ? 's' : ''}`);
-    _setText('rev-week-count',  `${weekJobs.length} job${weekJobs.length !== 1 ? 's' : ''}`);
-    _setText('rev-month-count', `${monthJobs.length} job${monthJobs.length !== 1 ? 's' : ''}`);
+    const todayPaidCount = todayJobs.filter(paidOnly).length;
+    const weekPaidCount = weekJobs.filter(paidOnly).length;
+    const monthPaidCount = monthJobs.filter(paidOnly).length;
+    _setText('rev-today-count', `${todayPaidCount} job${todayPaidCount !== 1 ? 's' : ''}`);
+    _setText('rev-week-count',  `${weekPaidCount} job${weekPaidCount !== 1 ? 's' : ''}`);
+    _setText('rev-month-count', `${monthPaidCount} job${monthPaidCount !== 1 ? 's' : ''}`);
 
     // Status counts
     const counts = { new:0, scheduled:0, in_progress:0, closed:0, paid:0, follow_up:0 };
