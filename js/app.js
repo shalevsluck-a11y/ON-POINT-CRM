@@ -679,8 +679,7 @@ const App = (() => {
           const daysAgo = j.scheduledDate
             ? Math.floor((Date.now() - new Date(j.scheduledDate+'T00:00:00').getTime()) / 86400000)
             : null;
-          const reason = !j.assignedTechId ? 'No tech assigned'
-            : daysAgo !== null && daysAgo > 0 ? `Follow-up · ${daysAgo}d overdue`
+          const reason = daysAgo !== null && daysAgo > 0 ? `Follow-up · ${daysAgo}d overdue`
             : 'Follow-up needed';
           return `
           <div class="urgent-job-row" onclick="App.openJobDetail('${j.jobId}')">
