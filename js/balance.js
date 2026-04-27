@@ -410,14 +410,26 @@ const Balance = (function() {
   }
 
   function generateTechReport(jobs, period, status, techId, dateRange) {
+    console.log('[Balance] ═══ TECH REPORT DEBUG ═══');
+    console.log('[Balance] Selected techId:', techId, 'Type:', typeof techId);
+    console.log('[Balance] Total jobs before filter:', jobs.length);
+    console.log('[Balance] Sample job assignedTechIds:', jobs.slice(0, 5).map(j => ({
+      jobId: j.jobId,
+      assignedTechId: j.assignedTechId,
+      type: typeof j.assignedTechId,
+      status: j.status
+    })));
+
     let techJobs = jobs;
     let techName = 'All Techs';
 
     if (techId) {
       techJobs = jobs.filter(j => j.assignedTechId === techId);
+      console.log('[Balance] After filter by techId:', techJobs.length, 'jobs');
       const settings = DB.getSettings();
       const tech = settings.technicians?.find(t => t.id === techId);
       techName = tech ? tech.name : 'Unknown Tech';
+      console.log('[Balance] Tech name:', techName);
     }
 
     const stats = calculateStats(techJobs);
