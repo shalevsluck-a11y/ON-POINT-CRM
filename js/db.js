@@ -57,13 +57,13 @@ const DB = (() => {
           return serverJob;
         }
 
-        // If local job was modified in last 5 seconds, keep local version (pending write)
+        // If local job was modified in last 30 seconds, keep local version (pending write)
         const localTime = localJob.updatedAt ? new Date(localJob.updatedAt).getTime() : 0;
         const now = Date.now();
         const ageMs = now - localTime;
         console.log('[DB._syncJobsDown] Job', serverJob.jobId, '- updatedAt:', localJob.updatedAt, 'age:', ageMs, 'ms');
 
-        if (now - localTime < 5000) {
+        if (now - localTime < 30000) {
           console.log('[DB._syncJobsDown] ✅ KEEPING LOCAL version of job', serverJob.jobId, '- assignedTechId:', localJob.assignedTechId);
           return localJob;
         }
