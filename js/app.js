@@ -840,7 +840,11 @@ const App = (() => {
 
     // Apply status filter
     if (_state.jobFilter && _state.jobFilter !== 'all') {
-      jobs = jobs.filter(j => j.status === _state.jobFilter);
+      if (_state.jobFilter === 'unpaid') {
+        jobs = jobs.filter(j => j.status !== 'paid');
+      } else {
+        jobs = jobs.filter(j => j.status === _state.jobFilter);
+      }
     }
 
     // Apply tech filter

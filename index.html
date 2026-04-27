@@ -405,12 +405,8 @@
 
       <div class="filter-chips" id="filter-chips">
         <button class="chip active" data-filter="all" onclick="App.setJobFilter('all',this)">All</button>
-        <button class="chip" data-filter="new" onclick="App.setJobFilter('new',this)">New</button>
-        <button class="chip" data-filter="scheduled" onclick="App.setJobFilter('scheduled',this)">Scheduled</button>
-        <button class="chip" data-filter="in_progress" onclick="App.setJobFilter('in_progress',this)">Active</button>
-        <button class="chip" data-filter="follow_up" onclick="App.setJobFilter('follow_up',this)">Follow-Up</button>
-        <button class="chip" data-filter="closed" onclick="App.setJobFilter('closed',this)">Closed</button>
         <button class="chip" data-filter="paid" onclick="App.setJobFilter('paid',this)">Paid</button>
+        <button class="chip" data-filter="unpaid" onclick="App.setJobFilter('unpaid',this)">Not Paid</button>
       </div>
 
       <div id="jobs-list-container" class="job-list">
