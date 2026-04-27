@@ -875,10 +875,13 @@ app.get('/api/load-jobs', async (req, res) => {
     } else if (role === 'dispatcher') {
       // Dispatcher: filter by assigned lead source only if they have one
       const assignedLeadSource = profile.assigned_lead_source;
+      console.log('[LOAD JOBS] Dispatcher assigned_lead_source:', assignedLeadSource);
       if (assignedLeadSource) {
+        console.log('[LOAD JOBS] Filtering dispatcher jobs by source:', assignedLeadSource);
         query = query.eq('source', assignedLeadSource);
+      } else {
+        console.log('[LOAD JOBS] Dispatcher has no assigned source - showing all jobs');
       }
-      // If no assigned lead source, dispatcher sees all jobs (no filter)
     }
 
     const { data: jobs, error: jobsError } = await query.order('created_at', { ascending: false });
