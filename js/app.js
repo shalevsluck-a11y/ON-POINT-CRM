@@ -2232,10 +2232,20 @@ const App = (() => {
 
     const tech = job.assignedTechId ? settings.technicians.find(t => t.id === job.assignedTechId) : null;
     const taxOption = document.getElementById('close-tax-option')?.value || 'none';
+
+    // Lookup lead source percentage if not already set
+    let contractorPct = parseFloat(job.contractorPct) || 0;
+    if (contractorPct === 0 && job.source && job.source !== 'my_lead') {
+      const leadSource = settings.leadSources?.find(ls => ls.name === job.source);
+      if (leadSource) {
+        contractorPct = parseFloat(leadSource.contractorPercent) || 0;
+      }
+    }
+
     const calc = PayoutEngine.calculate({
       jobTotal: total, partsCost: parts,
       techPercent: parseFloat(job.techPercent) || 0,
-      contractorPct: parseFloat(job.contractorPct) || 0,
+      contractorPct,
       taxOption,
       isSelfAssigned: job.isSelfAssigned,
       taxRateNY: settings.taxRateNY,
@@ -2274,10 +2284,21 @@ const App = (() => {
     const settings = DB.getSettings();
     const tech = job.assignedTechId ? settings.technicians.find(t => t.id === job.assignedTechId) : null;
 
+    // Lookup lead source percentage if not already set
+    let contractorPct = parseFloat(job.contractorPct) || 0;
+    let contractorName = job.contractorName || '';
+    if (contractorPct === 0 && job.source && job.source !== 'my_lead') {
+      const leadSource = settings.leadSources?.find(ls => ls.name === job.source);
+      if (leadSource) {
+        contractorPct = parseFloat(leadSource.contractorPercent) || 0;
+        contractorName = leadSource.name || '';
+      }
+    }
+
     const calc = PayoutEngine.calculate({
       jobTotal: total, partsCost: parts,
       techPercent: parseFloat(job.techPercent) || 0,
-      contractorPct: parseFloat(job.contractorPct) || 0,
+      contractorPct,
       taxOption,
       isSelfAssigned: job.isSelfAssigned,
       taxRateNY: settings.taxRateNY,
@@ -2316,7 +2337,9 @@ const App = (() => {
           techPayout:    calc.techPayout,
           ownerPayout:   calc.ownerPayout,
           contractorFee: calc.contractorFee,
-          ownerPct:      100 - (parseFloat(job.techPercent) || 0) - (parseFloat(job.contractorPct) || 0),
+          contractorPct,
+          contractorName,
+          ownerPct:      100 - (parseFloat(job.techPercent) || 0) - contractorPct,
           paymentMethod: method,
           paidAt:        new Date().toISOString(),
           zelleMemo,
