@@ -516,18 +516,15 @@ const App = (() => {
   function renderDashboard() {
     const jobs = DB.getJobs();
     const today = _todayStr();
-    const weekStart = _daysAgoStr(6);
-    const monthStart = _monthStartStr();
+    const weekStart = _thisWeekSundayStr(); // Sunday to Sunday
 
     const paidOnly = j => j.status === 'paid';
     const todayJobs  = jobs.filter(j => j.scheduledDate === today);
     const weekJobs   = jobs.filter(j => j.scheduledDate >= weekStart);
-    const monthJobs  = jobs.filter(j => j.scheduledDate >= monthStart);
 
     // For revenue, filter by paidAt date (when job was actually paid)
     const paidToday = jobs.filter(j => j.status === 'paid' && j.paidAt && j.paidAt.slice(0, 10) === today);
     const paidWeek = jobs.filter(j => j.status === 'paid' && j.paidAt && j.paidAt.slice(0, 10) >= weekStart);
-    const paidMonth = jobs.filter(j => j.status === 'paid' && j.paidAt && j.paidAt.slice(0, 10) >= monthStart);
 
     // Only admin sees revenue section
     const revSection = document.getElementById('revenue-section');
@@ -541,36 +538,12 @@ const App = (() => {
           ? (parseFloat(j.techPayout) || 0) : 0;
         return s + ownerCut + selfBonus;
       }, 0);
-      const toSales = arr => arr.reduce((s, j) => s + (parseFloat(j.jobTotal) || 0), 0);
-      _setText('rev-today-amount', _fmt(toOwnerRev(paidToday)));
+      _setText('rev-day-amount', _fmt(toOwnerRev(paidToday)));
       _setText('rev-week-amount',  _fmt(toOwnerRev(paidWeek)));
-      _setText('rev-month-amount', _fmt(toSales(paidMonth)));
-
-      // Month-over-month comparison
-      const now = new Date();
-      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
-      const lastMonthEnd   = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
-      const paidLastMonth  = jobs.filter(j => j.status === 'paid' && j.paidAt && j.paidAt.slice(0, 10) >= lastMonthStart && j.paidAt.slice(0, 10) <= lastMonthEnd);
-      const thisMonthSales = toSales(paidMonth);
-      const lastMonthSales = toSales(paidLastMonth);
-      const momEl = document.getElementById('mom-stats');
-      if (momEl && (thisMonthSales > 0 || lastMonthSales > 0)) {
-        const diff = thisMonthSales - lastMonthSales;
-        const pct  = lastMonthSales > 0 ? Math.round((diff / lastMonthSales) * 100) : null;
-        const arrow = diff > 0 ? '▲' : diff < 0 ? '▼' : '—';
-        const color = diff > 0 ? 'var(--color-success)' : diff < 0 ? 'var(--color-error)' : 'var(--color-text-muted)';
-        const pctLabel = pct !== null ? ` (${pct > 0 ? '+' : ''}${pct}%)` : '';
-        const lastMonthName = new Date(now.getFullYear(), now.getMonth() - 1, 1).toLocaleString('en-US', { month: 'short' });
-        momEl.innerHTML = `<span style="color:var(--color-text-muted);font-size:12px">vs ${lastMonthName}: ${_fmt(lastMonthSales)}</span><span style="color:${color};font-size:12px;font-weight:700;margin-left:8px">${arrow} ${_fmt(Math.abs(diff))}${pctLabel}</span>`;
-        momEl.classList.remove('hidden');
-      } else if (momEl) {
-        momEl.classList.add('hidden');
-      }
     }
 
-    _setText('rev-today-count', `${paidToday.length} paid job${paidToday.length !== 1 ? 's' : ''}`);
+    _setText('rev-day-count', `${paidToday.length} paid job${paidToday.length !== 1 ? 's' : ''}`);
     _setText('rev-week-count',  `${paidWeek.length} paid job${paidWeek.length !== 1 ? 's' : ''}`);
-    _setText('rev-month-count', `${paidMonth.length} paid job${paidMonth.length !== 1 ? 's' : ''}`);
 
     // Status counts
     const counts = { new:0, scheduled:0, in_progress:0, closed:0, paid:0, follow_up:0 };
@@ -4408,6 +4381,13 @@ const App = (() => {
   function _monthStartStr() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`;
+  }
+
+  function _thisWeekSundayStr() {
+    const d = new Date();
+    const dayOfWeek = d.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    d.setDate(d.getDate() - dayOfWeek); // Go back to most recent Sunday
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
 
   function _initials(name) {
