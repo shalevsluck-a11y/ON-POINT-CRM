@@ -864,14 +864,21 @@ app.get('/api/load-jobs', async (req, res) => {
     let query = supabaseDirectAdmin.from(tableName).select('*');
 
     // Contractor/Dispatcher filtering: only jobs matching their assigned lead source
-    if (role === 'contractor' || role === 'dispatcher') {
+    if (role === 'contractor') {
       const assignedLeadSource = profile.assigned_lead_source;
       if (assignedLeadSource) {
         query = query.eq('source', assignedLeadSource);
       } else {
-        // Contractor/Dispatcher with no assigned lead source sees no jobs
+        // Contractor with no assigned lead source sees no jobs
         return res.json({ jobs: [], zelleMap: {} });
       }
+    } else if (role === 'dispatcher') {
+      // Dispatcher: filter by assigned lead source only if they have one
+      const assignedLeadSource = profile.assigned_lead_source;
+      if (assignedLeadSource) {
+        query = query.eq('source', assignedLeadSource);
+      }
+      // If no assigned lead source, dispatcher sees all jobs (no filter)
     }
 
     const { data: jobs, error: jobsError } = await query.order('created_at', { ascending: false });
