@@ -4296,8 +4296,15 @@ const App = (() => {
       if (parts > 0)     lines.push(`*Parts:* -$${parts.toFixed(2)}`);
       lines.push('');
       lines.push('*Split:*');
-      if (tech && !isSelf) lines.push(`  • Tech (${tech.name}): $${techPayout.toFixed(2)} (${techPct.toFixed(1)}%)`);
-      if (isSelf) lines.push(`  • Tech (Owner): $${techPayout.toFixed(2)} (${techPct.toFixed(1)}%)`);
+      if (techPayout > 0) {
+        let techLabel = 'Tech';
+        if (isSelf) {
+          techLabel = 'Tech (Owner)';
+        } else if (tech) {
+          techLabel = `Tech (${tech.name})`;
+        }
+        lines.push(`  • ${techLabel}: $${techPayout.toFixed(2)} (${techPct.toFixed(1)}%)`);
+      }
       if (contrFee > 0) {
         const leadSource = job.contractorName || job.source || 'Lead Source';
         lines.push(`  • ${leadSource}: $${contrFee.toFixed(2)} (${contrPct.toFixed(1)}%)`);
