@@ -711,6 +711,7 @@ app.post('/api/save-job', async (req, res) => {
     }
 
     // Admin/dispatcher: full upsert
+    // TEMPORARY: Set assigned_tech_id to null until we migrate column to TEXT
     const row = {
       job_id:               job.jobId,
       status:               job.status,
@@ -727,7 +728,7 @@ app.post('/api/save-job', async (req, res) => {
       source:               job.source || 'my_lead',
       contractor_name:      job.contractorName || '',
       contractor_pct:       parseFloat(job.contractorPct) || 0,
-      assigned_tech_id:     job.assignedTechId || null,
+      assigned_tech_id:     null,  // TODO: Change column to TEXT to support custom tech IDs
       assigned_tech_name:   job.assignedTechName || '',
       is_self_assigned:     job.isSelfAssigned || false,
       tech_percent:         parseFloat(job.techPercent) || 0,
