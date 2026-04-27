@@ -309,11 +309,22 @@ const DB = (() => {
     // NOTE: Technicians are saved via Edge Function only (update-technicians)
     // Do NOT save via this path - PostgREST has stale schema cache for technicians column
 
-    // Save all fields (except technicians)
+    // Save all fields (except technicians) via server endpoint
     if (Object.keys(row).length > 0) {
       console.log('[DB.saveSettings] Saving to database:', Object.keys(row));
-      const { error } = await supa.from('app_settings').update(row).eq('id', 1);
-      if (error) throw new Error(error.message);
+      const session = await Auth.getSession();
+      const response = await fetch('/api/save-settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify(row)
+      });
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.error || 'Failed to save settings');
+      }
       console.log('[DB.saveSettings] ✓ Saved successfully');
     }
   }

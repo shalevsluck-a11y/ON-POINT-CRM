@@ -971,6 +971,60 @@ app.get('/api/load-settings', async (req, res) => {
   }
 });
 
+// Save settings endpoint
+app.post('/api/save-settings', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Unauthorized - missing auth token' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Invalid auth token' });
+    }
+
+    // Get user role (same project as auth)
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile) {
+      console.error('[SAVE SETTINGS] Profile lookup error:', profileError);
+      return res.status(401).json({ error: 'Profile not found' });
+    }
+
+    // Only admin can save settings
+    if (profile.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin only' });
+    }
+
+    const updates = req.body;
+    console.log('[SAVE SETTINGS] Saving updates:', Object.keys(updates));
+
+    // Update app_settings in NEW project
+    const { error: updateError } = await supabaseDirectAdmin
+      .from('app_settings')
+      .update(updates)
+      .eq('id', 1);
+
+    if (updateError) {
+      console.error('[SAVE SETTINGS] Update error:', updateError);
+      return res.status(500).json({ error: updateError.message });
+    }
+
+    console.log('[SAVE SETTINGS] ✅ Settings saved successfully');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[SAVE SETTINGS] Exception:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Test push notification endpoint
 app.post('/api/test-push', async (req, res) => {
   try {
