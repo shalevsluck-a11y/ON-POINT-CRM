@@ -25,11 +25,17 @@ const Balance = (function() {
 
   async function populateTechSelector() {
     try {
+      console.log('[Balance] ═══ TECH SELECTOR START ═══');
       const profiles = await Auth.getAllProfiles();
+      console.log('[Balance] Got profiles:', profiles?.length || 0);
       const techs = profiles.filter(p => p.role === 'tech' || p.role === 'contractor');
+      console.log('[Balance] Filtered techs:', techs?.length || 0, techs);
 
       const select = document.getElementById('balance-tech-select');
-      if (!select) return;
+      if (!select) {
+        console.error('[Balance] ❌ balance-tech-select element NOT FOUND');
+        return;
+      }
 
       select.innerHTML = '<option value="">All Techs</option>';
       techs.forEach(tech => {
@@ -37,9 +43,12 @@ const Balance = (function() {
         option.value = tech.id;
         option.textContent = tech.name;
         select.appendChild(option);
+        console.log('[Balance] Added tech option:', tech.name);
       });
+      console.log('[Balance] ✅ Tech selector populated with', techs.length, 'techs');
     } catch (err) {
-      console.error('[Balance] Failed to load techs:', err);
+      console.error('[Balance] ❌ Failed to load techs:', err);
+      console.error('[Balance] Error stack:', err.stack);
     }
   }
 
