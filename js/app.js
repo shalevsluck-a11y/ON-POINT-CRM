@@ -4368,7 +4368,10 @@ const App = (() => {
     if (!job) { showToast('Job not found', 'error'); return; }
 
     // Build message with job details
-    const msg = _buildWhatsAppTechDispatchMsg(job);
+    // For paid jobs, use full breakdown; otherwise use tech dispatch message
+    const msg = job.status === 'paid'
+      ? _buildWhatsAppJobText(job)
+      : _buildWhatsAppTechDispatchMsg(job);
 
     // Open WhatsApp with pre-filled message (user chooses recipient)
     const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
