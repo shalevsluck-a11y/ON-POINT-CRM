@@ -477,22 +477,12 @@ const Auth = (() => {
 
   async function getAllProfiles() {
     if (!isAdmin()) throw new Error('Admin only');
-    const session = await SupabaseClient.auth.getSession();
-    if (!session?.data?.session?.access_token) {
-      throw new Error('No auth session');
-    }
-    const response = await fetch('/api/load-profiles', {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${session.data.session.access_token}`
-      }
-    });
-    if (!response.ok) {
-      const errData = await response.json();
-      throw new Error(errData.error || 'Failed to load profiles');
-    }
-    const { profiles } = await response.json();
-    return profiles || [];
+    const { data, error } = await SupabaseClient
+      .from('profiles')
+      .select('*')
+      .order('name');
+    if (error) throw error;
+    return data || [];
   }
 
   async function getUsersForAdmin() {

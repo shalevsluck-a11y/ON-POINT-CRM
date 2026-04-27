@@ -1025,57 +1025,6 @@ app.post('/api/save-settings', async (req, res) => {
   }
 });
 
-// Load profiles endpoint (for balance tech selector)
-app.get('/api/load-profiles', async (req, res) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ error: 'Unauthorized - missing auth token' });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-    if (authError || !user) {
-      return res.status(401).json({ error: 'Invalid auth token' });
-    }
-
-    // Get user role (same project as auth)
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single();
-
-    if (profileError || !profile) {
-      console.error('[LOAD PROFILES] Profile lookup error:', profileError);
-      return res.status(401).json({ error: 'Profile not found' });
-    }
-
-    // Only admin can load all profiles
-    if (profile.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin only' });
-    }
-
-    // Fetch profiles from NEW project
-    const { data: profiles, error: profilesError } = await supabaseDirectAdmin
-      .from('profiles')
-      .select('id, name, phone, color, zip_codes, default_tech_percent, zelle_handle, is_owner, role')
-      .order('name');
-
-    if (profilesError) {
-      console.error('[LOAD PROFILES] profiles error:', profilesError);
-      return res.status(500).json({ error: profilesError.message });
-    }
-
-    console.log('[LOAD PROFILES] ✅ Loaded', profiles?.length || 0, 'profiles');
-    res.json({ profiles: profiles || [] });
-  } catch (error) {
-    console.error('[LOAD PROFILES] Exception:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Test push notification endpoint
 app.post('/api/test-push', async (req, res) => {
   try {
