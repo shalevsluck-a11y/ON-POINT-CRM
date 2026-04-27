@@ -2808,6 +2808,7 @@ const App = (() => {
             <div class="cal-tech-avatar" style="background:${tech?.color||'#64748B'}">${tech ? _initials(tech.name) : '?'}</div>
             <div class="cal-tech-name">${tech ? _esc(tech.name) : 'Unassigned'}</div>
             <div class="cal-tech-count">${techJobs.length} job${techJobs.length!==1?'s':''}</div>
+            ${tech ? `<button class="btn-icon" onclick="App.dispatchTechSchedule('${techId}', '${dateStr}')" title="Send WhatsApp dispatch">&#128196;</button>` : ''}
           </div>
           ${rows}
         </div>
@@ -2865,6 +2866,47 @@ const App = (() => {
   function calendarFilterByTech(techId) {
     _state.calendarTechFilter = techId;
     renderCalendar();
+  }
+
+  function dispatchTechSchedule(techId, dateStr) {
+    const settings = DB.getSettings();
+    const tech = settings.technicians.find(t => t.id === techId);
+    if (!tech) return;
+
+    const jobs = DB.getJobsByDate(dateStr).filter(j => j.assignedTechId === techId);
+    if (jobs.length === 0) {
+      showToast('No jobs for this tech', 'info');
+      return;
+    }
+
+    // Sort by time
+    jobs.sort((a, b) => (a.scheduledTime || '').localeCompare(b.scheduledTime || ''));
+
+    // Build message
+    const date = new Date(dateStr);
+    const dateFormatted = _formatDateLong(date);
+
+    let msg = `📅 *Schedule for ${tech.name}*\n`;
+    msg += `${dateFormatted}\n`;
+    msg += `━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+    jobs.forEach((job, i) => {
+      msg += `*${i + 1}. ${job.customerName || 'Unknown'}*\n`;
+      msg += `🕐 ${job.scheduledTime ? _formatTime(job.scheduledTime) : 'TBD'}\n`;
+      msg += `📍 ${job.address || ''}${job.city ? ', ' + job.city : ''}${job.zip ? ' ' + job.zip : ''}\n`;
+      msg += `📞 ${job.phone || 'No phone'}\n`;
+      if (job.description) msg += `📝 ${job.description}\n`;
+      msg += `\n`;
+    });
+
+    msg += `━━━━━━━━━━━━━━━━━━━━\n`;
+    msg += `Total: ${jobs.length} job${jobs.length !== 1 ? 's' : ''}`;
+
+    const encoded = encodeURIComponent(msg);
+    const phone = tech.phone ? tech.phone.replace(/\D/g, '') : '';
+    const waUrl = phone ? `https://wa.me/${phone}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+
+    window.open(waUrl, '_blank');
   }
 
   // ══════════════════════════════════════════════════════════
@@ -4792,6 +4834,7 @@ const App = (() => {
     calendarShift,
     calendarToday,
     calendarFilterByTech,
+    dispatchTechSchedule,
 
     // PDF
     navigateToJob,
