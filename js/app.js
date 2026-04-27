@@ -519,6 +519,11 @@ const App = (() => {
     const weekJobs   = jobs.filter(j => j.scheduledDate >= weekStart);
     const monthJobs  = jobs.filter(j => j.scheduledDate >= monthStart);
 
+    // For revenue, filter by paidAt date (when job was actually paid)
+    const paidToday = jobs.filter(j => j.status === 'paid' && j.paidAt && j.paidAt.slice(0, 10) === today);
+    const paidWeek = jobs.filter(j => j.status === 'paid' && j.paidAt && j.paidAt.slice(0, 10) >= weekStart);
+    const paidMonth = jobs.filter(j => j.status === 'paid' && j.paidAt && j.paidAt.slice(0, 10) >= monthStart);
+
     // Only admin sees revenue section
     const revSection = document.getElementById('revenue-section');
     if (revSection) revSection.classList.toggle('hidden', !Auth.isAdmin());
@@ -536,17 +541,17 @@ const App = (() => {
         return s + ownerCut + selfBonus;
       }, 0);
       const toSales = arr => arr.reduce((s, j) => s + (parseFloat(j.jobTotal) || 0), 0);
-      _setText('rev-today-amount', _fmt(toOwnerRev(todayJobs.filter(paidOnly))));
-      _setText('rev-week-amount',  _fmt(toOwnerRev(weekJobs.filter(paidOnly))));
-      _setText('rev-month-amount', _fmt(toSales(monthJobs.filter(paidOnly))));
+      _setText('rev-today-amount', _fmt(toOwnerRev(paidToday)));
+      _setText('rev-week-amount',  _fmt(toOwnerRev(paidWeek)));
+      _setText('rev-month-amount', _fmt(toSales(paidMonth)));
 
       // Month-over-month comparison
       const now = new Date();
       const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
       const lastMonthEnd   = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
-      const lastMonthJobs  = jobs.filter(j => j.scheduledDate >= lastMonthStart && j.scheduledDate <= lastMonthEnd);
-      const thisMonthSales = toSales(monthJobs.filter(paidOnly));
-      const lastMonthSales = toSales(lastMonthJobs.filter(paidOnly));
+      const paidLastMonth  = jobs.filter(j => j.status === 'paid' && j.paidAt && j.paidAt.slice(0, 10) >= lastMonthStart && j.paidAt.slice(0, 10) <= lastMonthEnd);
+      const thisMonthSales = toSales(paidMonth);
+      const lastMonthSales = toSales(paidLastMonth);
       const momEl = document.getElementById('mom-stats');
       if (momEl && (thisMonthSales > 0 || lastMonthSales > 0)) {
         const diff = thisMonthSales - lastMonthSales;
@@ -562,12 +567,9 @@ const App = (() => {
       }
     }
 
-    const todayPaidCount = todayJobs.filter(paidOnly).length;
-    const weekPaidCount = weekJobs.filter(paidOnly).length;
-    const monthPaidCount = monthJobs.filter(paidOnly).length;
-    _setText('rev-today-count', `${todayPaidCount} job${todayPaidCount !== 1 ? 's' : ''}`);
-    _setText('rev-week-count',  `${weekPaidCount} job${weekPaidCount !== 1 ? 's' : ''}`);
-    _setText('rev-month-count', `${monthPaidCount} job${monthPaidCount !== 1 ? 's' : ''}`);
+    _setText('rev-today-count', `${paidToday.length} paid job${paidToday.length !== 1 ? 's' : ''}`);
+    _setText('rev-week-count',  `${paidWeek.length} paid job${paidWeek.length !== 1 ? 's' : ''}`);
+    _setText('rev-month-count', `${paidMonth.length} paid job${paidMonth.length !== 1 ? 's' : ''}`);
 
     // Status counts
     const counts = { new:0, scheduled:0, in_progress:0, closed:0, paid:0, follow_up:0 };
