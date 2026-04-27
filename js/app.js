@@ -2526,6 +2526,7 @@ const App = (() => {
 
     const settings = DB.getSettings();
     const isPaid = job.status === 'paid';
+    const isDispatcher = Auth.isDispatcher();
 
     // Build modal using close-job modal slot (reuse)
     const body = document.getElementById('modal-close-job-body');
@@ -2533,7 +2534,7 @@ const App = (() => {
     if (titleEl) titleEl.textContent = 'Edit Job';
 
     body.innerHTML = `
-      ${isPaid ? '<div style="padding:8px;background:var(--color-warning-bg);color:var(--color-warning);border-radius:6px;margin-bottom:12px;font-size:13px">⚠️ Paid job - only tech assignment and lead source can be changed</div>' : ''}
+      ${isPaid ? `<div style="padding:8px;background:var(--color-warning-bg);color:var(--color-warning);border-radius:6px;margin-bottom:12px;font-size:13px">⚠️ Paid job - only tech assignment${isDispatcher ? '' : ' and lead source'} can be changed</div>` : ''}
       <div class="field-group">
         <label class="field-label">Customer Name</label>
         <input type="text" id="edit-name" class="field-input" value="${_esc(job.customerName || '')}" ${isPaid ? 'disabled' : ''}>
@@ -2582,7 +2583,7 @@ const App = (() => {
       </div>
       <div class="field-group">
         <label class="field-label">Lead Source</label>
-        <select id="edit-lead-source" class="field-input">
+        <select id="edit-lead-source" class="field-input" ${isDispatcher ? 'disabled' : ''}>
           <option value="my_lead" ${job.source === 'my_lead' ? 'selected' : ''}>My Lead</option>
           ${settings.leadSources.map(ls => `<option value="${_esc(ls.name)}" ${job.source === ls.name ? 'selected' : ''}>${_esc(ls.name)}</option>`).join('')}
         </select>
@@ -2628,11 +2629,15 @@ const App = (() => {
     console.log('[EditJob] Job status:', job.status);
     console.log('[EditJob] Old assignedTechId:', job.assignedTechId);
 
-    // For paid jobs, allow tech assignment and lead source changes
+    // Dispatchers cannot change lead source
+    const isDispatcher = Auth.isDispatcher();
+    const newLeadSource = isDispatcher ? job.source : (document.getElementById('edit-lead-source')?.value || job.source);
+
+    // For paid jobs, allow tech assignment and lead source changes (except for dispatchers)
     const updated = job.status === 'paid'
       ? {
           ...job,
-          source:           document.getElementById('edit-lead-source')?.value     || job.source,
+          source:           newLeadSource,
           assignedTechId:   techId,
           assignedTechName: tech ? tech.name : '',
           isSelfAssigned:   tech ? tech.isOwner : false,
@@ -2649,7 +2654,7 @@ const App = (() => {
           scheduledTime:    document.getElementById('edit-time')?.value            || job.scheduledTime,
           description:      document.getElementById('edit-desc')?.value?.trim()    || job.description,
           notes:            document.getElementById('edit-notes')?.value?.trim()   || job.notes,
-          source:           document.getElementById('edit-lead-source')?.value     || job.source,
+          source:           newLeadSource,
           techPercent:      parseFloat(document.getElementById('edit-tech-pct')?.value) || job.techPercent,
           assignedTechId:   techId,
           assignedTechName: tech ? tech.name : '',
