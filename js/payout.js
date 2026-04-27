@@ -131,10 +131,7 @@ const PayoutEngine = (() => {
     const safeTechName = _escHtml(techName);
     const rows = [];
 
-    // Dispatcher sees no financial details
-    if (viewerRole === 'dispatcher') {
-      return `<div class="payout-preview"${idAttr}><div class="payout-row" style="text-align:center;opacity:0.6">Financial details hidden for dispatcher role</div></div>`;
-    }
+    // Dispatcher sees all calculations (no "My Cut" label)
 
     rows.push(`<div class="payout-row">
       <span class="payout-label">Job Total</span>
@@ -224,13 +221,15 @@ const PayoutEngine = (() => {
 
       if (calc.isSelfAssigned) {
         const yourTotal = round2(calc.ownerPayout + calc.techPayout);
+        const label = viewerRole === 'dispatcher' ? 'Total' : 'My Total';
         rows.push(`<div class="payout-total-row">
-          <span class="payout-total-label">Your Total (Tech + Owner ${ownerPct.toFixed(1)}%)</span>
+          <span class="payout-total-label">${label} (Tech + Owner ${ownerPct.toFixed(1)}%)</span>
           <span class="payout-total-value">$${yourTotal.toFixed(2)}</span>
         </div>`);
       } else {
+        const label = viewerRole === 'dispatcher' ? 'Owner Payout' : 'My Cut';
         rows.push(`<div class="payout-total-row">
-          <span class="payout-total-label">Your Payout (Owner ${ownerPct.toFixed(1)}%)</span>
+          <span class="payout-total-label">${label} (${ownerPct.toFixed(1)}%)</span>
           <span class="payout-total-value">$${calc.ownerPayout.toFixed(2)}</span>
         </div>`);
       }

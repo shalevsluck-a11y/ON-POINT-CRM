@@ -1460,7 +1460,8 @@ const App = (() => {
 
     // Financial fields removed from new job form - set when closing job
     const techPct  = tech?.percent || 60;
-    const contrPct = 0;
+    const contrPct = parseFloat(document.getElementById('f-contractor-pct')?.value) || 0;
+    const contrName = document.getElementById('f-contractor')?.value?.trim() || '';
     const isSelf   = tech?.isOwner || false;
 
     const job = {
@@ -1479,7 +1480,7 @@ const App = (() => {
       notes:           document.getElementById('f-notes')?.value?.trim()   || '',
       rawLead:         _state.newJobDraft.rawLead || '',
       source:          source,
-      contractorName:  '',
+      contractorName:  contrName,
       contractorPct:   contrPct,
       ownerPct:        100 - techPct - contrPct,
       assignedTechId:  techId,
