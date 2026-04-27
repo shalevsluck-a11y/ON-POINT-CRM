@@ -46,21 +46,29 @@ const DB = (() => {
 
       // Merge with local: preserve local jobs that are newer than server (race condition protection)
       const localJobs = Storage.getJobs();
+      console.log('[DB._syncJobsDown] 🔄 MERGE START - local jobs:', localJobs.length);
       const localMap = {};
       localJobs.forEach(j => { localMap[j.jobId] = j; });
 
       const merged = serverJobs.map(serverJob => {
         const localJob = localMap[serverJob.jobId];
-        if (!localJob) return serverJob;
+        if (!localJob) {
+          console.log('[DB._syncJobsDown] Job', serverJob.jobId, '- no local copy, using server');
+          return serverJob;
+        }
 
         // If local job was modified in last 5 seconds, keep local version (pending write)
         const localTime = localJob.updatedAt ? new Date(localJob.updatedAt).getTime() : 0;
         const now = Date.now();
+        const ageMs = now - localTime;
+        console.log('[DB._syncJobsDown] Job', serverJob.jobId, '- updatedAt:', localJob.updatedAt, 'age:', ageMs, 'ms');
+
         if (now - localTime < 5000) {
-          console.log('[DB._syncJobsDown] Keeping local version of job', serverJob.jobId, '- recent edit');
+          console.log('[DB._syncJobsDown] ✅ KEEPING LOCAL version of job', serverJob.jobId, '- assignedTechId:', localJob.assignedTechId);
           return localJob;
         }
 
+        console.log('[DB._syncJobsDown] Using server version - local too old');
         return serverJob;
       });
 
