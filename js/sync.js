@@ -12,8 +12,7 @@ const SyncManager = (() => {
   // ────────────────────────────────────────────
 
   async function syncJob(job) {
-    // Sync closed and paid jobs — captures completed work even before payment recorded
-    if (!job || !['closed', 'paid'].includes(job.status)) {
+    if (!job) {
       return { success: true, skipped: true };
     }
 
