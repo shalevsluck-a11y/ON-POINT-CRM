@@ -901,14 +901,14 @@ const App = (() => {
 
     // Populate tech filter
     const currentTech = _state.jobFilterTech || '';
-    techSelect.innerHTML = '<option value="">All Techs</option>' +
+    techSelect.innerHTML = '<option value="">Tech</option>' +
       (settings.technicians || []).map(t =>
         `<option value="${t.id}" ${t.id === currentTech ? 'selected' : ''}>${t.name}</option>`
       ).join('');
 
     // Populate lead source filter
     const currentSource = _state.jobFilterSource || '';
-    sourceSelect.innerHTML = '<option value="">All Sources</option>' +
+    sourceSelect.innerHTML = '<option value="">Source</option>' +
       (settings.leadSources || []).map(s =>
         `<option value="${s.name}" ${s.name === currentSource ? 'selected' : ''}>${s.name}</option>`
       ).join('');
