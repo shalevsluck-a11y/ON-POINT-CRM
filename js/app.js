@@ -2537,7 +2537,7 @@ const App = (() => {
     if (titleEl) titleEl.textContent = 'Edit Job';
 
     body.innerHTML = `
-      ${isPaid ? `<div style="padding:8px;background:var(--color-warning-bg);color:var(--color-warning);border-radius:6px;margin-bottom:12px;font-size:13px">⚠️ Paid job - only tech assignment${isDispatcher ? '' : ' and lead source'} can be changed</div>` : ''}
+      ${isPaid ? `<div style="padding:8px;background:var(--color-warning-bg);color:var(--color-warning);border-radius:6px;margin-bottom:12px;font-size:13px">⚠️ Paid job - only date, tech assignment${isDispatcher ? '' : ', and lead source'} can be changed</div>` : ''}
       <div class="field-group">
         <label class="field-label">Customer Name</label>
         <input type="text" id="edit-name" class="field-input" value="${_esc(job.customerName || '')}" ${isPaid ? 'disabled' : ''}>
@@ -2569,7 +2569,7 @@ const App = (() => {
       <div class="field-row">
         <div class="field-group" style="flex:1">
           <label class="field-label">Date</label>
-          <input type="date" id="edit-date" class="field-input" value="${job.scheduledDate || ''}" ${isPaid ? 'disabled' : ''}>
+          <input type="date" id="edit-date" class="field-input" value="${job.scheduledDate || ''}">
         </div>
         <div class="field-group" style="flex:1">
           <label class="field-label">Time</label>
@@ -2636,11 +2636,12 @@ const App = (() => {
     const isDispatcher = Auth.isDispatcher();
     const newLeadSource = isDispatcher ? job.source : (document.getElementById('edit-lead-source')?.value || job.source);
 
-    // For paid jobs, allow tech assignment and lead source changes (except for dispatchers)
+    // For paid jobs, allow tech assignment, lead source, and date changes
     const updated = job.status === 'paid'
       ? {
           ...job,
           source:           newLeadSource,
+          scheduledDate:    document.getElementById('edit-date')?.value            || job.scheduledDate,
           assignedTechId:   techId,
           assignedTechName: tech ? tech.name : '',
           isSelfAssigned:   tech ? tech.isOwner : false,
