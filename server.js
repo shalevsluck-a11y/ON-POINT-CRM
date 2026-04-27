@@ -799,14 +799,16 @@ app.get('/api/load-jobs', async (req, res) => {
       return res.status(401).json({ error: 'Invalid auth token' });
     }
 
-    // Get user role from profiles
-    const { data: profile, error: profileError } = await supabaseDirectAdmin
+    // Get user role from profiles (same project as auth)
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('role, assignedLeadSource')
       .eq('id', user.id)
       .single();
 
     if (profileError || !profile) {
+      console.error('[LOAD JOBS] Profile lookup error:', profileError);
+      console.error('[LOAD JOBS] User ID:', user.id);
       return res.status(401).json({ error: 'Profile not found' });
     }
 
@@ -867,14 +869,16 @@ app.get('/api/load-settings', async (req, res) => {
       return res.status(401).json({ error: 'Invalid auth token' });
     }
 
-    // Get user role
-    const { data: profile, error: profileError } = await supabaseDirectAdmin
+    // Get user role (same project as auth)
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single();
 
     if (profileError || !profile) {
+      console.error('[LOAD SETTINGS] Profile lookup error:', profileError);
+      console.error('[LOAD SETTINGS] User ID:', user.id);
       return res.status(401).json({ error: 'Profile not found' });
     }
 
