@@ -771,7 +771,10 @@ const App = (() => {
     try {
       await SupabaseClient
         .from('profiles')
-        .update({ allowed_lead_sources: allowedSources })
+        .update({
+          allowed_lead_sources: allowedSources,
+          assigned_lead_source: allowedSources.length > 0 ? allowedSources[0] : null
+        })
         .eq('id', userId);
 
       showToast('Permissions updated', 'success');
@@ -4724,7 +4727,10 @@ const App = (() => {
     try {
       await SupabaseClient
         .from('profiles')
-        .update({ allowed_lead_sources: allowedSources })
+        .update({
+          allowed_lead_sources: allowedSources,
+          assigned_lead_source: allowedSources.length > 0 ? allowedSources[0] : null
+        })
         .eq('id', userId);
 
       showToast('Permissions updated', 'success');
