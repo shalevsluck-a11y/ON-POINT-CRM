@@ -171,6 +171,7 @@ const DB = (() => {
 
   async function saveJob(job) {
     console.log('[DB] saveJob START - Job ID:', job.jobId, 'Customer:', job.customerName);
+    console.log('[DB] saveJob CALLER STACK:', new Error().stack);
     // Write to cache immediately
     Storage.saveJob(job);
     console.log('[DB] saveJob - Saved to localStorage');
