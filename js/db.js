@@ -312,7 +312,10 @@ const DB = (() => {
     // Save all fields (except technicians) via server endpoint
     if (Object.keys(row).length > 0) {
       console.log('[DB.saveSettings] Saving to database:', Object.keys(row));
-      const session = await Auth.getSession();
+      const { data: { session } } = await supa.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('No auth session');
+      }
       const response = await fetch('/api/save-settings', {
         method: 'POST',
         headers: {
