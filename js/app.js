@@ -2555,7 +2555,7 @@ const App = (() => {
     if (titleEl) titleEl.textContent = 'Edit Job';
 
     body.innerHTML = `
-      ${isPaid ? '<div style="padding:8px;background:var(--color-warning-bg);color:var(--color-warning);border-radius:6px;margin-bottom:12px;font-size:13px">⚠️ Paid job - only tech assignment can be changed</div>' : ''}
+      ${isPaid ? '<div style="padding:8px;background:var(--color-warning-bg);color:var(--color-warning);border-radius:6px;margin-bottom:12px;font-size:13px">⚠️ Paid job - only tech assignment and lead source can be changed</div>' : ''}
       <div class="field-group">
         <label class="field-label">Customer Name</label>
         <input type="text" id="edit-name" class="field-input" value="${_esc(job.customerName || '')}" ${isPaid ? 'disabled' : ''}>
@@ -2604,7 +2604,7 @@ const App = (() => {
       </div>
       <div class="field-group">
         <label class="field-label">Lead Source</label>
-        <select id="edit-lead-source" class="field-input" ${isPaid ? 'disabled' : ''}>
+        <select id="edit-lead-source" class="field-input">
           <option value="my_lead" ${job.source === 'my_lead' ? 'selected' : ''}>My Lead</option>
           ${settings.leadSources.map(ls => `<option value="${_esc(ls.name)}" ${job.source === ls.name ? 'selected' : ''}>${_esc(ls.name)}</option>`).join('')}
         </select>
@@ -2650,10 +2650,11 @@ const App = (() => {
     console.log('[EditJob] Job status:', job.status);
     console.log('[EditJob] Old assignedTechId:', job.assignedTechId);
 
-    // For paid jobs, only allow tech assignment changes
+    // For paid jobs, allow tech assignment and lead source changes
     const updated = job.status === 'paid'
       ? {
           ...job,
+          source:           document.getElementById('edit-lead-source')?.value     || job.source,
           assignedTechId:   techId,
           assignedTechName: tech ? tech.name : '',
           isSelfAssigned:   tech ? tech.isOwner : false,
