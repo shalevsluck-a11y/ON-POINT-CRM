@@ -1,7 +1,9 @@
 /* ============================================================
    APP.JS — On Point Home Services
    Main application: router, all views, all logic, all handlers
+   Version: 2026-04-27-DEBUG-v2
    ============================================================ */
+console.log('[APP.JS] 🔧 Version: 2026-04-27-DEBUG-v2 loaded');
 
 const App = (() => {
 
@@ -2499,12 +2501,14 @@ const App = (() => {
   // ══════════════════════════════════════════════════════════
 
   function showEditJobModal(jobId) {
+    console.log('[EditJob] ▶▶▶ showEditJobModal CALLED - jobId:', jobId);
     if (!Auth.canEditAllJobs()) {
       showToast('Not authorized to edit jobs', 'error');
       return;
     }
     const job = DB.getJobById(jobId);
     if (!job) return;
+    console.log('[EditJob] ▶▶▶ Opening modal for job:', job.customerName, 'status:', job.status, 'assignedTechId:', job.assignedTechId);
 
     const settings = DB.getSettings();
     const isPaid = job.status === 'paid';
@@ -2583,6 +2587,8 @@ const App = (() => {
   }
 
   function _saveEditedJob(jobId) {
+    console.log('[EditJob] 🔥🔥🔥 _saveEditedJob CALLED - jobId:', jobId);
+    console.log('[EditJob] 🔥🔥🔥 This log should appear FIRST if Save button clicked');
     if (!Auth.canEditAllJobs()) {
       showToast('Not authorized to edit jobs', 'error');
       return;
