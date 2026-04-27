@@ -575,6 +575,9 @@
           Today
         </button>
         <button class="btn-icon cal-nav-btn" onclick="App.calendarShift(1)">&#8250;</button>
+        <select id="calendar-tech-filter" class="balance-select" style="margin-left:8px;min-width:120px;font-size:13px" onchange="App.calendarFilterByTech(this.value)">
+          <option value="">All Techs</option>
+        </select>
       </div>
 
       <div id="calendar-content" class="calendar-content">

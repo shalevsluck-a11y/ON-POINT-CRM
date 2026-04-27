@@ -17,6 +17,7 @@ const App = (() => {
     currentStep:    1,
     currentJobId:   null,   // job detail view
     calendarDate:   new Date(),
+    calendarTechFilter: '',  // filter calendar by tech
     jobFilter:      'all',
     jobSearch:      '',
     parsedLead:     null,
@@ -2740,9 +2741,17 @@ const App = (() => {
       label.textContent = isToday ? 'Today — ' + _formatDateLong(d) : _formatDateLong(d);
     }
 
-    const jobs = DB.getJobsByDate(dateStr);
+    let jobs = DB.getJobsByDate(dateStr);
     const settings = DB.getSettings();
     const container = document.getElementById('calendar-content');
+
+    // Populate tech filter dropdown
+    _populateCalendarTechFilter();
+
+    // Apply tech filter
+    if (_state.calendarTechFilter) {
+      jobs = jobs.filter(j => j.assignedTechId === _state.calendarTechFilter);
+    }
 
     if (jobs.length === 0) {
       container.innerHTML = `<div class="empty-state">
@@ -2829,6 +2838,28 @@ const App = (() => {
 
   function calendarToday() {
     _state.calendarDate = new Date();
+    renderCalendar();
+  }
+
+  function _populateCalendarTechFilter() {
+    const select = document.getElementById('calendar-tech-filter');
+    if (!select) return;
+
+    const settings = DB.getSettings();
+    const currentValue = _state.calendarTechFilter;
+
+    select.innerHTML = '<option value="">All Techs</option>';
+    settings.technicians.forEach(tech => {
+      const opt = document.createElement('option');
+      opt.value = tech.id;
+      opt.textContent = tech.name;
+      if (tech.id === currentValue) opt.selected = true;
+      select.appendChild(opt);
+    });
+  }
+
+  function calendarFilterByTech(techId) {
+    _state.calendarTechFilter = techId;
     renderCalendar();
   }
 
@@ -4756,6 +4787,7 @@ const App = (() => {
     renderCalendar,
     calendarShift,
     calendarToday,
+    calendarFilterByTech,
 
     // PDF
     navigateToJob,
