@@ -184,34 +184,36 @@ const DB = (() => {
 
   async function _upsertJobRemote(job) {
     console.log('[DB] _upsertJobRemote - Starting for job', job.jobId);
-    // Techs/contractors have zeroed financial fields locally (the DB view masks them).
-    // Sending a full upsert would overwrite real job_total/estimated_total with zeros.
-    // Only allow them to patch the fields they're actually permitted to change.
-    if (Auth.isTechOrContractor()) {
-      console.log('[DB] _upsertJobRemote - Tech/Contractor mode, partial update only');
-      const { error } = await supa.from('jobs').update({
-        status:     job.status,
-        updated_at: new Date().toISOString(),
-      }).eq('job_id', job.jobId);
-      if (error) throw error;
-      return;
+
+    // Use server endpoint (bypasses custom domain routing to correct project)
+    const { data: { session } } = await supa.auth.getSession();
+    if (!session?.access_token) {
+      throw new Error('No auth session');
     }
 
-    const row = _jobToDbRow(job);
-    console.log('[DB] _upsertJobRemote - Upserting row:', { job_id: row.job_id, customer_name: row.customer_name, source: row.source });
-    const { data, error } = await supa.from('jobs').upsert(row).select();
-    if (error) {
-      console.error('[DB] _upsertJobRemote - Upsert FAILED:', JSON.stringify(error, null, 2));
-      console.error('[DB] _upsertJobRemote - Error details:', error.message, error.code, error.details, error.hint);
-      throw error;
-    }
-    console.log('[DB] _upsertJobRemote - Upsert SUCCESS, returned data:', data);
+    const response = await fetch('/api/save-job', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ job }),
+    });
 
-    // Send push notification for NEW jobs (created_at ~= updated_at indicates INSERT, not UPDATE)
-    if (data && data[0]) {
-      const createdAt = new Date(data[0].created_at).getTime();
-      const updatedAt = new Date(data[0].updated_at).getTime();
-      const isNewJob = Math.abs(createdAt - updatedAt) < 5000; // Within 5 seconds = new job
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error('[DB] _upsertJobRemote - Save FAILED:', result);
+      throw new Error(result.error || `HTTP ${response.status}`);
+    }
+
+    console.log('[DB] _upsertJobRemote - Save SUCCESS:', job.jobId);
+
+    // Send push notification for NEW jobs (check if data returned)
+    if (result.data) {
+      const createdAt = new Date(result.data.created_at).getTime();
+      const updatedAt = new Date(result.data.updated_at).getTime();
+      const isNewJob = Math.abs(createdAt - updatedAt) < 5000;
 
       if (isNewJob) {
         console.log('[DB] New job detected, sending push notification');
@@ -219,14 +221,6 @@ const DB = (() => {
           console.error('[DB] Push notification failed (non-blocking):', err);
         });
       }
-    }
-
-    // Handle zelle memo (admin-only table)
-    if (Auth.isAdmin() && job.zelleMemo !== undefined) {
-      await supa.from('job_zelle').upsert({
-        job_id:     job.jobId,
-        zelle_memo: job.zelleMemo || '',
-      });
     }
   }
 

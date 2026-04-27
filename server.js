@@ -657,6 +657,133 @@ app.post('/api/save-technicians', async (req, res) => {
   }
 });
 
+// Save job endpoint (bypasses custom domain routing to correct project)
+app.post('/api/save-job', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Unauthorized - missing auth token' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Invalid auth token' });
+    }
+
+    // Get user role from profiles
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile) {
+      return res.status(401).json({ error: 'Profile not found' });
+    }
+
+    const { job } = req.body;
+    if (!job || !job.jobId) {
+      return res.status(400).json({ error: 'job object with jobId required' });
+    }
+
+    const role = profile.role;
+    const isTechOrContractor = role === 'tech' || role === 'contractor';
+
+    // Tech/contractor: partial update only (status field)
+    if (isTechOrContractor) {
+      const { error: updateError } = await supabaseDirectAdmin
+        .from('jobs')
+        .update({
+          status: job.status,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('job_id', job.jobId);
+
+      if (updateError) {
+        console.error('[SAVE JOB] Tech update error:', updateError);
+        return res.status(500).json({ error: updateError.message });
+      }
+
+      console.log('[SAVE JOB] ✅ Tech/contractor job updated:', job.jobId);
+      return res.json({ success: true });
+    }
+
+    // Admin/dispatcher: full upsert
+    const row = {
+      job_id:               job.jobId,
+      status:               job.status,
+      customer_name:        job.customerName || '',
+      phone:                job.phone || '',
+      address:              job.address || '',
+      city:                 job.city || '',
+      state:                job.state || '',
+      zip:                  job.zip || '',
+      scheduled_date:       job.scheduledDate || null,
+      scheduled_time:       job.scheduledTime || null,
+      description:          job.description || '',
+      notes:                job.notes || '',
+      source:               job.source || 'my_lead',
+      contractor_name:      job.contractorName || '',
+      contractor_pct:       parseFloat(job.contractorPct) || 0,
+      assigned_tech_id:     job.assignedTechId || null,
+      assigned_tech_name:   job.assignedTechName || '',
+      is_self_assigned:     job.isSelfAssigned || false,
+      tech_percent:         parseFloat(job.techPercent) || 0,
+      estimated_total:      parseFloat(job.estimatedTotal) || 0,
+      job_total:            parseFloat(job.jobTotal) || 0,
+      parts_cost:           parseFloat(job.partsCost) || 0,
+      tax_amount:           parseFloat(job.taxAmount) || 0,
+      tax_option:           job.taxOption || 'none',
+      tech_payout:          parseFloat(job.techPayout) || 0,
+      payment_method:       job.paymentMethod || 'cash',
+      paid_at:              job.paidAt || null,
+      sync_status:          job.syncStatus || 'pending',
+      synced_at:            job.syncedAt || null,
+      photos:               job.photos || [],
+      raw_lead:             job.rawLead || '',
+      is_recurring_customer: job.isRecurringCustomer || false,
+      overdue_flagged_at:   job.overdueAt || null,
+      follow_up_at:         job.followUpAt || null,
+      created_by:           job.createdBy || null,
+      updated_at:           new Date().toISOString(),
+    };
+
+    // Admin-only financial fields
+    if (role === 'admin') {
+      row.owner_payout   = parseFloat(job.ownerPayout) || 0;
+      row.contractor_fee = parseFloat(job.contractorFee) || 0;
+    }
+
+    // Use direct project URL client
+    const { data, error: upsertError } = await supabaseDirectAdmin
+      .from('jobs')
+      .upsert(row)
+      .select();
+
+    if (upsertError) {
+      console.error('[SAVE JOB] Upsert error:', upsertError);
+      return res.status(500).json({ error: upsertError.message });
+    }
+
+    console.log('[SAVE JOB] ✅ Job saved:', job.jobId);
+
+    // Handle zelle memo for admin
+    if (role === 'admin' && job.zelleMemo !== undefined) {
+      await supabaseDirectAdmin.from('job_zelle').upsert({
+        job_id:     job.jobId,
+        zelle_memo: job.zelleMemo || '',
+      });
+    }
+
+    res.json({ success: true, data: data?.[0] });
+  } catch (error) {
+    console.error('[SAVE JOB] Exception:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Test push notification endpoint
 app.post('/api/test-push', async (req, res) => {
   try {
