@@ -480,6 +480,8 @@ const App = (() => {
     // On-enter actions per view
     if (viewName === 'dashboard')  renderDashboard();
     if (viewName === 'jobs') {
+      // Populate filter dropdowns
+      _populateJobFilters();
       // Restore saved view mode
       const listEl  = document.getElementById('jobs-list-container');
       const boardEl = document.getElementById('jobs-kanban-board');
@@ -840,6 +842,16 @@ const App = (() => {
       jobs = jobs.filter(j => j.status === _state.jobFilter);
     }
 
+    // Apply tech filter
+    if (_state.jobFilterTech) {
+      jobs = jobs.filter(j => j.assignedTechId === _state.jobFilterTech);
+    }
+
+    // Apply lead source filter
+    if (_state.jobFilterSource) {
+      jobs = jobs.filter(j => j.leadSource === _state.jobFilterSource);
+    }
+
     if (jobs.length === 0) {
       container.innerHTML = `<div class="empty-state">
         <div class="empty-icon">&#128269;</div>
@@ -875,7 +887,31 @@ const App = (() => {
 
   function filterJobs() {
     _state.jobSearch = document.getElementById('job-search')?.value || '';
+    _state.jobFilterTech = document.getElementById('job-filter-tech')?.value || '';
+    _state.jobFilterSource = document.getElementById('job-filter-source')?.value || '';
     renderJobList();
+  }
+
+  function _populateJobFilters() {
+    const settings = DB.getSettings();
+    const techSelect = document.getElementById('job-filter-tech');
+    const sourceSelect = document.getElementById('job-filter-source');
+
+    if (!techSelect || !sourceSelect) return;
+
+    // Populate tech filter
+    const currentTech = _state.jobFilterTech || '';
+    techSelect.innerHTML = '<option value="">All Techs</option>' +
+      (settings.technicians || []).map(t =>
+        `<option value="${t.id}" ${t.id === currentTech ? 'selected' : ''}>${t.name}</option>`
+      ).join('');
+
+    // Populate lead source filter
+    const currentSource = _state.jobFilterSource || '';
+    sourceSelect.innerHTML = '<option value="">All Sources</option>' +
+      (settings.leadSources || []).map(s =>
+        `<option value="${s.name}" ${s.name === currentSource ? 'selected' : ''}>${s.name}</option>`
+      ).join('');
   }
 
   // ══════════════════════════════════════════════════════════
