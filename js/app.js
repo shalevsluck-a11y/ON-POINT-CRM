@@ -669,9 +669,6 @@ const App = (() => {
     if (!container) return;
 
     const urgent = allJobs.filter(j => j.status === 'follow_up');
-    const unassigned = allJobs.filter(j =>
-      ['new', 'scheduled'].includes(j.status) && !j.assignedTechId
-    );
     const today = _todayStr();
     const todayJobs = allJobs.filter(j =>
       j.scheduledDate === today && ['scheduled', 'in_progress', 'new'].includes(j.status)
@@ -697,12 +694,7 @@ const App = (() => {
         }).join('')
       : '<div class="empty-state-sm" style="color:var(--color-success)">✓ No follow-ups needed</div>';
 
-    const unassignedHTML = unassigned.length > 0
-      ? `<div class="dash-alert-badge">&#9888; ${unassigned.length} unassigned job${unassigned.length > 1 ? 's' : ''}</div>`
-      : '';
-
     container.innerHTML = `
-      ${unassignedHTML}
       <div class="dash-role-card" style="${urgent.length > 0 ? 'border-color:rgba(239,68,68,0.3)' : ''}">
         <div class="dash-role-header">
           Needs Attention
