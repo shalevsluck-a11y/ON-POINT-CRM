@@ -802,7 +802,7 @@ app.get('/api/load-jobs', async (req, res) => {
     // Get user role from profiles (same project as auth)
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('role, assignedLeadSource')
+      .select('role, assigned_lead_source')
       .eq('id', user.id)
       .single();
 
@@ -811,6 +811,10 @@ app.get('/api/load-jobs', async (req, res) => {
       console.error('[LOAD JOBS] User ID:', user.id);
       return res.status(401).json({ error: 'Profile not found' });
     }
+
+    console.log('[LOAD JOBS] Auth user id:', user.id);
+    console.log('[LOAD JOBS] Profile found:', !!profile);
+    console.log('[LOAD JOBS] Profile role:', profile.role);
 
     const role = profile.role;
     const isTechOrContractor = role === 'tech' || role === 'contractor';
@@ -821,7 +825,7 @@ app.get('/api/load-jobs', async (req, res) => {
 
     // Contractor filtering: only jobs matching their assigned lead source
     if (role === 'contractor') {
-      const assignedLeadSource = profile.assignedLeadSource;
+      const assignedLeadSource = profile.assigned_lead_source;
       if (assignedLeadSource) {
         query = query.eq('source', assignedLeadSource);
       } else {
@@ -846,7 +850,9 @@ app.get('/api/load-jobs', async (req, res) => {
       }
     }
 
-    console.log('[LOAD JOBS] ✅ Loaded jobs:', jobs?.length || 0);
+    console.log('[LOAD JOBS] Jobs client: supabaseDirectAdmin');
+    console.log('[LOAD JOBS] Jobs returned:', jobs?.length || 0);
+    console.log('[LOAD JOBS] ✅ Success');
     res.json({ jobs: jobs || [], zelleMap, role });
   } catch (error) {
     console.error('[LOAD JOBS] Exception:', error);
