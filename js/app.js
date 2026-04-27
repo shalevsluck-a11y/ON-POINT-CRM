@@ -2594,6 +2594,13 @@ const App = (() => {
     const techId = document.getElementById('edit-tech-id')?.value || null;
     const tech = techId ? settings.technicians.find(t => t.id === techId) : null;
 
+    console.log('[EditJob] ═══ SAVING TECH ASSIGNMENT ═══');
+    console.log('[EditJob] Job ID:', jobId);
+    console.log('[EditJob] Selected techId from dropdown:', techId);
+    console.log('[EditJob] Found tech:', tech);
+    console.log('[EditJob] Job status:', job.status);
+    console.log('[EditJob] Old assignedTechId:', job.assignedTechId);
+
     // For paid jobs, only allow tech assignment changes
     const updated = job.status === 'paid'
       ? {
@@ -2619,6 +2626,12 @@ const App = (() => {
           assignedTechName: tech ? tech.name : '',
           isSelfAssigned:   tech ? tech.isOwner : false,
         };
+
+    console.log('[EditJob] Updated job object:', {
+      assignedTechId: updated.assignedTechId,
+      assignedTechName: updated.assignedTechName,
+      isSelfAssigned: updated.isSelfAssigned
+    });
 
     DB.saveJob(updated);
     SyncManager.queueJob(jobId);
