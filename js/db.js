@@ -18,36 +18,30 @@ const DB = (() => {
 
   async function _syncJobsDown() {
     try {
-      // Tech/contractor get the DB-level view that masks financial columns at source.
-      // Admin/dispatcher use the full jobs table so revenue figures are correct.
-      const tableName = Auth.isTechOrContractor() ? 'jobs_limited' : 'jobs';
-      let query = supa.from(tableName).select('*');
-
-      // Contractor filtering: only show jobs matching their assigned lead source
-      if (Auth.isContractor()) {
-        const user = Auth.getUser();
-        const assignedLeadSource = user?.assignedLeadSource;
-        if (assignedLeadSource) {
-          query = query.eq('source', assignedLeadSource);
-        } else {
-          // Contractor with no assigned lead source sees no jobs
-          Storage.saveJobs([]);
-          return;
-        }
+      // Use server endpoint (reads from correct project)
+      const { data: { session } } = await supa.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('No auth session');
       }
 
-      const { data, error } = await query.order('created_at', { ascending: false });
-      if (error) throw error;
+      const response = await fetch('/api/load-jobs', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
 
-      // Also fetch zelle memos for admin
-      let zelleMap = {};
-      if (Auth.isAdmin()) {
-        const { data: zm } = await supa.from('job_zelle').select('*');
-        if (zm) zm.forEach(z => { zelleMap[z.job_id] = z.zelle_memo; });
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || `HTTP ${response.status}`);
       }
 
-      const isAdmin = Auth.isAdmin();
-      const isTechLike = Auth.isTechOrContractor();
+      const { jobs: data, zelleMap, role } = await response.json();
+
+      console.log('[DB._syncJobsDown] ✅ Loaded from server:', data.length, 'jobs');
+
+      const isAdmin = role === 'admin';
+      const isTechLike = role === 'tech' || role === 'contractor';
       const jobs = (data || []).map(row => _dbRowToJob(row, zelleMap, isAdmin, isTechLike));
       Storage.saveJobs(jobs);
     } catch (e) {
@@ -58,28 +52,33 @@ const DB = (() => {
   async function _syncSettingsDown() {
     console.log('[DB._syncSettingsDown] ========== START SYNC ==========');
     try {
-      console.log('[DB._syncSettingsDown] Fetching app_settings from Supabase...');
-      const { data: settings, error } = await supa
-        .from('app_settings')
-        .select('*')
-        .eq('id', 1)
-        .single();
-      if (error) throw error;
-      console.log('[DB._syncSettingsDown] ✓ app_settings fetched:', settings);
-      console.log('[DB._syncSettingsDown] Lead sources from DB:', settings.lead_sources);
+      // Use server endpoint (reads from correct project)
+      const { data: { session } } = await supa.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error('No auth session');
+      }
 
-      console.log('[DB._syncSettingsDown] Fetching profiles from Supabase...');
-      const { data: techs } = await supa
-        .from('profiles')
-        .select('id, name, phone, color, zip_codes, default_tech_percent, zelle_handle, is_owner, role')
-        .order('name');
-      console.log('[DB._syncSettingsDown] ✓ Profiles fetched, count:', techs?.length || 0);
+      const response = await fetch('/api/load-settings', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || `HTTP ${response.status}`);
+      }
+
+      const { settings, profiles: techs, isAdmin } = await response.json();
+
+      console.log('[DB._syncSettingsDown] ✅ Loaded from server');
+      console.log('[DB._syncSettingsDown] Lead sources from DB:', settings.lead_sources);
+      console.log('[DB._syncSettingsDown] Profiles count:', techs?.length || 0);
 
       const current = Storage.getSettings();
       console.log('[DB._syncSettingsDown] Current cached settings:', current);
       console.log('[DB._syncSettingsDown] Current cached leadSources:', current.leadSources);
-
-      const isAdmin = Auth.isAdmin();
       console.log('[DB._syncSettingsDown] User is admin?', isAdmin);
 
       // Build technician list from two sources:

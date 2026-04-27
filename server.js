@@ -784,6 +784,140 @@ app.post('/api/save-job', async (req, res) => {
   }
 });
 
+// Load jobs endpoint (reads from correct project)
+app.get('/api/load-jobs', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Unauthorized - missing auth token' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Invalid auth token' });
+    }
+
+    // Get user role from profiles
+    const { data: profile, error: profileError } = await supabaseDirectAdmin
+      .from('profiles')
+      .select('role, assignedLeadSource')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile) {
+      return res.status(401).json({ error: 'Profile not found' });
+    }
+
+    const role = profile.role;
+    const isTechOrContractor = role === 'tech' || role === 'contractor';
+
+    // Tech/contractor get limited view, admin/dispatcher get full view
+    const tableName = isTechOrContractor ? 'jobs_limited' : 'jobs';
+    let query = supabaseDirectAdmin.from(tableName).select('*');
+
+    // Contractor filtering: only jobs matching their assigned lead source
+    if (role === 'contractor') {
+      const assignedLeadSource = profile.assignedLeadSource;
+      if (assignedLeadSource) {
+        query = query.eq('source', assignedLeadSource);
+      } else {
+        // Contractor with no assigned lead source sees no jobs
+        return res.json({ jobs: [], zelleMap: {} });
+      }
+    }
+
+    const { data: jobs, error: jobsError } = await query.order('created_at', { ascending: false });
+
+    if (jobsError) {
+      console.error('[LOAD JOBS] Query error:', jobsError);
+      return res.status(500).json({ error: jobsError.message });
+    }
+
+    // Fetch zelle memos for admin
+    let zelleMap = {};
+    if (role === 'admin') {
+      const { data: zm } = await supabaseDirectAdmin.from('job_zelle').select('*');
+      if (zm) {
+        zm.forEach(z => { zelleMap[z.job_id] = z.zelle_memo; });
+      }
+    }
+
+    console.log('[LOAD JOBS] ✅ Loaded jobs:', jobs?.length || 0);
+    res.json({ jobs: jobs || [], zelleMap, role });
+  } catch (error) {
+    console.error('[LOAD JOBS] Exception:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Load settings endpoint (reads from correct project)
+app.get('/api/load-settings', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Unauthorized - missing auth token' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Invalid auth token' });
+    }
+
+    // Get user role
+    const { data: profile, error: profileError } = await supabaseDirectAdmin
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile) {
+      return res.status(401).json({ error: 'Profile not found' });
+    }
+
+    const isAdmin = profile.role === 'admin';
+
+    // Fetch app_settings
+    const { data: settings, error: settingsError } = await supabaseDirectAdmin
+      .from('app_settings')
+      .select('*')
+      .eq('id', 1)
+      .single();
+
+    if (settingsError) {
+      console.error('[LOAD SETTINGS] app_settings error:', settingsError);
+      return res.status(500).json({ error: settingsError.message });
+    }
+
+    // Fetch profiles
+    const { data: profiles, error: profilesError } = await supabaseDirectAdmin
+      .from('profiles')
+      .select('id, name, phone, color, zip_codes, default_tech_percent, zelle_handle, is_owner, role')
+      .order('name');
+
+    if (profilesError) {
+      console.error('[LOAD SETTINGS] profiles error:', profilesError);
+      return res.status(500).json({ error: profilesError.message });
+    }
+
+    console.log('[LOAD SETTINGS] ✅ Loaded settings and profiles');
+    console.log('[LOAD SETTINGS] Technicians array valid:', Array.isArray(settings.technicians));
+    console.log('[LOAD SETTINGS] Lead sources count:', settings.lead_sources?.length || 0);
+
+    res.json({
+      settings,
+      profiles: profiles || [],
+      isAdmin
+    });
+  } catch (error) {
+    console.error('[LOAD SETTINGS] Exception:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Test push notification endpoint
 app.post('/api/test-push', async (req, res) => {
   try {
