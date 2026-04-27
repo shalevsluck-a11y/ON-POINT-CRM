@@ -2562,6 +2562,13 @@ const App = (() => {
         <textarea id="edit-notes" class="field-input field-textarea" rows="2">${_esc(job.notes || '')}</textarea>
       </div>
       <div class="field-group">
+        <label class="field-label">Assign Technician</label>
+        <select id="edit-tech-id" class="field-input">
+          <option value="">No Tech Assigned</option>
+          ${settings.technicians.map(t => `<option value="${t.id}" ${job.assignedTechId === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field-group">
         <label class="field-label">Tech Payout %</label>
         <input type="number" id="edit-tech-pct" class="field-input" value="${job.techPercent || 0}" min="0" max="100">
       </div>
@@ -2582,19 +2589,26 @@ const App = (() => {
     const job = DB.getJobById(jobId);
     if (!job) return;
 
+    const settings = DB.getSettings();
+    const techId = document.getElementById('edit-tech-id')?.value || null;
+    const tech = techId ? settings.technicians.find(t => t.id === techId) : null;
+
     const updated = {
       ...job,
-      customerName:  document.getElementById('edit-name')?.value?.trim()    || job.customerName,
-      phone:         document.getElementById('edit-phone')?.value?.trim()   || job.phone,
-      address:       document.getElementById('edit-address')?.value?.trim() || job.address,
-      city:          document.getElementById('edit-city')?.value?.trim()    || job.city,
-      state:         document.getElementById('edit-state')?.value           || job.state,
-      zip:           document.getElementById('edit-zip')?.value?.trim()     || job.zip,
-      scheduledDate: document.getElementById('edit-date')?.value            || job.scheduledDate,
-      scheduledTime: document.getElementById('edit-time')?.value            || job.scheduledTime,
-      description:   document.getElementById('edit-desc')?.value?.trim()   || job.description,
-      notes:         document.getElementById('edit-notes')?.value?.trim()   || job.notes,
-      techPercent:   parseFloat(document.getElementById('edit-tech-pct')?.value) || job.techPercent,
+      customerName:    document.getElementById('edit-name')?.value?.trim()    || job.customerName,
+      phone:           document.getElementById('edit-phone')?.value?.trim()   || job.phone,
+      address:         document.getElementById('edit-address')?.value?.trim() || job.address,
+      city:            document.getElementById('edit-city')?.value?.trim()    || job.city,
+      state:           document.getElementById('edit-state')?.value           || job.state,
+      zip:             document.getElementById('edit-zip')?.value?.trim()     || job.zip,
+      scheduledDate:   document.getElementById('edit-date')?.value            || job.scheduledDate,
+      scheduledTime:   document.getElementById('edit-time')?.value            || job.scheduledTime,
+      description:     document.getElementById('edit-desc')?.value?.trim()   || job.description,
+      notes:           document.getElementById('edit-notes')?.value?.trim()   || job.notes,
+      techPercent:     parseFloat(document.getElementById('edit-tech-pct')?.value) || job.techPercent,
+      assignedTechId:  techId,
+      assignedTechName: tech ? tech.name : '',
+      isSelfAssigned:  tech ? tech.isOwner : false,
     };
 
     DB.saveJob(updated);

@@ -410,36 +410,14 @@ const Balance = (function() {
   }
 
   function generateTechReport(jobs, period, status, techId, dateRange) {
-    console.log('[Balance] ═══ TECH REPORT DEBUG ═══');
-    console.log('[Balance] Selected techId:', techId, 'Type:', typeof techId);
-    console.log('[Balance] Total jobs before filter:', jobs.length);
-
-    // Show ALL job assignedTechIds
-    jobs.forEach((j, idx) => {
-      console.log(`[Balance] Job ${idx}: jobId=${j.jobId?.slice(-6)}, assignedTechId="${j.assignedTechId}", type=${typeof j.assignedTechId}, status=${j.status}, techPayout=${j.techPayout}`);
-    });
-
     let techJobs = jobs;
     let techName = 'All Techs';
 
     if (techId) {
       techJobs = jobs.filter(j => j.assignedTechId === techId);
-      console.log('[Balance] After filter by techId:', techJobs.length, 'jobs');
-
-      // Show which jobs matched
-      if (techJobs.length === 0) {
-        console.log('[Balance] ⚠️ NO JOBS MATCHED! Checking for similar IDs...');
-        jobs.forEach(j => {
-          if (j.assignedTechId) {
-            console.log(`[Balance] Job has assignedTechId="${j.assignedTechId}" vs looking for "${techId}" - match: ${j.assignedTechId === techId}`);
-          }
-        });
-      }
-
       const settings = DB.getSettings();
       const tech = settings.technicians?.find(t => t.id === techId);
       techName = tech ? tech.name : 'Unknown Tech';
-      console.log('[Balance] Tech name:', techName);
     }
 
     const stats = calculateStats(techJobs);
