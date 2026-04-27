@@ -4281,10 +4281,11 @@ const App = (() => {
       const isSelf       = job.isSelfAssigned === true || job.isSelfAssigned === 'true';
       const myTotal      = isSelf ? ownerPayout + techPayout : ownerPayout;
 
-      // Calculate percentages
-      const techPct  = jobTotal > 0 ? (techPayout / jobTotal) * 100 : 0;
-      const contrPct = jobTotal > 0 ? (contrFee / jobTotal) * 100 : 0;
-      const ownerPct = jobTotal > 0 ? (ownerPayout / jobTotal) * 100 : 0;
+      // Calculate percentages from total minus parts
+      const baseAmount = jobTotal - parts;
+      const techPct  = baseAmount > 0 ? (techPayout / baseAmount) * 100 : 0;
+      const contrPct = baseAmount > 0 ? (contrFee / baseAmount) * 100 : 0;
+      const ownerPct = baseAmount > 0 ? (ownerPayout / baseAmount) * 100 : 0;
 
       lines.push('');
       lines.push('*━━━━━━━━━━━━━━━━━━*');
