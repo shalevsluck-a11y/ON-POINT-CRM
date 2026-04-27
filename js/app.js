@@ -2603,6 +2603,13 @@ const App = (() => {
         <textarea id="edit-notes" class="field-input field-textarea" rows="2" ${isPaid ? 'disabled' : ''}>${_esc(job.notes || '')}</textarea>
       </div>
       <div class="field-group">
+        <label class="field-label">Lead Source</label>
+        <select id="edit-lead-source" class="field-input" ${isPaid ? 'disabled' : ''}>
+          <option value="my_lead" ${job.source === 'my_lead' ? 'selected' : ''}>My Lead</option>
+          ${settings.leadSources.map(ls => `<option value="${_esc(ls.name)}" ${job.source === ls.name ? 'selected' : ''}>${_esc(ls.name)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field-group">
         <label class="field-label">Assign Technician</label>
         <select id="edit-tech-id" class="field-input">
           <option value="">No Tech Assigned</option>
@@ -2663,6 +2670,7 @@ const App = (() => {
           scheduledTime:    document.getElementById('edit-time')?.value            || job.scheduledTime,
           description:      document.getElementById('edit-desc')?.value?.trim()    || job.description,
           notes:            document.getElementById('edit-notes')?.value?.trim()   || job.notes,
+          source:           document.getElementById('edit-lead-source')?.value     || job.source,
           techPercent:      parseFloat(document.getElementById('edit-tech-pct')?.value) || job.techPercent,
           assignedTechId:   techId,
           assignedTechName: tech ? tech.name : '',
