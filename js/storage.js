@@ -179,7 +179,7 @@ const Storage = (() => {
     taxRateNY:      8.875,
     taxRateNJ:      6.625,
     defaultState:   'NY',
-    appsScriptUrl:  'https://script.google.com/macros/s/AKfycbyydYYJUw28Rmfbu_lhNfYLTlG3Gy4dXA1ctTp2Hk0TQ01NSMhImSi25mTffIJgr5FE/exec',
+    appsScriptUrl:  'https://script.google.com/macros/s/AKfycbzTKDS-ypRqgTC3untSPOEP5QimaDrUBfR3Yk_lJLZs-F8x05W8VWmGfdWK_t5exSTb/exec',
     technicians:    [],
     leadSources:    [],
     lastSyncAt:     null,
