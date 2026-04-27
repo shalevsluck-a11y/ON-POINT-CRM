@@ -788,6 +788,45 @@ app.post('/api/save-job', async (req, res) => {
   }
 });
 
+// Delete job endpoint (deletes from correct project)
+app.delete('/api/delete-job/:jobId', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Unauthorized - missing auth token' });
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Invalid auth token' });
+    }
+
+    const jobId = req.params.jobId;
+    if (!jobId) {
+      return res.status(400).json({ error: 'Job ID required' });
+    }
+
+    // Delete from direct project
+    const { error: deleteError } = await supabaseDirectAdmin
+      .from('jobs')
+      .delete()
+      .eq('job_id', jobId);
+
+    if (deleteError) {
+      console.error('[DELETE JOB] Error:', deleteError);
+      return res.status(500).json({ error: deleteError.message });
+    }
+
+    console.log('[DELETE JOB] ✅ Deleted:', jobId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[DELETE JOB] Exception:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Load jobs endpoint (reads from correct project)
 app.get('/api/load-jobs', async (req, res) => {
   try {

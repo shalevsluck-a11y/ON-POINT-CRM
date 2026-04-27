@@ -261,8 +261,29 @@ const DB = (() => {
 
   async function deleteJob(jobId) {
     Storage.deleteJob(jobId);
-    const { error } = await supa.from('jobs').delete().eq('job_id', jobId);
-    if (error) console.warn('DB.deleteJob remote error:', error.message);
+
+    // Use server endpoint (deletes from correct project)
+    try {
+      const { data: { session } } = await supa.auth.getSession();
+      if (!session?.access_token) {
+        console.warn('DB.deleteJob: No auth session');
+        return;
+      }
+
+      const response = await fetch(`/api/delete-job/${jobId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const result = await response.json();
+        console.warn('DB.deleteJob remote error:', result.error);
+      }
+    } catch (error) {
+      console.warn('DB.deleteJob remote error:', error.message);
+    }
   }
 
   // ──────────────────────────────────────────────────────────
