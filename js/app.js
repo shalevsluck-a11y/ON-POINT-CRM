@@ -4845,6 +4845,7 @@ const App = (() => {
     showCloseJobModal,
     showEditJobModal,
     finalizeJob,
+    markJobLost,
     _updateClosePreview,
     _closeSelectPay,
     _closeTaxSelect,
