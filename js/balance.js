@@ -557,7 +557,7 @@ const Balance = (function() {
           <span class="breakdown-value">$${formatMoney(stats.techPayout)}</span>
         </div>
         <div class="breakdown-row total">
-          <span class="breakdown-label">Company Cut (Tech Owes)</span>
+          <span class="breakdown-label" style="font-weight:bold;color:#d32f2f">YOU OWE:</span>
           <span class="breakdown-value positive">$${formatMoney(companyCut)}</span>
         </div>
       </div>
@@ -735,7 +735,7 @@ const Balance = (function() {
 
       text += `💰 BREAKDOWN\n`;
       text += `Tech Cut: $${formatMoney(stats.techPayout)}\n`;
-      text += `Company Cut (Tech Owes): $${formatMoney(companyCut)}\n`;
+      text += `YOU OWE: $${formatMoney(companyCut)}\n`;
     }
 
     text += `\n━━━━━━━━━━━━━━━━━━━━━━━━\n`;
