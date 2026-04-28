@@ -2577,7 +2577,7 @@ const App = (() => {
     if (titleEl) titleEl.textContent = 'Edit Job';
 
     body.innerHTML = `
-      ${isPaid ? `<div style="padding:8px;background:var(--color-warning-bg);color:var(--color-warning);border-radius:6px;margin-bottom:12px;font-size:13px">⚠️ Paid job - only date, tech assignment${isDispatcher ? '' : ', and lead source'} can be changed</div>` : ''}
+      ${isPaid ? `<div style="padding:8px;background:var(--color-warning-bg);color:var(--color-warning);border-radius:6px;margin-bottom:12px;font-size:13px">⚠️ Paid job - only date, tech assignment${isDispatcher ? '' : ', lead source'}, and closing details can be changed</div>` : ''}
       <div class="field-group">
         <label class="field-label">Customer Name</label>
         <input type="text" id="edit-name" class="field-input" value="${_esc(job.customerName || '')}" ${isPaid ? 'disabled' : ''}>
@@ -2650,6 +2650,10 @@ const App = (() => {
         <label class="field-label">Tech Payout %</label>
         <input type="number" id="edit-tech-pct" class="field-input" value="${job.techPercent || 0}" min="0" max="100" ${isPaid ? 'disabled' : ''}>
       </div>
+      ${isPaid ? `<div class="field-group">
+        <label class="field-label">Closing Details</label>
+        <textarea id="edit-closing-details" class="field-input field-textarea" rows="3">${_esc(job.closingDetails || '')}</textarea>
+      </div>` : ''}
       <div style="display:flex;gap:8px;margin-top:8px">
         <button class="btn btn-secondary" style="flex:1" onclick="App.closeModal()">Cancel</button>
         <button class="btn btn-primary" style="flex:1" onclick="App._saveEditedJob('${jobId}')">Save Changes</button>
@@ -2696,6 +2700,7 @@ const App = (() => {
           assignedTechId:   techId,
           assignedTechName: tech ? tech.name : '',
           isSelfAssigned:   tech ? tech.isOwner : false,
+          closingDetails:   document.getElementById('edit-closing-details')?.value?.trim() || job.closingDetails,
         }
       : {
           ...job,
