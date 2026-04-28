@@ -213,6 +213,12 @@ const Balance = (function() {
       const allJobs = DB.getJobs();
       let jobs = filterJobs(allJobs, dateRange, status, sourceFilter);
 
+      // For tech reports, further filter by techId
+      let reportJobs = jobs;
+      if (currentReportType === 'tech' && techId) {
+        reportJobs = jobs.filter(j => j.assignedTechId === techId);
+      }
+
       // Generate report based on type
       let reportHTML = '';
       if (currentReportType === 'overall') {
@@ -221,14 +227,14 @@ const Balance = (function() {
         reportHTML = generateTechReport(jobs, period, status, techId, dateRange);
       }
 
-      // Store report data for export
+      // Store report data for export (use filtered jobs for tech reports)
       currentReportData = {
         type: currentReportType,
         period,
         status,
         sourceFilter,
         techId,
-        jobs,
+        jobs: reportJobs,
         dateRange
       };
 
