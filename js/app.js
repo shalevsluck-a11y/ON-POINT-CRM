@@ -830,7 +830,7 @@ const App = (() => {
 
     // Apply lead source filter
     if (_state.jobFilterSource) {
-      jobs = jobs.filter(j => j.leadSource === _state.jobFilterSource);
+      jobs = jobs.filter(j => j.source === _state.jobFilterSource);
     }
 
     if (jobs.length === 0) {
