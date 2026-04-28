@@ -8,7 +8,7 @@
 // ============================================================
 
 // ── CONFIG ──────────────────────────────────────────────────
-var SPREADSHEET_ID = 'YOUR_SPREADSHEET_ID_HERE'; // PASTE YOUR SHEET ID HERE
+var SPREADSHEET_ID = '1ZpWK0U__e6Zy4h5qgGd3V-VQDrH31RlWzpvJmrelcUc';
 var SHEET_JOBS     = 'Jobs';
 var SHEET_PAID     = 'Paid';
 var SHEET_NOT_PAID = 'Not Paid';
@@ -427,19 +427,10 @@ function _applyRowFormatting(sheet, row, status) {
 }
 
 // ── MANUAL SETUP ─────────────────────────────────────────────
-// Run this once to get your spreadsheet ID
+// Run this once to initialize sheets
 
 function setup() {
-  Logger.log('==== SETUP INSTRUCTIONS ====');
-  Logger.log('1. Create a new Google Sheet');
-  Logger.log('2. Copy the ID from the URL (between /d/ and /edit)');
-  Logger.log('3. Paste it into SPREADSHEET_ID at the top of this script');
-  Logger.log('4. Run this function again to initialize sheets');
-
-  if (SPREADSHEET_ID === 'YOUR_SPREADSHEET_ID_HERE') {
-    Logger.log('ERROR: Update SPREADSHEET_ID first!');
-    return;
-  }
+  Logger.log('==== INITIALIZING SHEETS ====');
 
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   Logger.log('Spreadsheet URL: ' + ss.getUrl());
@@ -451,4 +442,7 @@ function setup() {
   getOrCreateSheet(SHEET_CONTRACTORS);
 
   Logger.log('All sheets created!');
+  Logger.log('Jobs sheet ready');
+  Logger.log('Paid/Not Paid sheets ready');
+  Logger.log('Contractor tracking ready');
 }

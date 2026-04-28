@@ -1,5 +1,5 @@
-// Google Apps Script - ON POINT CRM with Monthly Sorting & Sub-sheets
-// Creates: Jobs (main), Paid (monthly), Unpaid (monthly), Contractor Payments
+// Google Apps Script - ON POINT CRM
+// Auto-creates 4 sheets: Jobs, Paid, Unpaid, Contractor Payments
 
 function doPost(e) {
   try {
@@ -60,7 +60,6 @@ function upsertJob(job) {
   if (job.scheduledTime) otherParts.push('Time: ' + job.scheduledTime);
   if (job.description) otherParts.push('Description: ' + job.description);
   if (job.notes) otherParts.push('Notes: ' + job.notes);
-  if (job.status) otherParts.push('Status: ' + job.status);
   if (job.paymentMethod) otherParts.push('Payment: ' + job.paymentMethod);
 
   var other = otherParts.join(' | ');
@@ -94,7 +93,6 @@ function upsertJob(job) {
     formatRow(sheet, newRow);
   }
 
-  // Update filtered sheets
   updateFilteredSheets(ss);
 
   return { success: true, jobId: job.jobId };
@@ -167,7 +165,6 @@ function updateFilteredSheets(ss) {
     }
   }
 
-  // Sort paid by date (column 3, index 3)
   paidRows.sort(function(a, b) {
     return new Date(b[3]) - new Date(a[3]);
   });

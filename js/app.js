@@ -2206,6 +2206,11 @@ const App = (() => {
         <input type="hidden" id="close-pay-method" value="${job.paymentMethod || 'cash'}">
       </div>
 
+      <div class="field-group">
+        <label class="field-label">Closing Details (optional)</label>
+        <textarea id="close-details" class="field-input" placeholder="Add notes about the job..." style="resize:vertical;min-height:80px">${_esc(job.closingDetails || '')}</textarea>
+      </div>
+
       <div style="display:flex;gap:8px;margin-top:4px">
         <button class="btn btn-secondary" style="flex:1" onclick="App.closeModal()">Cancel</button>
         <button class="btn" style="flex:1;background:#ff9800;color:white;font-weight:800"
@@ -2304,6 +2309,7 @@ const App = (() => {
     const parts     = parseFloat(document.getElementById('close-parts')?.value) || 0;
     const method    = document.getElementById('close-pay-method')?.value || 'cash';
     const taxOption = document.getElementById('close-tax-option')?.value || 'none';
+    const closingDetails = document.getElementById('close-details')?.value?.trim() || '';
 
     const settings = DB.getSettings();
     const tech = job.assignedTechId ? settings.technicians.find(t => t.id === job.assignedTechId) : null;
@@ -2349,6 +2355,7 @@ const App = (() => {
           taxAmount:     calc.taxAmount,
           techPayout:    calc.techPayout,
           paymentMethod: method,
+          closingDetails,
           // Tech CANNOT set: ownerPayout, contractorFee, ownerPct, zelleMemo, paidAt
         }
       : {
@@ -2367,6 +2374,7 @@ const App = (() => {
           paymentMethod: method,
           paidAt:        new Date().toISOString(),
           zelleMemo,
+          closingDetails,
         };
 
     DB.saveUndo(DB.getJobById(jobId));
@@ -4481,6 +4489,7 @@ const App = (() => {
       job.scheduledDate ? `*Date:* ${_formatDate(job.scheduledDate)}${job.scheduledTime ? ' @ ' + _formatTime(job.scheduledTime) : ''}` : '',
       job.description   ? `*Job:* ${_esc(job.description)}` : '',
       job.notes         ? `*Notes:* ${_esc(job.notes)}` : '',
+      job.closingDetails ? `*Details:* ${_esc(job.closingDetails)}` : '',
     ];
 
     // For paid jobs add the full financial breakdown
