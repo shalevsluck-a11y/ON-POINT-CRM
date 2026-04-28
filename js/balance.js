@@ -319,6 +319,10 @@ const Balance = (function() {
     const currentUser = Auth.getUser();
     const assignedLeadSource = currentUser?.assignedLeadSource;
 
+    console.log('[Balance] filterJobs - Date range:', dateRange.start, 'to', dateRange.end);
+    console.log('[Balance] filterJobs - Status filter:', status);
+    console.log('[Balance] filterJobs - Total jobs to filter:', jobs.length);
+
     return jobs.filter(job => {
       // Dispatcher filter: only show jobs from their assigned lead source
       if (assignedLeadSource && job.source !== assignedLeadSource) {
@@ -463,7 +467,18 @@ const Balance = (function() {
     let techName = 'All Techs';
 
     if (techId) {
+      console.log('[Balance] Filtering for techId:', techId);
+      console.log('[Balance] Total jobs before tech filter:', jobs.length);
+      jobs.forEach(j => {
+        console.log('[Balance] Job:', j.jobId, 'Tech:', j.assignedTechName, 'TechID:', j.assignedTechId, 'Date:', j.scheduledDate, 'Status:', j.status);
+      });
+
       techJobs = jobs.filter(j => j.assignedTechId === techId);
+      console.log('[Balance] Jobs after tech filter:', techJobs.length);
+      techJobs.forEach(j => {
+        console.log('[Balance] INCLUDED Job:', j.jobId, j.customerName, 'Date:', j.scheduledDate, 'Status:', j.status);
+      });
+
       const settings = DB.getSettings();
       const tech = settings.technicians?.find(t => t.id === techId);
       techName = tech ? tech.name : 'Unknown Tech';
