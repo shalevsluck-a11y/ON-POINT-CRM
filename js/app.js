@@ -4492,50 +4492,14 @@ const App = (() => {
       job.closingDetails ? `*Details:* ${_esc(job.closingDetails)}` : '',
     ];
 
-    // For paid jobs add the full financial breakdown
+    // For paid jobs, show job total and parts only
     if (job.status === 'paid') {
-      const jobTotal     = parseFloat(job.jobTotal)     || 0;
-      const parts        = parseFloat(job.partsCost)    || 0;
-      const taxAmt       = parseFloat(job.taxAmount)    || 0;
-      const techPayout   = parseFloat(job.techPayout)   || 0;
-      const ownerPayout  = parseFloat(job.ownerPayout)  || 0;
-      const contrFee     = parseFloat(job.contractorFee)|| 0;
-      const isSelf       = job.isSelfAssigned === true || job.isSelfAssigned === 'true';
-      const myTotal      = isSelf ? ownerPayout + techPayout : ownerPayout;
-
-      // Calculate percentages from total minus parts
-      const baseAmount = jobTotal - parts;
-      const techPct  = baseAmount > 0 ? (techPayout / baseAmount) * 100 : 0;
-      const contrPct = baseAmount > 0 ? (contrFee / baseAmount) * 100 : 0;
-      const ownerPct = baseAmount > 0 ? (ownerPayout / baseAmount) * 100 : 0;
+      const jobTotal = parseFloat(job.jobTotal) || 0;
+      const parts = parseFloat(job.partsCost) || 0;
 
       lines.push('');
-      lines.push('*━━━━━━━━━━━━━━━━━━*');
-      lines.push('*💰 FINANCIAL BREAKDOWN*');
-      lines.push('*━━━━━━━━━━━━━━━━━━*');
-      lines.push('');
-      lines.push(`*Job Total:* $${jobTotal.toFixed(2)}`);
-      if (taxAmt > 0)    lines.push(`*Tax:* -$${taxAmt.toFixed(2)}`);
-      if (parts > 0)     lines.push(`*Parts:* -$${parts.toFixed(2)}`);
-      lines.push('');
-      lines.push('*Split:*');
-      if (techPayout > 0) {
-        let techLabel = 'Tech';
-        if (isSelf) {
-          techLabel = 'Tech (Owner)';
-        } else if (tech) {
-          techLabel = `Tech (${tech.name})`;
-        }
-        lines.push(`  • ${techLabel}: $${techPayout.toFixed(2)} (${techPct.toFixed(1)}%)`);
-      }
-      if (contrFee > 0) {
-        const leadSource = job.contractorName || job.source || 'Lead Source';
-        lines.push(`  • ${leadSource}: $${contrFee.toFixed(2)} (${contrPct.toFixed(1)}%)`);
-      }
-      lines.push(`  • On Point Revenue: $${ownerPayout.toFixed(2)} (${ownerPct.toFixed(1)}%)`);
-      lines.push('');
-      lines.push(`*✅ My Total: $${myTotal.toFixed(2)}*`);
-      if (job.paymentMethod) lines.push(`*Payment:* ${job.paymentMethod.charAt(0).toUpperCase() + job.paymentMethod.slice(1)}`);
+      if (jobTotal > 0) lines.push(`*Job Total:* $${jobTotal.toFixed(2)}`);
+      if (parts > 0)    lines.push(`*Parts:* $${parts.toFixed(2)}`);
     } else {
       lines.push('');
       if (total > 0)  lines.push(`*Est. Total:* $${total.toFixed(2)}`);
