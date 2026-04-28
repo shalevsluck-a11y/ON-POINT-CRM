@@ -2435,9 +2435,7 @@ const App = (() => {
     DB.saveJob(updated);
     SyncManager.queueJob(jobId);
     closeModal();
-    renderDashboard();
-    setJobFilter('lost', null);
-    renderJobList();
+    navigate('jobs', {filter: 'lost'});
     showToast('Job marked as lost', 'info');
   }
 
