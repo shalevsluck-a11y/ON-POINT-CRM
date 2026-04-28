@@ -18,7 +18,7 @@ const App = (() => {
     currentJobId:   null,   // job detail view
     calendarDate:   new Date(),
     calendarTechFilter: '',  // filter calendar by tech
-    jobFilter:      'all',
+    jobFilter:      'unpaid',
     jobSearch:      '',
     parsedLead:     null,
     newJobDraft:    {},

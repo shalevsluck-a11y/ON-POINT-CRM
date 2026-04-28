@@ -59,6 +59,10 @@
 .job-card.jc-follow_up::before  { background: var(--s-follow-up); }
 .job-card.jc-lost::before       { background: var(--s-lost); }
 
+/* Full card background for paid and lost jobs */
+.job-card.jc-paid  { background: rgba(74,222,128,0.15); }
+.job-card.jc-lost  { background: rgba(239,68,68,0.15); }
+
 .job-card-inner { padding: 14px 14px 13px 18px; }
 
 .job-card-top {
