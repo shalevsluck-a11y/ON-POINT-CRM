@@ -2637,11 +2637,14 @@ const App = (() => {
     const newLeadSource = isDispatcher ? job.source : (document.getElementById('edit-lead-source')?.value || job.source);
 
     // For paid jobs, allow tech assignment, lead source, and date changes
+    const newDate = document.getElementById('edit-date')?.value;
+    console.log('[EditJob] Date field value:', newDate, 'Old date:', job.scheduledDate);
+
     const updated = job.status === 'paid'
       ? {
           ...job,
           source:           newLeadSource,
-          scheduledDate:    document.getElementById('edit-date')?.value            || job.scheduledDate,
+          scheduledDate:    newDate || job.scheduledDate,
           assignedTechId:   techId,
           assignedTechName: tech ? tech.name : '',
           isSelfAssigned:   tech ? tech.isOwner : false,

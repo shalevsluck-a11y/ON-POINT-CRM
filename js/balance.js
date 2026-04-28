@@ -330,8 +330,8 @@ const Balance = (function() {
         return false;
       }
 
-      // Filter by date (use paidAt for paid jobs, or updatedAt for closed jobs)
-      const jobDate = job.paidAt ? new Date(job.paidAt) : new Date(job.updatedAt);
+      // Filter by date (use paidAt for paid jobs, scheduledDate for closed jobs)
+      const jobDate = job.paidAt ? new Date(job.paidAt) : (job.scheduledDate ? new Date(job.scheduledDate) : new Date(job.updatedAt));
       if (jobDate < dateRange.start || jobDate > dateRange.end) {
         return false;
       }
