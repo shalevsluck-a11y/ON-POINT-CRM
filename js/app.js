@@ -2245,6 +2245,20 @@ const App = (() => {
     _updateClosePreview();
   }
 
+  function _editSelectPay(btn) {
+    document.querySelectorAll('#edit-pay-methods .pay-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const h = document.getElementById('edit-pay-method');
+    if (h) h.value = btn.dataset.method;
+  }
+
+  function _editTaxSelect(btn) {
+    document.querySelectorAll('#edit-tax-picker .pay-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const h = document.getElementById('edit-tax-option');
+    if (h) h.value = btn.dataset.tax;
+  }
+
   function _updateClosePreview() {
     const job  = _state.closeJobId ? DB.getJobById(_state.closeJobId) : null;
     if (!job)  return;
@@ -2651,10 +2665,45 @@ const App = (() => {
         <label class="field-label">Tech Payout %</label>
         <input type="number" id="edit-tech-pct" class="field-input" value="${job.techPercent || 0}" min="0" max="100" ${isPaid ? 'disabled' : ''}>
       </div>
-      ${isPaid ? `<div class="field-group">
+      ${isPaid ? `
+      <div class="field-group">
+        <label class="field-label">Job Total</label>
+        <div class="currency-input">
+          <span class="currency-symbol">$</span>
+          <input type="number" id="edit-job-total" class="field-input currency-field" placeholder="0.00" step="0.01" min="0" value="${job.jobTotal || ''}">
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Parts / Materials Cost</label>
+        <div class="currency-input">
+          <span class="currency-symbol">$</span>
+          <input type="number" id="edit-parts-cost" class="field-input currency-field" placeholder="0.00" step="0.01" min="0" value="${job.partsCost || ''}">
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Tax</label>
+        <div class="payment-methods" id="edit-tax-picker">
+          <button class="pay-btn ${!job.taxOption||job.taxOption==='none'?'active':''}" data-tax="none" onclick="App._editTaxSelect(this)">No Tax</button>
+          <button class="pay-btn ${job.taxOption==='ny'?'active':''}" data-tax="ny" onclick="App._editTaxSelect(this)">NY Tax</button>
+          <button class="pay-btn ${job.taxOption==='nj'?'active':''}" data-tax="nj" onclick="App._editTaxSelect(this)">NJ Tax</button>
+        </div>
+        <input type="hidden" id="edit-tax-option" value="${job.taxOption||'none'}">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Payment Method</label>
+        <div class="payment-methods" id="edit-pay-methods">
+          <button class="pay-btn ${job.paymentMethod==='cash'  ?'active':''}" data-method="cash"  onclick="App._editSelectPay(this)">Cash</button>
+          <button class="pay-btn ${job.paymentMethod==='zelle' ?'active':''}" data-method="zelle" onclick="App._editSelectPay(this)">Zelle</button>
+          <button class="pay-btn ${job.paymentMethod==='check' ?'active':''}" data-method="check" onclick="App._editSelectPay(this)">Check</button>
+          <button class="pay-btn ${job.paymentMethod==='card'  ?'active':''}" data-method="card"  onclick="App._editSelectPay(this)">Card</button>
+        </div>
+        <input type="hidden" id="edit-pay-method" value="${job.paymentMethod || 'cash'}">
+      </div>
+      <div class="field-group">
         <label class="field-label">Closing Details</label>
         <textarea id="edit-closing-details" class="field-input field-textarea" rows="3">${_esc(job.closingDetails || '')}</textarea>
-      </div>` : ''}
+      </div>
+      ` : ''}
       <div style="display:flex;gap:8px;margin-top:8px">
         <button class="btn btn-secondary" style="flex:1" onclick="App.closeModal()">Cancel</button>
         <button class="btn btn-primary" style="flex:1" onclick="App._saveEditedJob('${jobId}')">Save Changes</button>
@@ -2702,6 +2751,10 @@ const App = (() => {
           assignedTechName: tech ? tech.name : '',
           isSelfAssigned:   tech ? tech.isOwner : false,
           closingDetails:   document.getElementById('edit-closing-details')?.value?.trim() || job.closingDetails,
+          jobTotal:         parseFloat(document.getElementById('edit-job-total')?.value) || job.jobTotal,
+          partsCost:        parseFloat(document.getElementById('edit-parts-cost')?.value) || job.partsCost,
+          taxOption:        document.getElementById('edit-tax-option')?.value || job.taxOption,
+          paymentMethod:    document.getElementById('edit-pay-method')?.value || job.paymentMethod,
         }
       : {
           ...job,
