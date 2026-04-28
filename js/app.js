@@ -2437,6 +2437,12 @@ const App = (() => {
     closeModal();
     renderDashboard();
     renderJobList();
+
+    // Refresh detail view if open
+    const container = document.getElementById('job-detail-content');
+    const refreshed = DB.getJobById(jobId);
+    if (container && refreshed) container.innerHTML = _buildJobDetailHTML(refreshed);
+
     showToast('Job marked as lost', 'info');
   }
 
