@@ -331,8 +331,24 @@ const Balance = (function() {
       }
 
       // Filter by date (use paidAt for paid jobs, scheduledDate for closed jobs)
-      const jobDate = job.paidAt ? new Date(job.paidAt) : (job.scheduledDate ? new Date(job.scheduledDate) : new Date(job.updatedAt));
-      if (jobDate < dateRange.start || jobDate > dateRange.end) {
+      let jobDate;
+      if (job.paidAt) {
+        jobDate = new Date(job.paidAt);
+      } else if (job.scheduledDate) {
+        // Parse date string YYYY-MM-DD and set to noon to avoid timezone issues
+        const parts = job.scheduledDate.split('-');
+        jobDate = new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0);
+      } else {
+        jobDate = new Date(job.updatedAt);
+      }
+
+      // Set range dates to noon for fair comparison
+      const rangeStart = new Date(dateRange.start);
+      rangeStart.setHours(0, 0, 0, 0);
+      const rangeEnd = new Date(dateRange.end);
+      rangeEnd.setHours(23, 59, 59, 999);
+
+      if (jobDate < rangeStart || jobDate > rangeEnd) {
         return false;
       }
 
