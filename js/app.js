@@ -2427,6 +2427,16 @@ const App = (() => {
       return;
     }
 
+    // Remove lost status from any other lost jobs
+    const allJobs = DB.getJobs();
+    allJobs.forEach(j => {
+      if (j.status === 'lost' && j.jobId !== jobId) {
+        const restored = { ...j, status: 'new' };
+        DB.saveJob(restored);
+        SyncManager.queueJob(j.jobId);
+      }
+    });
+
     const updated = {
       ...job,
       status: 'lost',
@@ -2435,7 +2445,8 @@ const App = (() => {
     DB.saveJob(updated);
     SyncManager.queueJob(jobId);
     closeModal();
-    navigate('jobs', {filter: 'lost'});
+    renderDashboard();
+    renderJobList();
     showToast('Job marked as lost', 'info');
   }
 
