@@ -573,6 +573,7 @@ const Balance = (function() {
         <div class="alert-content">
           <div class="alert-title" style="color:#1976d2;font-weight:bold">💳 ZELLE PAYMENT</div>
           <div class="alert-text" style="font-size:16px;font-weight:bold">SERVICE@ONPOINTPRODOORS.COM</div>
+          <div class="alert-text" style="font-size:14px;margin-top:8px;color:#555">Please send a screenshot of your Zelle transfer for our records. Thank you!</div>
         </div>
       </div>
     `;
@@ -744,6 +745,7 @@ const Balance = (function() {
       text += `Tech Cut: $${formatMoney(stats.techPayout)}\n`;
       text += `*YOU OWE* (COMPANY CUT): $${formatMoney(companyCut)}\n\n`;
       text += `💳 *ZELLE:* SERVICE@ONPOINTPRODOORS.COM\n`;
+      text += `Please send a screenshot of your Zelle transfer for our records. Thank you!\n`;
     }
 
     text += `\n━━━━━━━━━━━━━━━━━━━━━━━━\n`;
