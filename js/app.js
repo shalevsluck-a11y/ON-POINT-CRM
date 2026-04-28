@@ -2208,6 +2208,10 @@ const App = (() => {
 
       <div style="display:flex;gap:8px;margin-top:4px">
         <button class="btn btn-secondary" style="flex:1" onclick="App.closeModal()">Cancel</button>
+        <button class="btn" style="flex:1;background:#ff9800;color:white;font-weight:800"
+                onclick="App.markJobLost('${jobId}')">
+          Lost
+        </button>
         <button class="btn btn-success" style="flex:1;font-size:16px;font-weight:800"
                 onclick="App.finalizeJob('${jobId}')">
           &#10003; Close Job
@@ -2405,6 +2409,34 @@ const App = (() => {
     }
   }
 
+  function markJobLost(jobId) {
+    const job = DB.getJobById(jobId);
+    if (!job) return;
+
+    // Only admin/dispatcher can mark jobs as lost
+    if (!Auth.canEditAllJobs()) {
+      showToast('Not authorized', 'error');
+      return;
+    }
+
+    const updated = {
+      ...job,
+      status: 'lost',
+    };
+
+    DB.saveJob(updated);
+    SyncManager.queueJob(jobId);
+    closeModal();
+    renderDashboard();
+    renderJobList();
+    showToast('Job marked as lost', 'info');
+
+    // Refresh detail view
+    const container = document.getElementById('job-detail-content');
+    const refreshed = DB.getJobById(jobId);
+    if (container && refreshed) container.innerHTML = _buildJobDetailHTML(refreshed);
+  }
+
   // ══════════════════════════════════════════════════════════
   // ZELLE DEEP LINK (customer payment request)
   function openZelleRequest(jobId) {
@@ -2573,7 +2605,15 @@ const App = (() => {
         </div>
         <div class="field-group" style="flex:1">
           <label class="field-label">Time</label>
-          <input type="time" id="edit-time" class="field-input" value="${job.scheduledTime || ''}" ${isPaid ? 'disabled' : ''}>
+          <select id="edit-time" class="field-input" ${isPaid ? 'disabled' : ''}>
+            <option value="">Select time window</option>
+            <option value="08-10" ${job.scheduledTime === '08-10' ? 'selected' : ''}>8-10 AM</option>
+            <option value="10-12" ${job.scheduledTime === '10-12' ? 'selected' : ''}>10 AM-12 PM</option>
+            <option value="12-14" ${job.scheduledTime === '12-14' ? 'selected' : ''}>12-2 PM</option>
+            <option value="14-16" ${job.scheduledTime === '14-16' ? 'selected' : ''}>2-4 PM</option>
+            <option value="16-18" ${job.scheduledTime === '16-18' ? 'selected' : ''}>4-6 PM</option>
+            <option value="18-20" ${job.scheduledTime === '18-20' ? 'selected' : ''}>6-8 PM</option>
+          </select>
         </div>
       </div>
       <div class="field-group">
@@ -4372,6 +4412,23 @@ const App = (() => {
   function _formatTime(timeStr) {
     if (!timeStr) return '';
     try {
+      // Handle time window format (e.g., "14-16" → "2-4 PM")
+      if (timeStr.includes('-')) {
+        const [start, end] = timeStr.split('-').map(Number);
+        const startAmpm = start >= 12 ? 'PM' : 'AM';
+        const endAmpm = end >= 12 ? 'PM' : 'AM';
+        const start12 = start > 12 ? start - 12 : start === 0 ? 12 : start;
+        const end12 = end > 12 ? end - 12 : end === 0 ? 12 : end;
+
+        // Show AM/PM on both if they differ, otherwise just at the end
+        if (startAmpm !== endAmpm) {
+          return `${start12} ${startAmpm}-${end12} ${endAmpm}`;
+        } else {
+          return `${start12}-${end12} ${endAmpm}`;
+        }
+      }
+
+      // Backward compatibility: handle old "HH:MM" format
       const [h, m] = timeStr.split(':').map(Number);
       const ampm = h >= 12 ? 'PM' : 'AM';
       const h12  = h > 12 ? h - 12 : h === 0 ? 12 : h;
@@ -4492,40 +4549,47 @@ const App = (() => {
   // Tech dispatch message — sent to assigned technician's WhatsApp
   function _buildWhatsAppTechDispatchMsg(job) {
     const settings = DB.getSettings();
-    const fullAddress = [job.address, job.city, job.state].filter(Boolean).join(', ') || 'See job details';
+    const fullAddress = [job.address, job.city, job.state, job.zip].filter(Boolean).join(', ') || 'See job details';
+    const googleMapsLink = job.address ? `https://maps.google.com/?q=${encodeURIComponent(fullAddress)}` : null;
     const dateLine = job.scheduledDate ? _formatDate(job.scheduledDate) : 'TBD';
     const timeLine = job.scheduledTime ? _formatTime(job.scheduledTime) : 'TBD';
     const ownerPhone = settings.ownerPhone || '(929) 429-2429';
 
     const lines = [
-      '*━━━━━━━━━━━━━━━━━━*',
-      '*📋 NEW JOB ASSIGNMENT*',
-      '*━━━━━━━━━━━━━━━━━━*',
+      '*🏢 ON POINT PRO DOORS*',
+      '*━━━━━━━━━━━━━━━━━━━━━━━*',
+      '*🔔 NEW JOB ASSIGNMENT*',
+      '*━━━━━━━━━━━━━━━━━━━━━━━*',
       '',
-      '*👤 CUSTOMER INFO*',
-      `  • Name: ${job.customerName || 'N/A'}`,
-      `  • Phone: ${job.phone || 'N/A'}`,
-      `  • Address: ${fullAddress}`,
+      '*👤 CUSTOMER*',
+      `  • ${job.customerName || 'N/A'}`,
+      `  • ${job.phone || 'N/A'}`,
       '',
-      '*🔧 JOB DETAILS*',
-      `  • Service: ${job.description || 'Garage Door Service'}`,
+      '*📍 LOCATION*',
+      googleMapsLink ? `  ${googleMapsLink}` : `  ${fullAddress}`,
+      '',
+      '*📅 SCHEDULE*',
       `  • Date: ${dateLine}`,
       `  • Time: ${timeLine}`,
+      `  • Service: ${job.description || 'Garage Door Service'}`,
     ];
 
     if (job.notes) {
-      lines.push(`  • Notes: ${job.notes}`);
+      lines.push('');
+      lines.push('*📝 NOTES*');
+      lines.push(`  ${job.notes}`);
     }
 
     const techPayout = parseFloat(job.techPayout) || parseFloat(job.contractorFee) || 0;
     if (techPayout > 0) {
       lines.push('');
       lines.push('*💰 YOUR PAYOUT*');
-      lines.push(`  *✅ $${techPayout.toFixed(2)}*`);
+      lines.push(`  *$${techPayout.toFixed(2)}*`);
     }
 
     lines.push('');
-    lines.push('*━━━━━━━━━━━━━━━━━━*');
+    lines.push('*━━━━━━━━━━━━━━━━━━━━━━━*');
+    lines.push('Have a great day! 🚀');
 
     return lines.join('\n');
   }

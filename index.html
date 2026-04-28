@@ -407,6 +407,7 @@
         <button class="chip active" data-filter="all" onclick="App.setJobFilter('all',this)">All</button>
         <button class="chip" data-filter="paid" onclick="App.setJobFilter('paid',this)">Paid</button>
         <button class="chip" data-filter="unpaid" onclick="App.setJobFilter('unpaid',this)">Not Paid</button>
+        <button class="chip" data-filter="lost" onclick="App.setJobFilter('lost',this)">Lost</button>
       </div>
 
       <div id="jobs-list-container" class="job-list">
@@ -519,7 +520,15 @@
           </div>
           <div class="field-group" style="flex:1">
             <label class="field-label">Time <span id="conf-time" class="conf-badge"></span></label>
-            <input type="time" id="f-time" class="field-input">
+            <select id="f-time" class="field-input">
+              <option value="">Select time window</option>
+              <option value="08-10">8-10 AM</option>
+              <option value="10-12">10 AM-12 PM</option>
+              <option value="12-14">12-2 PM</option>
+              <option value="14-16">2-4 PM</option>
+              <option value="16-18">4-6 PM</option>
+              <option value="18-20">6-8 PM</option>
+            </select>
           </div>
         </div>
 

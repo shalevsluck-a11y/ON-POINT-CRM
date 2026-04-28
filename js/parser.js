@@ -93,6 +93,7 @@ const LeadParser = (() => {
 
   function _parsePhone(text) {
     // Match: (516) 555-1234, 516-555-1234, 5165551234, +15165551234
+    // IMPORTANT: Only match 10-digit phone numbers, NOT 5-digit ZIPs
     const patterns = [
       /(?:phone|cell|mobile|tel|call)[:\s#]*([\+1]?\s*\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4})/i,
       /\b(\(?\d{3}\)?[\s.\-]\d{3}[\s.\-]\d{4})\b/,
@@ -103,7 +104,12 @@ const LeadParser = (() => {
     for (const pat of patterns) {
       const m = text.match(pat);
       if (m) {
-        const phone = _formatPhone(m[1]);
+        const raw = m[1];
+        // Skip if this looks like a ZIP code (exactly 5 digits with no separators)
+        const digitsOnly = raw.replace(/\D/g, '');
+        if (digitsOnly.length === 5) continue;
+
+        const phone = _formatPhone(raw);
         if (phone) return { value: phone, confidence: 'high' };
       }
     }
@@ -140,10 +146,13 @@ const LeadParser = (() => {
 
     // Check each line
     for (const line of lines) {
+      // Skip lines that look like phone numbers (contain parentheses or dashes with digits)
+      if (/\(\d{3}\)|\d{3}[\-\.]\d{3}[\-\.]\d{4}/.test(line)) continue;
+
       if (/^\d+\s+/.test(line) && line.length < 80) {
         // Remove city/state/zip from the line first
         const addr = line.replace(/,?\s*[A-Z]{2}\s+\d{5}(-\d{4})?$/, '')
-                        .replace(/,?\s*(?:NY|NJ|CT|PA|FL|TX)\b/gi, '')
+                        .replace(/,?\s*(?:NY|NJ|CT|PA|FL|TX|CA|MA|GA|OH|MI|IN)\b/gi, '')
                         .trim();
 
         // Reject lines that are phone numbers.
@@ -152,6 +161,9 @@ const LeadParser = (() => {
         const digitsOnly     = addr.replace(/\D/g, '');
         const nonDigitNonSep = addr.replace(/[\d\s\-\.\(\)\+]/g, '');
         if (digitsOnly.length >= 7 && digitsOnly.length <= 11 && nonDigitNonSep.length <= 2) continue;
+
+        // Also reject if it's just 5 digits (ZIP code)
+        if (digitsOnly.length === 5 && nonDigitNonSep.length === 0) continue;
 
         if (addr.length > 5 && /\d/.test(addr)) {
           return { value: _titleCase(addr), confidence: 'medium' };
