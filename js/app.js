@@ -817,7 +817,7 @@ const App = (() => {
     // Apply status filter
     if (_state.jobFilter && _state.jobFilter !== 'all') {
       if (_state.jobFilter === 'unpaid') {
-        jobs = jobs.filter(j => j.status !== 'paid');
+        jobs = jobs.filter(j => j.status !== 'paid' && j.status !== 'lost');
       } else {
         jobs = jobs.filter(j => j.status === _state.jobFilter);
       }
