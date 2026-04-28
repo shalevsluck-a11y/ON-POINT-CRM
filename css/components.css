@@ -29,6 +29,7 @@
 .sb-closed     { background: rgba(52,211,153,0.13);   color: var(--s-closed); }
 .sb-paid       { background: rgba(74,222,128,0.13);   color: var(--s-paid); }
 .sb-follow_up  { background: rgba(251,146,60,0.13);   color: var(--s-follow-up); }
+.sb-lost       { background: rgba(239,68,68,0.13);    color: var(--s-lost); }
 
 /* ── JOB CARDS ─────────────────────────────────────────────── */
 .job-card {
@@ -56,6 +57,7 @@
 .job-card.jc-closed::before     { background: var(--s-closed); }
 .job-card.jc-paid::before       { background: var(--s-paid); }
 .job-card.jc-follow_up::before  { background: var(--s-follow-up); }
+.job-card.jc-lost::before       { background: var(--s-lost); }
 
 .job-card-inner { padding: 14px 14px 13px 18px; }
 

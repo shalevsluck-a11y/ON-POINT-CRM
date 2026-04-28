@@ -904,19 +904,19 @@ const App = (() => {
     const statusClass = {
       new: 'jc-new', scheduled: 'jc-scheduled',
       in_progress: 'jc-inprogress', closed: 'jc-closed', paid: 'jc-paid',
-      follow_up: 'jc-follow_up',
+      follow_up: 'jc-follow_up', lost: 'jc-lost',
     }[job.status] || 'jc-new';
 
     const badgeClass = {
       new: 'sb-new', scheduled: 'sb-scheduled',
       in_progress: 'sb-inprogress', closed: 'sb-closed', paid: 'sb-paid',
-      follow_up: 'sb-follow_up',
+      follow_up: 'sb-follow_up', lost: 'sb-lost',
     }[job.status] || 'sb-new';
 
     const statusLabel = {
       new: 'New', scheduled: 'Scheduled',
       in_progress: 'In Progress', closed: 'Closed', paid: 'Paid',
-      follow_up: 'Follow-Up',
+      follow_up: 'Follow-Up', lost: 'Lost',
     }[job.status] || job.status;
 
     const followUpBadge = job.status === 'follow_up'

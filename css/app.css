@@ -36,6 +36,7 @@
   --s-closed:     #34D399;
   --s-paid:       #4ADE80;
   --s-follow-up:  #FB923C;
+  --s-lost:       #EF4444;
 
   /* Spacing */
   --sp-xs: 4px;
@@ -112,6 +113,7 @@
   --s-closed:     #34C759;
   --s-paid:       #30D158;
   --s-follow-up:  #EA580C;
+  --s-lost:       #DC2626;
 
   --glass-bg:     rgba(255,255,255,0.88);
   --glass-border: rgba(0,0,0,0.1);
