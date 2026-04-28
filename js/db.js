@@ -57,6 +57,12 @@ const DB = (() => {
           return serverJob;
         }
 
+        // Always preserve lost status (never overwrite with server version)
+        if (localJob.status === 'lost') {
+          console.log('[DB._syncJobsDown] ✅ KEEPING LOCAL version - job is LOST:', serverJob.jobId);
+          return localJob;
+        }
+
         // If local job was modified in last 30 seconds, keep local version (pending write)
         const localTime = localJob.updatedAt ? new Date(localJob.updatedAt).getTime() : 0;
         const now = Date.now();
