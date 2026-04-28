@@ -568,6 +568,13 @@ const Balance = (function() {
           ${generateTechBreakdown(jobs)}
         </div>
       ` : ''}
+
+      <div class="report-alert" style="margin-top:20px;background:#e3f2fd;border:1px solid #2196f3">
+        <div class="alert-content">
+          <div class="alert-title" style="color:#1976d2;font-weight:bold">💳 ZELLE PAYMENT</div>
+          <div class="alert-text" style="font-size:16px;font-weight:bold">SERVICE@ONPOINTPRODOORS.COM</div>
+        </div>
+      </div>
     `;
 
     return html;
@@ -735,7 +742,8 @@ const Balance = (function() {
 
       text += `💰 BREAKDOWN\n`;
       text += `Tech Cut: $${formatMoney(stats.techPayout)}\n`;
-      text += `*YOU OWE* (COMPANY CUT): $${formatMoney(companyCut)}\n`;
+      text += `*YOU OWE* (COMPANY CUT): $${formatMoney(companyCut)}\n\n`;
+      text += `💳 *ZELLE:* SERVICE@ONPOINTPRODOORS.COM\n`;
     }
 
     text += `\n━━━━━━━━━━━━━━━━━━━━━━━━\n`;
