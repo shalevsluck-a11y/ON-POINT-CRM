@@ -603,8 +603,8 @@ const App = (() => {
 
     const jobCards = todayJobs.length > 0
       ? todayJobs.map(j => {
-          const statusLbl = { new:'New', scheduled:'Sched', in_progress:'Active', follow_up:'Follow-Up' }[j.status] || j.status;
-          const statusCls = { new:'sb-new', scheduled:'sb-scheduled', in_progress:'sb-inprogress', follow_up:'sb-follow_up' }[j.status] || 'sb-new';
+          const statusLbl = { new:'New', scheduled:'Sched', in_progress:'Active', follow_up:'Follow-Up', lost:'Lost' }[j.status] || j.status;
+          const statusCls = { new:'sb-new', scheduled:'sb-scheduled', in_progress:'sb-inprogress', follow_up:'sb-follow_up', lost:'sb-lost' }[j.status] || 'sb-new';
           return `<div class="tech-today-card" onclick="App.openJobDetail('${j.jobId}')">
             <div class="ttc-left">
               <div class="ttc-time">${j.scheduledTime ? _formatTime(j.scheduledTime) : 'TBD'}</div>
@@ -2830,7 +2830,7 @@ const App = (() => {
               <div class="cal-job-name">${_esc(job.customerName || 'Unknown')}</div>
               <div class="cal-job-addr">${_esc(job.address || '')}${job.zip ? ' '+job.zip : ''}</div>
             </div>
-            <span class="status-badge ${{new:'sb-new',scheduled:'sb-scheduled',in_progress:'sb-inprogress',closed:'sb-closed',paid:'sb-paid'}[job.status]||'sb-new'}" style="font-size:10px">${{new:'New',scheduled:'Sched',in_progress:'Active',closed:'Done',paid:'Paid'}[job.status]||''}</span>
+            <span class="status-badge ${{new:'sb-new',scheduled:'sb-scheduled',in_progress:'sb-inprogress',closed:'sb-closed',paid:'sb-paid',lost:'sb-lost'}[job.status]||'sb-new'}" style="font-size:10px">${{new:'New',scheduled:'Sched',in_progress:'Active',closed:'Done',paid:'Paid',lost:'Lost'}[job.status]||''}</span>
           </div>`;
       }).join('');
 
