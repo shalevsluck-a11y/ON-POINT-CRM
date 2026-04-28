@@ -463,9 +463,8 @@ const Balance = (function() {
     const sourceFilter = currentReportData?.sourceFilter;
     const displaySource = assignedLeadSource || sourceFilter;
 
-    // Calculate per-job averages
-    const avgJobValue = stats.totalJobs > 0 ? stats.totalCollected / stats.totalJobs : 0;
-    const avgPayout = stats.totalJobs > 0 ? stats.techPayout / stats.totalJobs : 0;
+    // Calculate company cut (what tech owes company)
+    const companyCut = stats.laborTotal - stats.techPayout;
 
     let html = `
       <div class="report-header">
@@ -494,40 +493,32 @@ const Balance = (function() {
 
       <div class="report-summary">
         <div class="summary-card">
-          <div class="summary-label">Jobs Completed</div>
+          <div class="summary-label">Total Jobs</div>
           <div class="summary-value">${stats.totalJobs}</div>
         </div>
-        <div class="summary-card ${stats.totalCollected > 0 ? 'positive' : ''}">
-          <div class="summary-label">Total Revenue</div>
+        <div class="summary-card">
+          <div class="summary-label">Total Sales</div>
           <div class="summary-value">$${formatMoney(stats.totalCollected)}</div>
         </div>
-        <div class="summary-card ${stats.techPayout > 0 ? 'positive' : ''}">
-          <div class="summary-label">Tech Payout</div>
-          <div class="summary-value">$${formatMoney(stats.techPayout)}</div>
+        <div class="summary-card">
+          <div class="summary-label">Total Parts</div>
+          <div class="summary-value">$${formatMoney(stats.partsCost)}</div>
         </div>
         <div class="summary-card">
-          <div class="summary-label">Avg per Job</div>
-          <div class="summary-value">$${formatMoney(avgJobValue)}</div>
+          <div class="summary-label">Labor (Total - Parts)</div>
+          <div class="summary-value">$${formatMoney(stats.laborTotal)}</div>
         </div>
       </div>
 
       <div class="report-breakdown">
-        <h3>Performance Metrics</h3>
+        <h3>Financial Breakdown</h3>
         <div class="breakdown-row">
-          <span class="breakdown-label">Average Job Value</span>
-          <span class="breakdown-value">$${formatMoney(avgJobValue)}</span>
-        </div>
-        <div class="breakdown-row">
-          <span class="breakdown-label">Average Payout per Job</span>
-          <span class="breakdown-value">$${formatMoney(avgPayout)}</span>
-        </div>
-        <div class="breakdown-row">
-          <span class="breakdown-label">Parts Cost</span>
-          <span class="breakdown-value">$${formatMoney(stats.partsCost)}</span>
+          <span class="breakdown-label">Tech Cut (from Labor)</span>
+          <span class="breakdown-value">$${formatMoney(stats.techPayout)}</span>
         </div>
         <div class="breakdown-row total">
-          <span class="breakdown-label">Total Tech Payout</span>
-          <span class="breakdown-value positive">$${formatMoney(stats.techPayout)}</span>
+          <span class="breakdown-label">Company Cut (Tech Owes)</span>
+          <span class="breakdown-value positive">$${formatMoney(companyCut)}</span>
         </div>
       </div>
 
@@ -685,7 +676,7 @@ const Balance = (function() {
       const settings = DB.getSettings();
       const tech = techId ? settings.technicians?.find(t => t.id === techId) : null;
       const techName = tech ? tech.name : (techId ? 'Unknown Tech' : 'All Techs');
-      const avgJobValue = stats.totalJobs > 0 ? stats.totalCollected / stats.totalJobs : 0;
+      const companyCut = stats.laborTotal - stats.techPayout;
 
       text = `👤 TECH BALANCE REPORT\n`;
       text += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
@@ -696,11 +687,15 @@ const Balance = (function() {
       text += `Period: ${periodLabel}\n`;
       text += `Date: ${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}\n\n`;
 
-      text += `📈 PERFORMANCE\n`;
-      text += `Jobs Completed: ${stats.totalJobs}\n`;
-      text += `Total Revenue: $${formatMoney(stats.totalCollected)}\n`;
-      text += `Tech Payout: $${formatMoney(stats.techPayout)}\n`;
-      text += `Avg per Job: $${formatMoney(avgJobValue)}\n`;
+      text += `📊 SUMMARY\n`;
+      text += `Total Jobs: ${stats.totalJobs}\n`;
+      text += `Total Sales: $${formatMoney(stats.totalCollected)}\n`;
+      text += `Total Parts: $${formatMoney(stats.partsCost)}\n`;
+      text += `Labor (Total - Parts): $${formatMoney(stats.laborTotal)}\n\n`;
+
+      text += `💰 BREAKDOWN\n`;
+      text += `Tech Cut: $${formatMoney(stats.techPayout)}\n`;
+      text += `Company Cut (Tech Owes): $${formatMoney(companyCut)}\n`;
     }
 
     text += `\n━━━━━━━━━━━━━━━━━━━━━━━━\n`;
