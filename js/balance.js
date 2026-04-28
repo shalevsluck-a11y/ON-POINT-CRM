@@ -305,9 +305,12 @@ const Balance = (function() {
           return { start: today, end: new Date(today.getTime() + 24 * 60 * 60 * 1000), label: 'Today' };
         }
 
-        const start = new Date(startInput);
-        const end = new Date(endInput);
-        end.setHours(23, 59, 59, 999);
+        // Parse dates manually to avoid timezone issues (same as job date parsing)
+        const startParts = startInput.split('-');
+        const start = new Date(startParts[0], startParts[1] - 1, startParts[2], 0, 0, 0, 0);
+
+        const endParts = endInput.split('-');
+        const end = new Date(endParts[0], endParts[1] - 1, endParts[2], 23, 59, 59, 999);
 
         return {
           start,
