@@ -2436,13 +2436,9 @@ const App = (() => {
     SyncManager.queueJob(jobId);
     closeModal();
     renderDashboard();
+    setJobFilter('lost', null);
     renderJobList();
     showToast('Job marked as lost', 'info');
-
-    // Refresh detail view
-    const container = document.getElementById('job-detail-content');
-    const refreshed = DB.getJobById(jobId);
-    if (container && refreshed) container.innerHTML = _buildJobDetailHTML(refreshed);
   }
 
   // ══════════════════════════════════════════════════════════
