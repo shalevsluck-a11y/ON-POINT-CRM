@@ -13,14 +13,42 @@ const supabaseAdmin = createClient(
 );
 
 // Direct project URL admin client (bypasses custom domain PostgREST cache)
+// Keys come from env. Fallbacks kept temporarily so deploys don't break — rotate keys on Supabase dashboard then drop fallbacks.
 const supabaseDirectAdmin = createClient(
-  'https://nmmpemjcnncjfpooytpv.supabase.co',
-  '***REDACTED-SUPABASE-SERVICE-KEY***',
+  process.env.SUPABASE_DIRECT_URL || 'https://nmmpemjcnncjfpooytpv.supabase.co',
+  process.env.SUPABASE_DIRECT_SERVICE_KEY ||
+    '***REDACTED-SUPABASE-SERVICE-KEY***',
   { auth: { persistSession: false } }
 );
 
 app.disable('x-powered-by');
 app.use(express.json());
+
+// Simple in-memory rate limiter (no extra dependency).
+// Use on write/admin endpoints to slow obvious abuse without affecting normal usage.
+const _rlBuckets = new Map();
+function rateLimit({ windowMs = 60_000, max = 60, key = req => (req.ip || 'unknown') } = {}) {
+  return (req, res, next) => {
+    try {
+      const k = key(req);
+      const now = Date.now();
+      let bucket = _rlBuckets.get(k);
+      if (!bucket || now - bucket.start > windowMs) {
+        bucket = { start: now, count: 0 };
+        _rlBuckets.set(k, bucket);
+      }
+      bucket.count++;
+      if (bucket.count > max) {
+        return res.status(429).json({ error: 'Too many requests, slow down' });
+      }
+      // periodic cleanup so the map doesn't grow forever
+      if (_rlBuckets.size > 5000) {
+        for (const [k2, b2] of _rlBuckets) if (now - b2.start > windowMs) _rlBuckets.delete(k2);
+      }
+      next();
+    } catch (_) { next(); }
+  };
+}
 
 // Mirror a user's profile from the OLD auth project into the NEW direct project.
 // Why: auth lives on the custom-domain project but jobs/notifications live on the direct project.
@@ -115,7 +143,7 @@ app.use(express.static(path.join(__dirname), {
 }));
 
 // Admin endpoints
-app.post('/admin/create-user', async (req, res) => {
+app.post('/admin/create-user', rateLimit({ max: 20, windowMs: 60_000 }), async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
@@ -276,7 +304,7 @@ app.delete('/admin/delete-user/:id', async (req, res) => {
 });
 
 // Exchange magic token for Supabase session
-app.post('/auth/magic-session', async (req, res) => {
+app.post('/auth/magic-session', rateLimit({ max: 30, windowMs: 60_000 }), async (req, res) => {
   try {
     const { magic_token } = req.body;
     if (!magic_token) {
@@ -705,7 +733,7 @@ app.post('/api/save-technicians', async (req, res) => {
 });
 
 // Save job endpoint (bypasses custom domain routing to correct project)
-app.post('/api/save-job', async (req, res) => {
+app.post('/api/save-job', rateLimit({ max: 120, windowMs: 60_000 }), async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) {

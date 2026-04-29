@@ -243,9 +243,15 @@ const App = (() => {
     const settings = DB.getSettings();
     if (settings.appsScriptUrl) setTimeout(() => SyncManager.syncAll(), 3000);
 
-    // Background polling: refresh jobs every 30 seconds as fallback
+    // Background polling — interval depends on realtime health.
+    // When realtime is SUBSCRIBED, poll every 5 min (battery-friendly).
+    // When disconnected, fall back to 30 s so jobs stay fresh.
+    let _lastSyncAt = 0;
     setInterval(async () => {
       try {
+        const minInterval = _realtimeConnected ? 300000 : 30000;
+        if (Date.now() - _lastSyncAt < minInterval - 1000) return;
+        _lastSyncAt = Date.now();
         await DB.syncJobsFromRemote();
         renderDashboard();
         renderJobList();
@@ -303,7 +309,9 @@ const App = (() => {
     if (settingsMenu) settingsMenu.classList.toggle('hidden', !canAccessSettings);
   }
 
+  let _realtimeConnected = false;
   function _updateRealtimeStatus(status) {
+    _realtimeConnected = (status === 'SUBSCRIBED');
     const indicator = document.getElementById('realtime-status');
     if (!indicator) return;
 
