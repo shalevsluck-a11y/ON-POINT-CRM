@@ -4985,8 +4985,13 @@ const App = (() => {
       '*📅 SCHEDULE*',
       `  • Date: ${dateLine}`,
       `  • Time: ${timeLine}`,
-      `  • Service: ${job.description || 'Garage Door Service'}`,
     ];
+
+    if (job.description) {
+      lines.push('');
+      lines.push('*🛠️ DESCRIPTION*');
+      lines.push(`  ${job.description}`);
+    }
 
     if (job.notes) {
       lines.push('');
@@ -5000,10 +5005,6 @@ const App = (() => {
       lines.push('*💰 YOUR PAYOUT*');
       lines.push(`  *$${techPayout.toFixed(2)}*`);
     }
-
-    lines.push('');
-    lines.push('*━━━━━━━━━━━━━━━━━━━━━━━*');
-    lines.push('Have a great day! 🚀');
 
     return lines.join('\n');
   }
