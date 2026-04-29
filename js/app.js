@@ -2551,6 +2551,37 @@ const App = (() => {
     _updateClosePreview();
   }
 
+  // Build round-hour options 0–23 with AM/PM labels. Selected hour highlighted.
+  function _buildHourOptions(selectedHour) {
+    const opts = ['<option value="">—</option>'];
+    for (let h = 0; h < 24; h++) {
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+      const sel = h === selectedHour ? 'selected' : '';
+      opts.push(`<option value="${h}" ${sel}>${h12} ${ampm}</option>`);
+    }
+    return opts.join('');
+  }
+
+  // Pull start/end hour from "HH-HH" window string (or empty).
+  function _parseHourFromWindow(windowStr, which) {
+    if (!windowStr || !windowStr.includes('-')) return null;
+    const [s, e] = windowStr.split('-').map(n => parseInt(n, 10));
+    if (which === 'from') return Number.isFinite(s) ? s : null;
+    if (which === 'to')   return Number.isFinite(e) ? e : null;
+    return null;
+  }
+
+  // Concat From/To into "HH-HH" and write to hidden edit-time field.
+  function _editSyncTimeWindow() {
+    const from = document.getElementById('edit-time-from')?.value;
+    const to   = document.getElementById('edit-time-to')?.value;
+    const hidden = document.getElementById('edit-time');
+    if (!hidden) return;
+    if (from === '' || to === '') { hidden.value = ''; return; }
+    hidden.value = `${String(from).padStart(2,'0')}-${String(to).padStart(2,'0')}`;
+  }
+
   // When tech picked in Edit modal, auto-fill payout % from tech's default. Still editable.
   function _editAutoFillPayout(selectEl) {
     if (!selectEl) return;
@@ -2944,16 +2975,17 @@ const App = (() => {
           <input type="date" id="edit-date" class="field-input" value="${job.scheduledDate || ''}">
         </div>
         <div class="field-group" style="flex:1">
-          <label class="field-label">Time</label>
-          <select id="edit-time" class="field-input" ${isPaid ? 'disabled' : ''}>
-            <option value="">Select time window</option>
-            <option value="08-10" ${job.scheduledTime === '08-10' ? 'selected' : ''}>8-10 AM</option>
-            <option value="10-12" ${job.scheduledTime === '10-12' ? 'selected' : ''}>10 AM-12 PM</option>
-            <option value="12-14" ${job.scheduledTime === '12-14' ? 'selected' : ''}>12-2 PM</option>
-            <option value="14-16" ${job.scheduledTime === '14-16' ? 'selected' : ''}>2-4 PM</option>
-            <option value="16-18" ${job.scheduledTime === '16-18' ? 'selected' : ''}>4-6 PM</option>
-            <option value="18-20" ${job.scheduledTime === '18-20' ? 'selected' : ''}>6-8 PM</option>
-          </select>
+          <label class="field-label">Time Window</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <select id="edit-time-from" class="field-input" style="flex:1" ${isPaid ? 'disabled' : ''} onchange="App._editSyncTimeWindow()">
+              ${_buildHourOptions(_parseHourFromWindow(job.scheduledTime, 'from'))}
+            </select>
+            <span style="color:var(--color-text-muted);font-weight:600">–</span>
+            <select id="edit-time-to" class="field-input" style="flex:1" ${isPaid ? 'disabled' : ''} onchange="App._editSyncTimeWindow()">
+              ${_buildHourOptions(_parseHourFromWindow(job.scheduledTime, 'to'))}
+            </select>
+          </div>
+          <input type="hidden" id="edit-time" value="${job.scheduledTime || ''}">
         </div>
       </div>
       <div class="field-group">
@@ -5259,6 +5291,7 @@ const App = (() => {
     _closeSelectPay,
     _closeTaxSelect,
     _editAutoFillPayout,
+    _editSyncTimeWindow,
     _editSelectPay,
     _editTaxSelect,
     _saveEditedJob,
