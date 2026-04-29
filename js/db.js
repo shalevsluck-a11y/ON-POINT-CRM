@@ -83,18 +83,25 @@ const DB = (() => {
         return serverJob;
       });
 
-      // Preserve local-only jobs (created locally but server upsert failed or is in flight)
-      // Without this, a failed save would cause the job to vanish on next sync.
+      // Preserve local-only jobs ONLY if they were created very recently (last 5 min).
+      // Older "local-only" jobs are usually RLS-filtered for this user (e.g. dispatcher
+      // source restriction), not failed saves. Pushing them would overwrite server state.
       const serverIds = new Set(serverJobs.map(j => j.jobId));
+      const RECENT_MS = 5 * 60 * 1000;
+      const now = Date.now();
       for (const localJob of localJobs) {
-        if (!serverIds.has(localJob.jobId)) {
-          console.log('[DB._syncJobsDown] 💾 PRESERVING local-only job (not on server yet):', localJob.jobId);
+        if (serverIds.has(localJob.jobId)) continue;
+        const created = localJob.createdAt ? new Date(localJob.createdAt).getTime() : 0;
+        const isRecent = created > 0 && (now - created) < RECENT_MS;
+        if (isRecent) {
+          console.log('[DB._syncJobsDown] 💾 PRESERVING recent local-only job:', localJob.jobId);
           merged.push(localJob);
-          // Retry the upsert in background — likely failed earlier (validation/network)
+          // Retry only for likely-pending recent jobs
           _upsertJobRemote(localJob).catch(err => {
             console.warn('[DB._syncJobsDown] Retry upsert failed for', localJob.jobId, ':', err.message);
           });
         }
+        // Older local jobs not on server: trust server (likely RLS-filtered for this user) — drop from local view
       }
 
       Storage.saveJobs(merged);
