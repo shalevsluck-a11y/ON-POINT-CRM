@@ -60,6 +60,11 @@ const DB = (() => {
         // Always preserve lost status (never overwrite with server version)
         if (localJob.status === 'lost') {
           console.log('[DB._syncJobsDown] ✅ KEEPING LOCAL version - job is LOST:', serverJob.jobId);
+          // Auto-repair: if server doesn't show lost, push it (constraint used to reject 'lost')
+          if (serverJob.status !== 'lost') {
+            console.log('[DB._syncJobsDown] 🔧 AUTO-REPAIR: pushing lost status to server for', serverJob.jobId);
+            _upsertJobRemote(localJob).catch(err => console.warn('[AutoRepair] push lost failed:', err.message));
+          }
           return localJob;
         }
 
