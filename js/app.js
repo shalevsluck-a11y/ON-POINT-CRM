@@ -192,8 +192,9 @@ const App = (() => {
         renderDashboard();
         renderJobList();
         if (_jobsViewMode === 'kanban' && _state.currentView === 'jobs') renderKanban();
+        if (_state.currentView === 'balance') renderReportsDashboard();
       },
-      () => { renderDashboard(); renderJobList(); if (_jobsViewMode === 'kanban' && _state.currentView === 'jobs') renderKanban(); if (_state.currentView === 'job-detail') openJobDetail(_state.currentJobId); },
+      () => { renderDashboard(); renderJobList(); if (_jobsViewMode === 'kanban' && _state.currentView === 'jobs') renderKanban(); if (_state.currentView === 'job-detail') openJobDetail(_state.currentJobId); if (_state.currentView === 'balance') renderReportsDashboard(); },
       (deletedJobId) => {
         renderDashboard();
         renderJobList();
