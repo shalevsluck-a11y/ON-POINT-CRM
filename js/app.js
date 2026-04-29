@@ -958,6 +958,10 @@ const App = (() => {
       ? `<button class="wa-btn" onclick="event.stopPropagation();App.openWhatsApp('${job.jobId}')" title="Dispatch to Tech">&#128172;</button>`
       : '';
 
+    // Summary preview: description first, fall back to notes, then closingDetails
+    const summaryRaw = (job.description || job.notes || job.closingDetails || '').trim();
+    const summary = summaryRaw ? _esc(summaryRaw.replace(/\s+/g, ' ').slice(0, 140)) + (summaryRaw.length > 140 ? '…' : '') : '';
+
     return `<div class="job-card ${statusClass}" onclick="App.openJobDetail('${job.jobId}')">
       <div class="job-card-inner">
         <div class="job-card-top">
@@ -971,6 +975,7 @@ const App = (() => {
           <span class="job-card-address">${_esc(job.address || '')}${job.city ? ', '+_esc(job.city) : ''}</span>
           <span class="job-card-date">${dateTimeStr}</span>
         </div>
+        ${summary ? `<div class="job-card-summary">${summary}</div>` : ''}
         <div class="job-card-bottom">
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             ${tech ? `<span class="job-card-tech"><span class="tech-dot" style="background:${techColor}"></span>${_esc(tech.name)}</span>` : ''}
@@ -2546,6 +2551,17 @@ const App = (() => {
     _updateClosePreview();
   }
 
+  // When tech picked in Edit modal, auto-fill payout % from tech's default. Still editable.
+  function _editAutoFillPayout(selectEl) {
+    if (!selectEl) return;
+    const opt = selectEl.options[selectEl.selectedIndex];
+    const pct = parseFloat(opt?.dataset?.pct);
+    const pctInput = document.getElementById('edit-tech-pct');
+    if (!pctInput || pctInput.disabled) return;
+    if (Number.isFinite(pct) && pct > 0) pctInput.value = pct;
+    if (!opt?.value) pctInput.value = 0;
+  }
+
   function _editSelectPay(btn) {
     document.querySelectorAll('#edit-pay-methods .pay-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
@@ -2957,9 +2973,9 @@ const App = (() => {
       </div>
       <div class="field-group">
         <label class="field-label">Assign Technician</label>
-        <select id="edit-tech-id" class="field-input">
+        <select id="edit-tech-id" class="field-input" onchange="App._editAutoFillPayout(this)">
           <option value="">No Tech Assigned</option>
-          ${settings.technicians.map(t => `<option value="${t.id}" ${job.assignedTechId === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}
+          ${settings.technicians.map(t => `<option value="${t.id}" data-pct="${t.percent || 0}" ${job.assignedTechId === t.id ? 'selected' : ''}>${t.name}</option>`).join('')}
         </select>
       </div>
       <div class="field-group">
@@ -3211,12 +3227,18 @@ const App = (() => {
         const conflictWarn = conflicts.includes(i)
           ? `<div class="cal-conflict-warn">&#9888; Time conflict detected</div>` : '';
 
+        const calSummaryRaw = (job.description || job.notes || job.closingDetails || '').trim();
+        const calSummary = calSummaryRaw
+          ? `<div class="cal-job-summary">${_esc(calSummaryRaw.replace(/\s+/g, ' ').slice(0, 110))}${calSummaryRaw.length > 110 ? '…' : ''}</div>`
+          : '';
+
         return `${conflictWarn}
           <div class="cal-job-row" onclick="App.openJobDetail('${job.jobId}')">
             <div class="cal-job-time">${job.scheduledTime ? _formatTime(job.scheduledTime) : 'TBD'}</div>
             <div class="cal-job-info">
               <div class="cal-job-name">${_esc(job.customerName || 'Unknown')}</div>
               <div class="cal-job-addr">${_esc(job.address || '')}${job.zip ? ' '+job.zip : ''}</div>
+              ${calSummary}
             </div>
             <span class="status-badge ${{new:'sb-new',scheduled:'sb-scheduled',in_progress:'sb-inprogress',closed:'sb-closed',paid:'sb-paid',lost:'sb-lost'}[job.status]||'sb-new'}" style="font-size:10px">${{new:'New',scheduled:'Sched',in_progress:'Active',closed:'Done',paid:'Paid',lost:'Lost'}[job.status]||''}</span>
           </div>`;
@@ -5237,6 +5259,9 @@ const App = (() => {
     _updateClosePreview,
     _closeSelectPay,
     _closeTaxSelect,
+    _editAutoFillPayout,
+    _editSelectPay,
+    _editTaxSelect,
     _saveEditedJob,
     confirmDeleteJob,
 
