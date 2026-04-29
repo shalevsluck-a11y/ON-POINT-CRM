@@ -36,30 +36,100 @@ const LeadParser = (() => {
   // ────────────────────────────────────────────
 
   function _parseName(text, lines) {
-    // Common patterns: "Name: John Smith", "Customer: ...", or first line of text
-    const labelPatterns = [
-      /(?:customer|client|name|contact)[:\s]+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i,
-      /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\s*(?:[-–]|\n|$)/m,
-    ];
-
-    for (const pat of labelPatterns) {
-      const m = text.match(pat);
-      if (m) {
-        const name = m[1].trim();
-        if (_isPlausibleName(name)) return { value: _titleCase(name), confidence: 'high' };
-      }
+    // 1) Labeled name: "Name: John Smith" / "Customer: ..." / "Contact: ..."
+    //    Allow apostrophes, hyphens, ALL CAPS, lowercase, mixed.
+    const labelRe = /(?:customer(?:\s+name)?|client|name|contact|caller|homeowner)[:\-\s]+([A-Za-z][A-Za-z'\-]*(?:\s+[A-Za-z][A-Za-z'\-]*){0,4})/i;
+    const lm = text.match(labelRe);
+    if (lm) {
+      const name = lm[1].trim().replace(/\s+/g, ' ');
+      if (_isPlausibleName(name)) return { value: _titleCase(name), confidence: 'high' };
     }
 
-    // Try first line if it looks like a name (no numbers, 1-4 words, blocklist checked)
-    for (const line of lines.slice(0, 3)) {
-      const clean = line.replace(/[^a-zA-Z\s]/g, '').trim();
+    // 2) Scan ALL lines (not just first 3). Skip lines that look like other fields.
+    //    Score each candidate; prefer earlier lines and label-free pure-name lines.
+    let best = null;
+    let bestScore = -1;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line) continue;
+      if (_looksLikePhone(line))   continue;
+      if (_looksLikeAddress(line)) continue;
+      if (_looksLikeZipOrState(line)) continue;
+      if (_looksLikeEmail(line))   continue;
+      if (_looksLikeUrl(line))     continue;
+      if (_looksLikeDateOrTime(line)) continue;
+      if (_looksLikeJobDesc(line)) continue;
+
+      // Strip common label prefixes ("Mr.", "Mrs.", "Ms.", "Dr.")
+      const stripped = line.replace(/^(?:mr|mrs|ms|dr|miss)\.?\s+/i, '');
+      // Allow letters, spaces, apostrophes, hyphens, periods (initials).
+      const clean = stripped.replace(/[^A-Za-z'\-\.\s]/g, '').replace(/\s+/g, ' ').trim();
+      if (!clean) continue;
       const words = clean.split(/\s+/).filter(Boolean);
-      if (words.length >= 1 && words.length <= 4 && words.every(w => /^[A-Z][a-z]{1,}$/.test(w)) && _isPlausibleName(clean)) {
-        return { value: clean, confidence: 'medium' };
-      }
+      if (words.length < 1 || words.length > 5) continue;
+      // Each word must be alphabetic (allow apostrophe/hyphen/period)
+      if (!words.every(w => /^[A-Za-z][A-Za-z'\-\.]*$/.test(w))) continue;
+      if (!_isPlausibleName(clean)) continue;
+
+      // Score: shorter line + earlier position + 2-3 words = better
+      let score = 100;
+      score -= i * 10;                          // earlier lines preferred
+      if (words.length === 2) score += 30;      // first + last typical
+      if (words.length === 3) score += 15;
+      if (words.length === 1) score -= 20;      // single-word names rarer
+      if (clean.length === line.length) score += 10; // pure (no stripped chars)
+      // Penalize ALL CAPS slightly (still accepted, but lower)
+      if (clean === clean.toUpperCase() && clean !== clean.toLowerCase()) score -= 5;
+      // Penalize all lowercase slightly
+      if (clean === clean.toLowerCase()) score -= 8;
+
+      if (score > bestScore) { bestScore = score; best = clean; }
+    }
+
+    if (best) {
+      const conf = bestScore >= 100 ? 'high' : bestScore >= 60 ? 'medium' : 'low';
+      return { value: _titleCase(best), confidence: conf };
     }
 
     return { value: '', confidence: 'low' };
+  }
+
+  // ─── helpers used by name parser to skip non-name lines ───
+  function _looksLikePhone(line) {
+    const digits = line.replace(/\D/g, '');
+    if (digits.length >= 7 && digits.length <= 11) {
+      // Has parens/dashes typical of phone, OR is mostly digits
+      if (/[\(\)\-\.]/.test(line) || /\b\d{10,11}\b/.test(line)) return true;
+      const nonDigit = line.replace(/[\d\s\-\.\(\)\+]/g, '');
+      if (nonDigit.length <= 2) return true;
+    }
+    return false;
+  }
+  function _looksLikeAddress(line) {
+    // House number followed by street word
+    return /^\s*\d{1,6}\s+\S+/.test(line) && !/^\d{5}(-\d{4})?\s*$/.test(line.trim());
+  }
+  function _looksLikeZipOrState(line) {
+    const t = line.trim();
+    if (/^\d{5}(-\d{4})?$/.test(t)) return true;
+    if (/^[A-Z]{2}$/.test(t)) return true;
+    // City, ST ZIP
+    if (/[A-Za-z],?\s*[A-Z]{2}\s+\d{5}/.test(t)) return true;
+    return false;
+  }
+  function _looksLikeEmail(line) { return /\S+@\S+\.\S+/.test(line); }
+  function _looksLikeUrl(line)   { return /https?:\/\/|www\./i.test(line); }
+  function _looksLikeDateOrTime(line) {
+    if (/\b\d{1,2}[\/\-]\d{1,2}([\/\-]\d{2,4})?\b/.test(line)) return true;
+    if (/\b\d{1,2}:\d{2}\s*(am|pm)?\b/i.test(line)) return true;
+    if (/\b(today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i.test(line)) return true;
+    if (/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d/i.test(line)) return true;
+    return false;
+  }
+  function _looksLikeJobDesc(line) {
+    const kws = ['spring','opener','cable','panel','sensor','garage door','broken','stuck','off track','torsion','keypad','remote','motor','roller','hinge','noisy','replace','install','repair','not working'];
+    const ll = line.toLowerCase();
+    return kws.some(k => ll.includes(k));
   }
 
   // Words that should never be treated as a person's name
@@ -67,24 +137,36 @@ const LeadParser = (() => {
     'sunday','monday','tuesday','wednesday','thursday','friday','saturday',
     'january','february','march','april','may','june','july','august',
     'september','october','november','december',
-    'today','tomorrow','morning','afternoon','evening','night',
+    'today','tomorrow','morning','afternoon','evening','night','noon',
     'contracting','contractor','contractors','construction','services',
     'service','company','group','associates','enterprises','management',
     'llc','inc','corp','co','ltd',
+    // Field labels — never a name even if they appear bare
+    'name','customer','client','contact','phone','cell','mobile','tel',
+    'address','street','city','state','zip','email',
+    // Common job-description nouns
+    'garage','door','spring','opener','cable','panel','sensor','remote',
+    'keypad','motor','roller','hinge','torsion','extension',
+    // Filler
+    'new','old','urgent','asap','please','thanks','thank',
   ]);
 
   function _isPlausibleName(str) {
     if (!str) return false;
     if (/\d/.test(str)) return false;
-    const words = str.split(/\s+/);
+    // Strip apostrophes/hyphens/periods for word splitting (counts O'Brien as one word)
+    const words = str.split(/\s+/).filter(Boolean);
     if (words.length < 1 || words.length > 5 || str.length < 2) return false;
-    // Reject if any word is a day, month, or known non-name term
-    if (words.some(w => _NAME_BLOCKLIST.has(w.toLowerCase()))) return false;
+    // Reject if ANY word is a known non-name term
+    if (words.some(w => _NAME_BLOCKLIST.has(w.toLowerCase().replace(/[\.\-']/g,'')))) return false;
+    // At least one word must be 2+ letters (avoid single-letter junk)
+    if (!words.some(w => w.replace(/[\.\-']/g,'').length >= 2)) return false;
     return true;
   }
 
   function _titleCase(str) {
-    return str.replace(/\w\S*/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+    // Capitalize after start, whitespace, hyphen, or apostrophe (handles O'Brien, Smith-Jones, Mary Anne)
+    return str.toLowerCase().replace(/(^|[\s\-'])([a-z])/g, (_, sep, ch) => sep + ch.toUpperCase());
   }
 
   // ────────────────────────────────────────────
