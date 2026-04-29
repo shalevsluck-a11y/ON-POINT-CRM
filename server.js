@@ -722,7 +722,7 @@ app.post('/api/save-job', async (req, res) => {
       state:                job.state || '',
       zip:                  job.zip || '',
       scheduled_date:       job.scheduledDate || null,
-      scheduled_time:       job.scheduledTime || null,
+      scheduled_time:       /^\d{1,2}:\d{2}(:\d{2})?$/.test(job.scheduledTime || '') ? job.scheduledTime : null,
       description:          job.description || '',
       notes:                job.notes || '',
       source:               job.source || 'my_lead',

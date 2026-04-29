@@ -83,6 +83,20 @@ const DB = (() => {
         return serverJob;
       });
 
+      // Preserve local-only jobs (created locally but server upsert failed or is in flight)
+      // Without this, a failed save would cause the job to vanish on next sync.
+      const serverIds = new Set(serverJobs.map(j => j.jobId));
+      for (const localJob of localJobs) {
+        if (!serverIds.has(localJob.jobId)) {
+          console.log('[DB._syncJobsDown] 💾 PRESERVING local-only job (not on server yet):', localJob.jobId);
+          merged.push(localJob);
+          // Retry the upsert in background — likely failed earlier (validation/network)
+          _upsertJobRemote(localJob).catch(err => {
+            console.warn('[DB._syncJobsDown] Retry upsert failed for', localJob.jobId, ':', err.message);
+          });
+        }
+      }
+
       Storage.saveJobs(merged);
     } catch (e) {
       console.warn('DB._syncJobsDown error (using cache):', e.message);
@@ -220,7 +234,13 @@ const DB = (() => {
     // Push to Supabase in background
     _upsertJobRemote(job)
       .then(() => console.log('[DB] saveJob - Synced to Supabase SUCCESS for job', job.jobId))
-      .catch(e => console.error('[DB] saveJob remote error:', e.message, e));
+      .catch(e => {
+        console.error('[DB] saveJob remote error:', e.message, e);
+        // Surface failure to user so they don't think the job saved when it didn't
+        if (typeof showToast === 'function') {
+          showToast(`Save failed: ${e.message || 'unknown error'}`, 'error', 6000);
+        }
+      });
     return job;
   }
 
