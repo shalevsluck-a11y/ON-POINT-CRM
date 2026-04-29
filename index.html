@@ -444,6 +444,11 @@
         </div>
         <div class="or-divider"><span>or</span></div>
         <button class="btn btn-secondary btn-full" onclick="App.startBlankJob()">Enter Manually &rarr;</button>
+        <div style="margin-top:12px">
+          <button class="btn btn-tertiary btn-full" onclick="App.bulkAddLeads()" style="background:rgba(99,102,241,0.12);color:#6366f1;border:1px dashed #6366f1">
+            &#128465; Bulk Add (separate leads with --- or blank line)
+          </button>
+        </div>
       </div>
 
       <!-- STEP 2: All Details + Save -->
@@ -977,6 +982,16 @@
       <button class="btn-icon" onclick="App.closeModal()">&#215;</button>
     </div>
     <div class="modal-body" id="modal-close-job-body"></div>
+  </div>
+
+  <!-- Customer History Modal -->
+  <div id="modal-customer-history" class="modal hidden">
+    <div class="modal-handle"></div>
+    <div class="modal-header">
+      <h3 class="modal-title" id="customer-history-title">Customer History</h3>
+      <button class="btn-icon" onclick="App.closeModal()">&#215;</button>
+    </div>
+    <div class="modal-body" id="modal-customer-history-body"></div>
   </div>
 
   <!-- Zelle Memo Modal -->

@@ -1199,6 +1199,88 @@ const App = (() => {
     goToStep(2);
   }
 
+  // Bulk add — paste multiple leads separated by `---` or 2+ blank lines.
+  // Each chunk parsed via LeadParser, saved as status=new.
+  async function bulkAddLeads() {
+    if (!Auth.canCreateJobs()) {
+      showToast('Only admins and dispatchers can create jobs', 'error');
+      return;
+    }
+    const raw = document.getElementById('raw-lead-input')?.value?.trim();
+    if (!raw) { showToast('Paste lead text first', 'warning'); return; }
+
+    // Split on `---` line OR 2+ blank lines
+    const chunks = raw
+      .split(/\n\s*---+\s*\n|\n\s*\n\s*\n+/)
+      .map(c => c.trim())
+      .filter(c => c.length > 5);
+
+    if (chunks.length < 2) {
+      showToast('Need at least 2 leads — separate with --- or blank lines', 'warning');
+      return;
+    }
+
+    if (!confirm(`Create ${chunks.length} jobs from pasted leads?`)) return;
+
+    const settings = DB.getSettings();
+    const defaultState = settings.defaultState || 'NY';
+    let created = 0;
+    let failed = 0;
+
+    for (const chunk of chunks) {
+      try {
+        const p = LeadParser.parse(chunk);
+        if (!p.customerName?.value && !p.phone?.value) { failed++; continue; }
+
+        const job = {
+          jobId:           DB.generateId(),
+          status:          'new',
+          createdBy:       Auth.getUser()?.id || null,
+          customerName:    p.customerName?.value || 'Unknown',
+          phone:           p.phone?.value ? LeadParser.formatPhone(p.phone.value) : '',
+          address:         p.address?.value || '',
+          city:            p.city?.value || '',
+          state:           p.state?.value || defaultState,
+          zip:             p.zip?.value || '',
+          scheduledDate:   p.scheduledDate?.value || '',
+          scheduledTime:   p.scheduledTime?.value || '',
+          description:     p.description?.value || '',
+          notes:           '',
+          rawLead:         chunk,
+          source:          'my_lead',
+          contractorName:  '',
+          contractorPct:   0,
+          ownerPct:        100,
+          assignedTechId:  null,
+          assignedTechName:'',
+          isSelfAssigned:  false,
+          techPercent:     0,
+          estimatedTotal:  0,
+          jobTotal:        0,
+          partsCost:       0,
+          taxAmount:       0,
+          techPayout:      0,
+          ownerPayout:     0,
+          contractorFee:   0,
+          paymentMethod:   'cash',
+          photos:          [],
+          isRecurringCustomer: false,
+          syncStatus:      'pending',
+        };
+
+        await DB.saveJob(job);
+        created++;
+      } catch (e) {
+        console.warn('[BulkAdd] chunk failed:', e.message);
+        failed++;
+      }
+    }
+
+    document.getElementById('raw-lead-input').value = '';
+    showToast(`Created ${created} job${created !== 1 ? 's' : ''}${failed ? `, ${failed} skipped` : ''}`, created > 0 ? 'success' : 'warning');
+    if (created > 0) navigate('jobs');
+  }
+
   function startBlankJob() {
     // Clear any parsed data and go directly to step 2
     _state.parsedLead = null;
@@ -1241,13 +1323,67 @@ const App = (() => {
     if (!banner) return;
 
     if (result && result.isReturning) {
-      banner.textContent = `🔄 Returning customer — ${result.jobCount} previous job${result.jobCount > 1 ? 's' : ''}`;
+      banner.innerHTML = `🔄 Returning customer — ${result.jobCount} previous job${result.jobCount > 1 ? 's' : ''} · <span style="text-decoration:underline;cursor:pointer">view history</span>`;
+      banner.style.cursor = 'pointer';
+      banner.onclick = () => showCustomerHistory(phone);
       banner.classList.remove('hidden');
       _state.newJobDraft.isRecurringCustomer = true;
     } else {
       banner.classList.add('hidden');
+      banner.onclick = null;
       _state.newJobDraft.isRecurringCustomer = false;
     }
+  }
+
+  // Show all past jobs for a customer phone — admin/dispatcher view, click banner.
+  function showCustomerHistory(phone) {
+    if (!phone) return;
+    const normalized = phone.replace(/\D/g, '');
+    if (normalized.length < 7) return;
+    const allJobs = DB.getJobs();
+    const matches = allJobs.filter(j => j.phone && j.phone.replace(/\D/g, '') === normalized);
+    if (matches.length === 0) {
+      showToast('No history found', 'info');
+      return;
+    }
+    const titleEl = document.getElementById('customer-history-title');
+    const customer = matches[0].customerName || phone;
+    if (titleEl) titleEl.textContent = `${customer} · ${matches.length} job${matches.length !== 1 ? 's' : ''}`;
+    const body = document.getElementById('modal-customer-history-body');
+    if (!body) return;
+
+    const totalRevenue = matches.filter(j => j.status === 'paid').reduce((sum, j) => sum + (parseFloat(j.jobTotal) || 0), 0);
+    const lastJob = matches[0];
+
+    body.innerHTML = `
+      <div style="background:rgba(99,102,241,0.08);border-radius:12px;padding:14px;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--color-text-muted)">
+          <div><strong style="color:var(--color-text);font-size:18px">${matches.length}</strong> total jobs</div>
+          ${Auth.canSeeFinancials() ? `<div><strong style="color:var(--color-success);font-size:18px">$${totalRevenue.toFixed(0)}</strong> lifetime</div>` : ''}
+        </div>
+        <div style="margin-top:6px;font-size:12px;color:var(--color-text-muted)">Last seen: ${lastJob.scheduledDate || lastJob.createdAt?.slice(0,10) || '—'}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto">
+        ${matches.map(j => `
+          <div onclick="App.closeModal();App.openJobDetail('${j.jobId}')" style="background:var(--color-surface-raised);border-radius:10px;padding:12px;cursor:pointer;border-left:3px solid ${
+            j.status === 'paid' ? '#22c55e' :
+            j.status === 'lost' ? '#ef4444' :
+            j.status === 'follow_up' ? '#f59e0b' : '#6366f1'
+          }">
+            <div style="display:flex;justify-content:space-between;font-size:13px">
+              <strong>#${_esc(j.jobId)}</strong>
+              <span style="text-transform:uppercase;font-size:11px;font-weight:700;letter-spacing:.5px">${j.status}</span>
+            </div>
+            <div style="font-size:14px;margin-top:4px">${_esc(j.description || j.notes || '—').slice(0,120)}</div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:6px;color:var(--color-text-muted)">
+              <span>${j.scheduledDate || j.createdAt?.slice(0,10) || ''}</span>
+              ${Auth.canSeeFinancials() && j.jobTotal ? `<span>$${parseFloat(j.jobTotal).toFixed(0)}</span>` : ''}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+    showModal('modal-customer-history');
   }
 
   function onZipChange() {
@@ -1738,6 +1874,12 @@ const App = (() => {
          </a>`
       : '';
 
+    const smsLink = job.phone
+      ? `<a href="sms:${job.phone.replace(/\D/g,'')}" class="detail-action-btn">
+           <span class="dab-icon">&#128241;</span><span class="dab-label">Text</span>
+         </a>`
+      : '';
+
     const followUpBtn = job.status === 'follow_up' && Auth.isAdminOrDisp() && job.phone
       ? `<button class="detail-action-btn dab-warn" onclick="App.sendFollowUpWhatsApp('${job.jobId}')">
            <span class="dab-icon">&#128172;</span><span class="dab-label">Remind</span>
@@ -1762,6 +1904,7 @@ const App = (() => {
       <!-- Action Bar -->
       <div class="detail-action-bar">
         ${callLink}
+        ${smsLink}
         ${waLink}
         ${followUpBtn}
         ${job.address ? `<button class="detail-action-btn" onclick="App.navigateToJob('${job.jobId}')"><span class="dab-icon">&#128205;</span><span class="dab-label">Navigate</span></button>` : ''}
@@ -1788,7 +1931,7 @@ const App = (() => {
           <div class="detail-row">
             <div class="detail-row-label">Phone</div>
             <div class="detail-row-value">
-              ${job.phone ? `<a href="tel:${job.phone.replace(/\D/g,'')}">${_esc(job.phone)}</a>` : '—'}
+              ${job.phone ? `<a href="tel:${job.phone.replace(/\D/g,'')}">${_esc(job.phone)}</a> · <span onclick="App.showCustomerHistory('${job.phone.replace(/'/g, "\\'")}')" style="cursor:pointer;color:var(--color-primary);font-size:12px;text-decoration:underline">history</span>` : '—'}
             </div>
           </div>
           <div class="detail-row">
@@ -2789,15 +2932,42 @@ const App = (() => {
       isSelfAssigned: updated.isSelfAssigned
     });
 
+    // Snapshot pre-edit state so user can undo within 15 s
+    const snapshot = { ...job };
     DB.saveJob(updated);
     SyncManager.queueJob(jobId);
     closeModal();
-    showToast('Job updated', 'success');
+    showEditUndoToast(snapshot);
 
     // Refresh detail
     const container = document.getElementById('job-detail-content');
     const refreshed = DB.getJobById(jobId);
     if (container && refreshed) container.innerHTML = _buildJobDetailHTML(refreshed);
+  }
+
+  // Toast with Undo button — restores pre-edit snapshot if clicked within window.
+  function showEditUndoToast(snapshot) {
+    const t = document.getElementById('toast');
+    if (!t) { showToast('Job updated', 'success'); return; }
+    t.innerHTML = `Job updated · <span style="text-decoration:underline;cursor:pointer;font-weight:700" id="undo-edit-btn">Undo</span>`;
+    t.className = 'toast toast-success show';
+    let restored = false;
+    const undoBtn = document.getElementById('undo-edit-btn');
+    if (undoBtn) {
+      undoBtn.onclick = async () => {
+        if (restored) return;
+        restored = true;
+        await DB.saveJob(snapshot);
+        SyncManager.queueJob(snapshot.jobId);
+        const cont = document.getElementById('job-detail-content');
+        const r = DB.getJobById(snapshot.jobId);
+        if (cont && r) cont.innerHTML = _buildJobDetailHTML(r);
+        renderDashboard();
+        renderJobList();
+        showToast('Edit undone', 'info');
+      };
+    }
+    setTimeout(() => { if (!restored) t.classList.remove('show'); }, 8000);
   }
 
   // ══════════════════════════════════════════════════════════
@@ -4895,6 +5065,8 @@ const App = (() => {
 
     // New Job
     parseLead,
+    bulkAddLeads,
+    showCustomerHistory,
     startBlankJob,
     goToStep,
     checkReturningCustomer,
