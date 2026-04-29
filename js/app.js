@@ -4932,7 +4932,6 @@ const App = (() => {
   function _buildWhatsAppTechDispatchMsg(job) {
     const settings = DB.getSettings();
     const fullAddress = [job.address, job.city, job.state, job.zip].filter(Boolean).join(', ') || 'See job details';
-    const googleMapsLink = job.address ? `https://maps.google.com/?q=${encodeURIComponent(fullAddress)}` : null;
     const dateLine = job.scheduledDate ? _formatDate(job.scheduledDate) : 'TBD';
     const timeLine = job.scheduledTime ? _formatTime(job.scheduledTime) : 'TBD';
     const ownerPhone = settings.ownerPhone || '(929) 429-2429';
@@ -4948,7 +4947,7 @@ const App = (() => {
       `  • ${job.phone || 'N/A'}`,
       '',
       '*📍 LOCATION*',
-      googleMapsLink ? `  ${googleMapsLink}` : `  ${fullAddress}`,
+      `  ${fullAddress}`,
       '',
       '*📅 SCHEDULE*',
       `  • Date: ${dateLine}`,
