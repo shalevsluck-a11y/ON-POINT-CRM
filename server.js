@@ -22,6 +22,53 @@ const supabaseDirectAdmin = createClient(
 app.disable('x-powered-by');
 app.use(express.json());
 
+// Mirror a user's profile from the OLD auth project into the NEW direct project.
+// Why: auth lives on the custom-domain project but jobs/notifications live on the direct project.
+// Without this, FK violations and missing push recipients break new users silently.
+async function ensureDirectProfile(userId) {
+  if (!userId) return;
+  try {
+    const { data: existing } = await supabaseDirectAdmin
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+    if (existing) return; // already mirrored
+
+    const { data: oldProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('id, name, phone, role, color, zelle_handle, zip_codes, default_tech_percent, is_owner, assigned_lead_source, allowed_lead_sources, magic_token')
+      .eq('id', userId)
+      .maybeSingle();
+    if (!oldProfile) return;
+
+    const { error: upsertError } = await supabaseDirectAdmin
+      .from('profiles')
+      .upsert({
+        id:                    oldProfile.id,
+        name:                  oldProfile.name || 'User',
+        phone:                 oldProfile.phone || null,
+        role:                  oldProfile.role || 'dispatcher',
+        color:                 oldProfile.color || null,
+        zelle_handle:          oldProfile.zelle_handle || null,
+        zip_codes:             oldProfile.zip_codes || null,
+        default_tech_percent:  oldProfile.default_tech_percent || null,
+        is_owner:              oldProfile.is_owner || false,
+        assigned_lead_source:  oldProfile.assigned_lead_source || null,
+        allowed_lead_sources:  oldProfile.allowed_lead_sources || null,
+        magic_token:           oldProfile.magic_token || null,
+        updated_at:            new Date().toISOString(),
+      });
+    if (upsertError) {
+      console.warn('[ensureDirectProfile] mirror failed:', userId, upsertError.message);
+    } else {
+      console.log('[ensureDirectProfile] ✅ mirrored profile to direct project:', userId, oldProfile.role);
+    }
+  } catch (e) {
+    console.warn('[ensureDirectProfile] exception:', e.message);
+  }
+}
+
 app.use((_req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
@@ -683,6 +730,9 @@ app.post('/api/save-job', async (req, res) => {
       return res.status(401).json({ error: 'Profile not found' });
     }
 
+    // Auto-mirror profile to direct project (idempotent, fast path skips if already there)
+    await ensureDirectProfile(user.id);
+
     const { job } = req.body;
     if (!job || !job.jobId) {
       return res.status(400).json({ error: 'job object with jobId required' });
@@ -855,6 +905,9 @@ app.get('/api/load-jobs', async (req, res) => {
     console.log('[LOAD JOBS] Auth user id:', user.id);
     console.log('[LOAD JOBS] Profile found:', !!profile);
     console.log('[LOAD JOBS] Profile role:', profile.role);
+
+    // Auto-mirror profile to direct project so jobs/notifications work for any user
+    await ensureDirectProfile(user.id);
 
     const role = profile.role;
     const isTechOrContractor = role === 'tech' || role === 'contractor';
