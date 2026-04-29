@@ -2551,10 +2551,11 @@ const App = (() => {
     _updateClosePreview();
   }
 
-  // Build round-hour options 0–23 with AM/PM labels. Selected hour highlighted.
+  // Build round-hour options for service business hours: 6 AM through 8 PM.
+  // Latest AM = 9 AM. No 9/10/11 PM.
   function _buildHourOptions(selectedHour) {
     const opts = ['<option value="">—</option>'];
-    for (let h = 0; h < 24; h++) {
+    for (let h = 6; h <= 20; h++) {
       const ampm = h >= 12 ? 'PM' : 'AM';
       const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
       const sel = h === selectedHour ? 'selected' : '';
