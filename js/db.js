@@ -304,6 +304,7 @@ const DB = (() => {
         body: JSON.stringify({
           broadcast: true,
           roles: ['admin', 'dispatcher'],
+          excludedUserId: Auth.getUser()?.id || null,
           title: 'New Job Added',
           body: `Job #${jobId} - ${customerName || 'Customer'}`,
           jobId: jobId
