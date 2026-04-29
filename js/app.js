@@ -584,7 +584,8 @@ const App = (() => {
       if (recentWrap) recentWrap.classList.add('hidden');
     } else {
       if (recentWrap) recentWrap.classList.remove('hidden');
-      const recent = jobs.slice(0, 8);
+      // Home shows only active/upcoming jobs — hide paid and lost
+      const recent = jobs.filter(j => j.status !== 'paid' && j.status !== 'lost').slice(0, 8);
       if (recent.length === 0) {
         recentEl.innerHTML = `<div class="empty-state">
           <div class="empty-icon">&#128295;</div>
