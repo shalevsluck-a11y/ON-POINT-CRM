@@ -524,16 +524,43 @@
             <input type="date" id="f-date" class="field-input">
           </div>
           <div class="field-group" style="flex:1">
-            <label class="field-label">Time <span id="conf-time" class="conf-badge"></span></label>
-            <select id="f-time" class="field-input">
-              <option value="">Select time window</option>
-              <option value="08-10">8-10 AM</option>
-              <option value="10-12">10 AM-12 PM</option>
-              <option value="12-14">12-2 PM</option>
-              <option value="14-16">2-4 PM</option>
-              <option value="16-18">4-6 PM</option>
-              <option value="18-20">6-8 PM</option>
-            </select>
+            <label class="field-label">Time Window <span id="conf-time" class="conf-badge"></span></label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <select id="f-time-from" class="field-input" style="flex:1" onchange="App._newSyncTimeWindow()">
+                <option value="">From</option>
+                <option value="6">6 AM</option>
+                <option value="7">7 AM</option>
+                <option value="8">8 AM</option>
+                <option value="9">9 AM</option>
+                <option value="12">12 PM</option>
+                <option value="13">1 PM</option>
+                <option value="14">2 PM</option>
+                <option value="15">3 PM</option>
+                <option value="16">4 PM</option>
+                <option value="17">5 PM</option>
+                <option value="18">6 PM</option>
+                <option value="19">7 PM</option>
+                <option value="20">8 PM</option>
+              </select>
+              <span style="color:var(--color-text-muted);font-weight:600">–</span>
+              <select id="f-time-to" class="field-input" style="flex:1" onchange="App._newSyncTimeWindow()">
+                <option value="">To</option>
+                <option value="6">6 AM</option>
+                <option value="7">7 AM</option>
+                <option value="8">8 AM</option>
+                <option value="9">9 AM</option>
+                <option value="12">12 PM</option>
+                <option value="13">1 PM</option>
+                <option value="14">2 PM</option>
+                <option value="15">3 PM</option>
+                <option value="16">4 PM</option>
+                <option value="17">5 PM</option>
+                <option value="18">6 PM</option>
+                <option value="19">7 PM</option>
+                <option value="20">8 PM</option>
+              </select>
+            </div>
+            <input type="hidden" id="f-time" value="">
           </div>
         </div>
 

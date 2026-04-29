@@ -1183,6 +1183,23 @@ const App = (() => {
     _fillField('f-time',        parsed.scheduledTime);
     _fillField('f-description', parsed.description);
 
+    // Map parsed time (HH:MM or HH-HH) into the From/To dropdowns
+    const parsedTimeVal = parsed.scheduledTime?.value || '';
+    if (parsedTimeVal) {
+      let fromHour = null, toHour = null;
+      if (parsedTimeVal.includes('-')) {
+        const [s, e] = parsedTimeVal.split('-').map(n => parseInt(n, 10));
+        fromHour = s; toHour = e;
+      } else if (parsedTimeVal.includes(':')) {
+        fromHour = parseInt(parsedTimeVal.split(':')[0], 10);
+      }
+      const fromEl = document.getElementById('f-time-from');
+      const toEl   = document.getElementById('f-time-to');
+      if (fromEl && Number.isFinite(fromHour)) fromEl.value = String(fromHour);
+      if (toEl && Number.isFinite(toHour))     toEl.value = String(toHour);
+      _newSyncTimeWindow();
+    }
+
     // State dropdown
     if (parsed.state?.value) {
       const stateEl = document.getElementById('f-state');
@@ -2578,6 +2595,16 @@ const App = (() => {
     const from = document.getElementById('edit-time-from')?.value;
     const to   = document.getElementById('edit-time-to')?.value;
     const hidden = document.getElementById('edit-time');
+    if (!hidden) return;
+    if (from === '' || to === '') { hidden.value = ''; return; }
+    hidden.value = `${String(from).padStart(2,'0')}-${String(to).padStart(2,'0')}`;
+  }
+
+  // Same for new-job form (f-time From/To).
+  function _newSyncTimeWindow() {
+    const from = document.getElementById('f-time-from')?.value;
+    const to   = document.getElementById('f-time-to')?.value;
+    const hidden = document.getElementById('f-time');
     if (!hidden) return;
     if (from === '' || to === '') { hidden.value = ''; return; }
     hidden.value = `${String(from).padStart(2,'0')}-${String(to).padStart(2,'0')}`;
@@ -5294,6 +5321,7 @@ const App = (() => {
     _closeTaxSelect,
     _editAutoFillPayout,
     _editSyncTimeWindow,
+    _newSyncTimeWindow,
     _editSelectPay,
     _editTaxSelect,
     _saveEditedJob,
