@@ -401,7 +401,7 @@ const App = (() => {
     'jobs':       'All Jobs',
     'new-job':    'New Job',
     'calendar':   'Schedule',
-    'balance':    'Balance Reports',
+    'balance':    'Reports',
     'settings':   'Settings',
     'job-detail': 'Job Detail',
   };
@@ -507,6 +507,7 @@ const App = (() => {
     if (viewName === 'calendar')   renderCalendar();
     if (viewName === 'settings')   _loadSettingsForm();
     if (viewName === 'new-job')    _initNewJobView().catch(e => console.error('[NEW JOB] Init error:', e));
+    if (viewName === 'balance')    renderReportsDashboard();
 
     // Scroll to top
     if (viewEl) viewEl.scrollTop = 0;
@@ -1197,6 +1198,153 @@ const App = (() => {
     _suggestTechByZip(parsed.zip?.value || '');
 
     goToStep(2);
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  // REPORTS DASHBOARD — premium aggregates above existing Balance UI.
+  // Read-only, computed from DB.getJobs(). Admin-only financials.
+  // Does NOT touch Balance module logic.
+  // ════════════════════════════════════════════════════════════════
+  function renderReportsDashboard() {
+    const el = document.getElementById('reports-dashboard');
+    if (!el) return;
+    if (!Auth.isAdminOrDisp()) { el.innerHTML = ''; return; }
+
+    const jobs = DB.getJobs();
+    const showFinancials = Auth.canSeeFinancials();
+    const today = new Date(); today.setHours(0,0,0,0);
+    const todayStr = today.toISOString().slice(0,10);
+    const weekAgo = new Date(today); weekAgo.setDate(weekAgo.getDate()-7);
+    const monthAgo = new Date(today); monthAgo.setDate(monthAgo.getDate()-30);
+
+    function inRange(j, fromDate) {
+      const d = j.paidAt || j.scheduledDate || j.createdAt || '';
+      if (!d) return false;
+      return new Date(d) >= fromDate;
+    }
+
+    // Tile metrics
+    const paidAll = jobs.filter(j => j.status === 'paid');
+    const todayPaid  = paidAll.filter(j => (j.paidAt || j.scheduledDate || '').startsWith(todayStr));
+    const weekPaid   = paidAll.filter(j => inRange(j, weekAgo));
+    const monthPaid  = paidAll.filter(j => inRange(j, monthAgo));
+
+    const sum = (arr, fn) => arr.reduce((s, x) => s + (parseFloat(fn(x)) || 0), 0);
+    const totalToday = sum(todayPaid, j => j.jobTotal);
+    const totalWeek  = sum(weekPaid, j => j.jobTotal);
+    const totalMonth = sum(monthPaid, j => j.jobTotal);
+    const avgTicket  = monthPaid.length ? totalMonth / monthPaid.length : 0;
+
+    // Pipeline counts (current state)
+    const pipeline = {
+      new:        jobs.filter(j => j.status === 'new').length,
+      scheduled:  jobs.filter(j => j.status === 'scheduled').length,
+      inProgress: jobs.filter(j => j.status === 'in_progress').length,
+      followUp:   jobs.filter(j => j.status === 'follow_up').length,
+      paid:       paidAll.length,
+      lost:       jobs.filter(j => j.status === 'lost').length,
+    };
+
+    // Revenue by source (last 30d, paid only)
+    const bySource = {};
+    monthPaid.forEach(j => {
+      const k = j.source || 'my_lead';
+      bySource[k] = bySource[k] || { revenue: 0, count: 0 };
+      bySource[k].revenue += parseFloat(j.jobTotal) || 0;
+      bySource[k].count++;
+    });
+    const sourceRows = Object.entries(bySource)
+      .sort((a, b) => b[1].revenue - a[1].revenue)
+      .slice(0, 5);
+
+    // Revenue by tech (last 30d, paid only)
+    const byTech = {};
+    monthPaid.forEach(j => {
+      const k = j.assignedTechName || 'Unassigned';
+      byTech[k] = byTech[k] || { revenue: 0, count: 0 };
+      byTech[k].revenue += parseFloat(j.jobTotal) || 0;
+      byTech[k].count++;
+    });
+    const techRows = Object.entries(byTech)
+      .sort((a, b) => b[1].revenue - a[1].revenue)
+      .slice(0, 5);
+
+    // Conversion rate: paid / (paid + lost) over last 30d (added jobs)
+    const convPaid = monthPaid.length;
+    const convLost = jobs.filter(j => j.status === 'lost' && inRange(j, monthAgo)).length;
+    const convRate = (convPaid + convLost) > 0 ? Math.round(convPaid / (convPaid + convLost) * 100) : 0;
+
+    const fmt = n => '$' + (n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+
+    el.innerHTML = `
+      ${showFinancials ? `
+        <div class="rd-tiles">
+          <div class="rd-tile rd-tile-today">
+            <div class="rd-tile-label">Today</div>
+            <div class="rd-tile-value">${fmt(totalToday)}</div>
+            <div class="rd-tile-sub">${todayPaid.length} paid</div>
+          </div>
+          <div class="rd-tile rd-tile-week">
+            <div class="rd-tile-label">7 days</div>
+            <div class="rd-tile-value">${fmt(totalWeek)}</div>
+            <div class="rd-tile-sub">${weekPaid.length} paid</div>
+          </div>
+          <div class="rd-tile rd-tile-month">
+            <div class="rd-tile-label">30 days</div>
+            <div class="rd-tile-value">${fmt(totalMonth)}</div>
+            <div class="rd-tile-sub">${monthPaid.length} paid · avg ${fmt(avgTicket)}</div>
+          </div>
+          <div class="rd-tile rd-tile-conv">
+            <div class="rd-tile-label">Conversion</div>
+            <div class="rd-tile-value">${convRate}%</div>
+            <div class="rd-tile-sub">${convPaid} won / ${convLost} lost</div>
+          </div>
+        </div>
+      ` : ''}
+
+      <div class="rd-pipeline">
+        <div class="rd-pipeline-cell" onclick="App.navigate('jobs',{filter:'new'})"><b>${pipeline.new}</b><span>New</span></div>
+        <div class="rd-pipeline-cell" onclick="App.navigate('jobs',{filter:'scheduled'})"><b>${pipeline.scheduled}</b><span>Scheduled</span></div>
+        <div class="rd-pipeline-cell" onclick="App.navigate('jobs',{filter:'in_progress'})"><b>${pipeline.inProgress}</b><span>In Progress</span></div>
+        <div class="rd-pipeline-cell" onclick="App.navigate('jobs',{filter:'follow_up'})"><b>${pipeline.followUp}</b><span>Follow-Up</span></div>
+        <div class="rd-pipeline-cell rd-cell-good" onclick="App.navigate('jobs',{filter:'paid'})"><b>${pipeline.paid}</b><span>Paid</span></div>
+        <div class="rd-pipeline-cell rd-cell-bad" onclick="App.navigate('jobs',{filter:'lost'})"><b>${pipeline.lost}</b><span>Lost</span></div>
+      </div>
+
+      ${showFinancials && sourceRows.length ? `
+        <div class="rd-list">
+          <div class="rd-list-title">Revenue by source · last 30d</div>
+          ${sourceRows.map(([name, d]) => {
+            const pct = totalMonth ? Math.round(d.revenue / totalMonth * 100) : 0;
+            return `
+              <div class="rd-list-row">
+                <div class="rd-list-row-name">${_esc(name)}</div>
+                <div class="rd-list-row-bar"><div style="width:${pct}%"></div></div>
+                <div class="rd-list-row-val">${fmt(d.revenue)}</div>
+                <div class="rd-list-row-count">${d.count}</div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      ` : ''}
+
+      ${showFinancials && techRows.length ? `
+        <div class="rd-list">
+          <div class="rd-list-title">Revenue by tech · last 30d</div>
+          ${techRows.map(([name, d]) => {
+            const pct = totalMonth ? Math.round(d.revenue / totalMonth * 100) : 0;
+            return `
+              <div class="rd-list-row">
+                <div class="rd-list-row-name">${_esc(name)}</div>
+                <div class="rd-list-row-bar"><div style="width:${pct}%"></div></div>
+                <div class="rd-list-row-val">${fmt(d.revenue)}</div>
+                <div class="rd-list-row-count">${d.count}</div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      ` : ''}
+    `;
   }
 
   // Bulk add — paste multiple leads separated by `---` or 2+ blank lines.
