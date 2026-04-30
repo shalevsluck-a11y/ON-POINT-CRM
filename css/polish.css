@@ -551,6 +551,7 @@ h1, h2, h3, .step-title, .modal-title, .settings-section-title {
   max-width: calc(100vw - 32px);
   z-index: 9000 !important;
   transition: transform 320ms cubic-bezier(.16,1,.3,1) !important;
+  pointer-events: none !important;
 }
 .toast.show { transform: translateX(-50%) translateY(0) !important; }
 
