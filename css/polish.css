@@ -8,9 +8,7 @@
 html, body { overflow-x: hidden !important; }
 #app, #main-content, .view, .view-body { overflow-x: hidden !important; }
 
-/* ── Header tap protection: ensure header buttons never receive clicks meant for content ── */
-#app-header { z-index: 100 !important; isolation: isolate; }
-#main-content { position: relative; z-index: 1; }
+/* (Removed header z-index override — was breaking tap targets) */
 
 /* ── Select tap area enlarged so dropdown is unmissable ── */
 .balance-select, select.field-input {
@@ -198,8 +196,6 @@ html, body { overflow-x: hidden !important; }
   box-shadow: 0 -4px 24px rgba(0,0,0,.32), 0 -1px 0 var(--color-border-2);
 }
 .nav-item.active { color: var(--color-primary) !important; }
-.nav-item.active .nav-icon { transform: translateY(-2px); }
-.nav-icon { transition: transform 200ms cubic-bezier(.16,1,.3,1); }
 
 /* ── Header — glass refinement ── */
 .app-header {
@@ -217,20 +213,7 @@ html, body { overflow-x: hidden !important; }
   margin-bottom: 12px;
 }
 
-/* ── Subtle fade-in for newly rendered job cards ── */
-@keyframes jobCardIn {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.job-list .job-card {
-  animation: jobCardIn 280ms cubic-bezier(.16,1,.3,1) backwards;
-}
-.job-list .job-card:nth-child(1) { animation-delay: 0ms; }
-.job-list .job-card:nth-child(2) { animation-delay: 30ms; }
-.job-list .job-card:nth-child(3) { animation-delay: 60ms; }
-.job-list .job-card:nth-child(4) { animation-delay: 90ms; }
-.job-list .job-card:nth-child(5) { animation-delay: 120ms; }
-.job-list .job-card:nth-child(n+6) { animation-delay: 140ms; }
+/* (Job card stagger animation removed — could offset tap targets during animation) */
 
 /* ── Reports list rows — better visual rhythm ── */
 .rd-list-row { padding: 8px 0; }
@@ -337,16 +320,7 @@ h1, h2, h3, .step-title, .modal-title, .settings-section-title {
 .toast-warning { background: linear-gradient(135deg, rgba(245,158,11,.92), rgba(217,119,6,.95)) !important; color: #fff !important; }
 .toast-info    { background: linear-gradient(135deg, rgba(59,130,246,.92), rgba(37,99,235,.95)) !important; color: #fff !important; }
 
-/* ═══════════════════════════════════════════════════════════════
-   VIEW TAB TRANSITIONS — opacity only, no transform (avoids scroll clipping)
-   ═══════════════════════════════════════════════════════════════ */
-.view.active {
-  animation: viewFadeIn 220ms ease-out;
-}
-@keyframes viewFadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
+/* (View transitions removed — caused tap-target offset during animation) */
 
 /* (Dashboard radial glow removed — it caused horizontal scroll & clipped bottom content) */
 
@@ -590,31 +564,7 @@ h1, h2, h3, .step-title, .modal-title, .settings-section-title {
   .rd-tile-value { font-size: 26px !important; }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   BOTTOM NAV ACTIVE GLOW
-   ═══════════════════════════════════════════════════════════════ */
-.nav-item {
-  position: relative;
-  transition: color 200ms;
-}
-.nav-item.active::before {
-  content: '';
-  position: absolute;
-  top: 6px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 36px; height: 36px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(59,130,246,.30) 0%, transparent 70%);
-  pointer-events: none;
-  z-index: 0;
-  animation: navGlowIn 320ms cubic-bezier(.16,1,.3,1);
-}
-@keyframes navGlowIn {
-  from { opacity: 0; transform: translateX(-50%) scale(.6); }
-  to   { opacity: 1; transform: translateX(-50%) scale(1); }
-}
-.nav-item .nav-icon, .nav-item .nav-label { position: relative; z-index: 1; }
+/* (Bottom nav glow + pointer-events overrides removed — were breaking taps) */
 
 /* ═══════════════════════════════════════════════════════════════
    MODAL DRAG HANDLE — clearer
