@@ -196,6 +196,8 @@ html, body { overflow-x: hidden !important; }
   box-shadow: 0 -4px 24px rgba(0,0,0,.32), 0 -1px 0 var(--color-border-2);
 }
 .nav-item.active { color: var(--color-primary) !important; }
+/* Labels must always render — guard against any future hide rules */
+.nav-label { display: block !important; opacity: 1 !important; visibility: visible !important; }
 
 /* ── Header — glass refinement ── */
 .app-header {
@@ -412,7 +414,7 @@ h1, h2, h3, .step-title, .modal-title, .settings-section-title {
 /* ═══════════════════════════════════════════════════════════════
    ICON SIZE NORMALIZATION (emoji rendering polish)
    ═══════════════════════════════════════════════════════════════ */
-.dab-icon, .nav-icon {
+.dab-icon {
   font-size: 19px;
   line-height: 1;
   display: inline-flex;
