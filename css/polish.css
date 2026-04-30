@@ -1,0 +1,269 @@
+/* ═══════════════════════════════════════════════════════════════
+   POLISH.CSS — visual refinements only, loaded LAST.
+   Adds depth, motion, and breathing room without touching layout
+   or existing class behavior. Safe to remove — purely cosmetic.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Smoother global transitions ── */
+.btn, .chip, .nav-item, .job-card, .balance-card, .pay-btn,
+.detail-action-btn, .ttc-btn, .rd-pipeline-cell, .rd-tile {
+  transition: transform 160ms cubic-bezier(.16,1,.3,1),
+              box-shadow 220ms cubic-bezier(.16,1,.3,1),
+              background 180ms ease,
+              border-color 180ms ease,
+              opacity 180ms ease;
+}
+
+/* ── Job card depth + lift on hover ── */
+.job-card {
+  position: relative;
+  isolation: isolate;
+  box-shadow: 0 1px 2px rgba(0,0,0,.18), 0 4px 14px rgba(0,0,0,.12);
+}
+.job-card::after {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255,255,255,.04) 0%, transparent 30%);
+  pointer-events: none;
+  z-index: 0;
+}
+.job-card-inner { position: relative; z-index: 1; }
+@media (hover: hover) {
+  .job-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,.25), 0 16px 36px rgba(0,0,0,.22);
+  }
+}
+.job-card:active { transform: translateY(0) scale(.995); }
+
+/* ── Status badge — slight glass + glow per state ── */
+.status-badge {
+  backdrop-filter: blur(6px) saturate(140%);
+  -webkit-backdrop-filter: blur(6px) saturate(140%);
+  border: 1px solid rgba(255,255,255,.05);
+  font-weight: 800 !important;
+  letter-spacing: .3px;
+}
+.sb-new        { background: rgba(96,165,250,.16) !important; color: #93C5FD !important; }
+.sb-scheduled  { background: rgba(167,139,250,.16) !important; color: #C4B5FD !important; }
+.sb-inprogress { background: rgba(251,191,36,.18) !important;  color: #FCD34D !important; }
+.sb-closed     { background: rgba(52,211,153,.16) !important;  color: #6EE7B7 !important; }
+.sb-paid       { background: rgba(74,222,128,.18) !important;  color: #86EFAC !important; }
+.sb-follow_up  { background: rgba(251,146,60,.18) !important;  color: #FDBA74 !important; }
+.sb-lost       { background: rgba(239,68,68,.18) !important;   color: #FCA5A5 !important; }
+
+/* ── Filter chips — refined active state, smooth scale ── */
+.filter-chips { padding: 4px 12px 8px; gap: 6px; }
+.chip {
+  border: 1px solid var(--color-border-2);
+  background: var(--color-surface);
+  font-weight: 700 !important;
+  letter-spacing: .2px;
+}
+.chip:active { transform: scale(.96); }
+.chip.active {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark)) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: 0 4px 12px rgba(59,130,246,.32), inset 0 1px 0 rgba(255,255,255,.18);
+}
+
+/* ── Reports tiles — bolder typography, gradient sheen ── */
+.rd-tile {
+  background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-2) 100%);
+  border: 1px solid var(--color-border-2);
+  box-shadow: 0 1px 0 rgba(255,255,255,.04) inset, 0 6px 18px rgba(0,0,0,.15);
+}
+.rd-tile-value { font-size: 28px; letter-spacing: -.5px; }
+.rd-tile-label { font-size: 10px; }
+@media (max-width: 480px) {
+  .rd-tiles { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .rd-tile { padding: 12px 12px 10px; }
+  .rd-tile-value { font-size: 22px; }
+}
+
+/* ── Pipeline cells — hover lift, better hierarchy ── */
+.rd-pipeline-cell {
+  border: 1px solid transparent;
+}
+@media (hover: hover) {
+  .rd-pipeline-cell:hover {
+    border-color: var(--color-border-2);
+    transform: translateY(-1px);
+  }
+}
+.rd-pipeline-cell b { letter-spacing: -.3px; }
+
+/* ── Buttons — subtle gradient + spring press ── */
+.btn { letter-spacing: .2px; }
+.btn-primary {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark)) !important;
+  box-shadow: 0 4px 14px rgba(59,130,246,.25), inset 0 1px 0 rgba(255,255,255,.12);
+}
+.btn-success {
+  background: linear-gradient(135deg, var(--color-success), var(--color-success-dark)) !important;
+  box-shadow: 0 4px 14px rgba(34,197,94,.25), inset 0 1px 0 rgba(255,255,255,.12);
+}
+.btn:active { transform: scale(.97); }
+
+/* ── Detail action bar buttons (Call/Text/Dispatch/Edit) ── */
+.detail-action-btn {
+  background: var(--color-surface) !important;
+  border: 1px solid var(--color-border-2) !important;
+  transition: transform 140ms, background 180ms;
+}
+.detail-action-btn:active { transform: scale(.94); }
+.detail-action-btn.dab-green {
+  background: linear-gradient(135deg, rgba(34,197,94,.16), rgba(22,163,74,.10)) !important;
+  border-color: rgba(34,197,94,.30) !important;
+  color: #86EFAC !important;
+}
+.detail-action-btn.dab-warn {
+  background: linear-gradient(135deg, rgba(245,158,11,.16), rgba(217,119,6,.10)) !important;
+  border-color: rgba(245,158,11,.30) !important;
+  color: #FCD34D !important;
+}
+
+/* ── Modal entrance — silkier ── */
+.modal {
+  box-shadow: 0 -10px 40px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.04);
+}
+.modal-overlay { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.modal-handle {
+  background: var(--color-text-faint) !important;
+  opacity: .7;
+}
+
+/* ── Field inputs — soft focus glow ── */
+.field-input:focus, .balance-select:focus {
+  outline: none !important;
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 3px rgba(59,130,246,.18) !important;
+}
+
+/* ── Job card summary preview — tighter, premium ── */
+.job-card-summary {
+  background: linear-gradient(135deg, rgba(99,102,241,.08), rgba(139,92,246,.04)) !important;
+  border-left-color: rgba(139,92,246,.5) !important;
+  font-weight: 500;
+}
+
+/* ── Dispatcher source banner — premium ── */
+.dispatcher-banner {
+  background: linear-gradient(135deg, rgba(99,102,241,.10), rgba(99,102,241,.04)) !important;
+  border-left-width: 4px !important;
+  border-radius: 10px !important;
+}
+.dispatcher-banner .db-chip {
+  border: 1px solid rgba(99,102,241,.25);
+  box-shadow: 0 1px 3px rgba(0,0,0,.15);
+}
+
+/* ── Stale-lead badges — subtle pulse on red ── */
+@keyframes stalePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,.4); }
+  50%      { box-shadow: 0 0 0 6px rgba(239,68,68,0); }
+}
+.job-card-stale.jc-stale-red {
+  animation: stalePulse 2s ease-in-out infinite;
+}
+
+/* ── Returning customer banner — premium gradient ── */
+.returning-banner {
+  background: linear-gradient(135deg, rgba(99,102,241,.16), rgba(139,92,246,.10)) !important;
+  border: 1px solid rgba(139,92,246,.28) !important;
+  font-weight: 700;
+}
+
+/* ── Bottom nav — slight elevation ── */
+.bottom-nav {
+  box-shadow: 0 -4px 24px rgba(0,0,0,.32), 0 -1px 0 var(--color-border-2);
+}
+.nav-item.active { color: var(--color-primary) !important; }
+.nav-item.active .nav-icon { transform: translateY(-2px); }
+.nav-icon { transition: transform 200ms cubic-bezier(.16,1,.3,1); }
+
+/* ── Header — glass refinement ── */
+.app-header {
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+/* ── Empty state — softer ── */
+.empty-state {
+  padding: 48px 20px;
+}
+.empty-icon {
+  opacity: .5;
+  font-size: 56px !important;
+  margin-bottom: 12px;
+}
+
+/* ── Subtle fade-in for newly rendered job cards ── */
+@keyframes jobCardIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.job-list .job-card {
+  animation: jobCardIn 280ms cubic-bezier(.16,1,.3,1) backwards;
+}
+.job-list .job-card:nth-child(1) { animation-delay: 0ms; }
+.job-list .job-card:nth-child(2) { animation-delay: 30ms; }
+.job-list .job-card:nth-child(3) { animation-delay: 60ms; }
+.job-list .job-card:nth-child(4) { animation-delay: 90ms; }
+.job-list .job-card:nth-child(5) { animation-delay: 120ms; }
+.job-list .job-card:nth-child(n+6) { animation-delay: 140ms; }
+
+/* ── Reports list rows — better visual rhythm ── */
+.rd-list-row { padding: 8px 0; }
+.rd-list-row-bar {
+  height: 6px !important;
+  background: rgba(255,255,255,.05) !important;
+}
+.rd-list-row-bar > div {
+  background: linear-gradient(90deg, #6366f1, #a855f7, #ec4899) !important;
+  box-shadow: 0 0 12px rgba(139,92,246,.4);
+}
+
+/* ── Phone iPhone-friendly: prevent filter chips wrap ugly ── */
+@media (max-width: 480px) {
+  .filter-chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .filter-chips::-webkit-scrollbar { display: none; }
+  .chip { flex: 0 0 auto; white-space: nowrap; }
+}
+
+/* ── Calendar conflict warning — sharper ── */
+.cal-conflict-warn {
+  background: linear-gradient(135deg, rgba(239,68,68,.14), rgba(220,38,38,.06)) !important;
+  border-left: 3px solid #ef4444 !important;
+  border-radius: 8px !important;
+  padding: 10px 12px !important;
+}
+
+/* ── Tech today card — premium ── */
+.tech-today-card {
+  background: linear-gradient(135deg, var(--color-surface), var(--color-surface-2)) !important;
+  border: 1px solid var(--color-border-2);
+  box-shadow: 0 2px 8px rgba(0,0,0,.18);
+}
+
+/* ── Light-mode overrides — make sure premium stays premium ── */
+[data-theme="light"] .rd-tile {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border-color: rgba(0,0,0,.06);
+}
+[data-theme="light"] .chip.active {
+  box-shadow: 0 4px 12px rgba(59,130,246,.28);
+}
+[data-theme="light"] .job-card-summary {
+  background: linear-gradient(135deg, rgba(99,102,241,.06), rgba(139,92,246,.03)) !important;
+}
+[data-theme="light"] .dispatcher-banner {
+  background: linear-gradient(135deg, rgba(99,102,241,.07), rgba(99,102,241,.02)) !important;
+}
