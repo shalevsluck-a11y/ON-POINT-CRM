@@ -270,15 +270,10 @@ const App = (() => {
     const settings = DB.getSettings();
     if (settings.appsScriptUrl) setTimeout(() => SyncManager.syncAll(), 3000);
 
-    // Background polling — interval depends on realtime health.
-    // When realtime is SUBSCRIBED, poll every 5 min (battery-friendly).
-    // When disconnected, fall back to 30 s so jobs stay fresh.
-    let _lastSyncAt = 0;
+    // Background polling every 30 s — realtime can silently miss events for some users
+    // (e.g. dispatcher RLS edge cases), so polling stays the source of truth.
     setInterval(async () => {
       try {
-        const minInterval = _realtimeConnected ? 300000 : 30000;
-        if (Date.now() - _lastSyncAt < minInterval - 1000) return;
-        _lastSyncAt = Date.now();
         await DB.syncJobsFromRemote();
         renderDashboard();
         renderJobList();
@@ -366,20 +361,32 @@ const App = (() => {
     }
   }
 
+  // Track outside-click handlers so toggling closed always removes them too.
+  // Without this, every open-then-toggle-closed leaks a listener that still fires on every body click.
+  let _userMenuCloseHandler = null;
+  let _moreMenuCloseHandler = null;
+
   function toggleUserMenu() {
     const menu = document.getElementById('user-menu');
     if (!menu) return;
     const isOpen = !menu.classList.contains('hidden');
+    if (_userMenuCloseHandler) {
+      document.removeEventListener('click', _userMenuCloseHandler);
+      _userMenuCloseHandler = null;
+    }
     if (isOpen) {
       menu.classList.add('hidden');
     } else {
       menu.classList.remove('hidden');
-      // Close when clicking outside
       setTimeout(() => {
-        const close = (e) => {
-          if (!menu.contains(e.target)) { menu.classList.add('hidden'); document.removeEventListener('click', close); }
+        _userMenuCloseHandler = (e) => {
+          if (!menu.contains(e.target)) {
+            menu.classList.add('hidden');
+            document.removeEventListener('click', _userMenuCloseHandler);
+            _userMenuCloseHandler = null;
+          }
         };
-        document.addEventListener('click', close);
+        document.addEventListener('click', _userMenuCloseHandler);
       }, 10);
     }
   }
@@ -389,16 +396,23 @@ const App = (() => {
     const menu = document.getElementById('more-menu');
     if (!menu) return;
     const isOpen = !menu.classList.contains('hidden');
+    if (_moreMenuCloseHandler) {
+      document.removeEventListener('click', _moreMenuCloseHandler);
+      _moreMenuCloseHandler = null;
+    }
     if (isOpen) {
       menu.classList.add('hidden');
     } else {
       menu.classList.remove('hidden');
-      // Close when clicking outside
       setTimeout(() => {
-        const close = (e) => {
-          if (!menu.contains(e.target)) { menu.classList.add('hidden'); document.removeEventListener('click', close); }
+        _moreMenuCloseHandler = (e) => {
+          if (!menu.contains(e.target)) {
+            menu.classList.add('hidden');
+            document.removeEventListener('click', _moreMenuCloseHandler);
+            _moreMenuCloseHandler = null;
+          }
         };
-        document.addEventListener('click', close);
+        document.addEventListener('click', _moreMenuCloseHandler);
       }, 10);
     }
   }
