@@ -1378,9 +1378,9 @@ const App = (() => {
     const sourcesList = (settings.leadSources || []).map(s => s.name);
 
     el.innerHTML = `
-      <div class="rd-source-filter">
-        <label>Filter by source:</label>
-        <select onchange="App._reportsSetSource(this.value)" class="balance-select" style="margin-left:6px">
+      <div class="rd-source-filter" onclick="event.stopPropagation()">
+        <label style="font-weight:700">Filter by source:</label>
+        <select onchange="event.stopPropagation();App._reportsSetSource(this.value)" onclick="event.stopPropagation()" class="balance-select" style="margin-left:6px">
           <option value="">All Sources</option>
           ${sourcesList.map(s => `<option value="${_esc(s)}" ${sourceFilter === s ? 'selected' : ''}>${_esc(s)}</option>`).join('')}
         </select>

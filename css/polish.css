@@ -8,6 +8,19 @@
 html, body { overflow-x: hidden !important; }
 #app, #main-content, .view, .view-body { overflow-x: hidden !important; }
 
+/* ── Header tap protection: ensure header buttons never receive clicks meant for content ── */
+#app-header { z-index: 100 !important; isolation: isolate; }
+#main-content { position: relative; z-index: 1; }
+
+/* ── Select tap area enlarged so dropdown is unmissable ── */
+.balance-select, select.field-input {
+  min-height: 44px;
+  padding: 10px 14px !important;
+  font-size: 14px !important;
+}
+.rd-source-filter select { padding: 10px 14px !important; min-height: 44px; }
+.rd-source-filter { padding: 14px !important; }
+
 /* ── Smoother global transitions ── */
 .btn, .chip, .nav-item, .job-card, .balance-card, .pay-btn,
 .detail-action-btn, .ttc-btn, .rd-pipeline-cell, .rd-tile {
