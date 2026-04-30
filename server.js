@@ -13,11 +13,14 @@ const supabaseAdmin = createClient(
 );
 
 // Direct project URL admin client (bypasses custom domain PostgREST cache)
-// Keys come from env. Fallbacks kept temporarily so deploys don't break — rotate keys on Supabase dashboard then drop fallbacks.
+// Keys MUST come from env. Server fails fast if missing rather than running with no admin access.
+if (!process.env.SUPABASE_DIRECT_SERVICE_KEY) {
+  console.error('[FATAL] SUPABASE_DIRECT_SERVICE_KEY env var is required');
+  process.exit(1);
+}
 const supabaseDirectAdmin = createClient(
   process.env.SUPABASE_DIRECT_URL || 'https://nmmpemjcnncjfpooytpv.supabase.co',
-  process.env.SUPABASE_DIRECT_SERVICE_KEY ||
-    '***REDACTED-SUPABASE-SERVICE-KEY***',
+  process.env.SUPABASE_DIRECT_SERVICE_KEY,
   { auth: { persistSession: false } }
 );
 
