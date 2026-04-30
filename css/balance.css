@@ -420,6 +420,18 @@
    ═══════════════════════════════════════════════════════════════ */
 .reports-dashboard { max-width: 800px; margin: 0 auto; padding: 0 16px; display: flex; flex-direction: column; gap: 14px; }
 
+.rd-source-filter {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-2);
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+.rd-source-filter label { font-weight: 700; }
+
 .rd-tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
 @media (min-width: 640px) { .rd-tiles { grid-template-columns: repeat(4, 1fr); } }
 

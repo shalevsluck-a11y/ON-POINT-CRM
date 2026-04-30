@@ -109,6 +109,65 @@
   margin-bottom: 9px;
 }
 
+/* Stale-lead, conflict, creator chips on job cards */
+.job-card-creator {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  background: rgba(99, 102, 241, 0.10);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+.job-card-stale {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.job-card-stale.jc-stale-orange { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+.job-card-stale.jc-stale-red    { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+.job-card-conflict {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+/* Dispatcher "Your sources" banner */
+.dispatcher-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  margin: 6px 12px;
+  background: rgba(99, 102, 241, 0.08);
+  border-left: 3px solid #6366f1;
+  border-radius: 8px;
+  font-size: 12px;
+}
+.dispatcher-banner .db-label {
+  color: var(--color-text-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.dispatcher-banner .db-chip {
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
 .job-card-address {
   font-size: var(--font-sm);
   color: var(--color-text-muted);

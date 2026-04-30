@@ -731,6 +731,8 @@ const DB = (() => {
       followUpAt:          row.follow_up_at,
       createdAt:           row.created_at,
       updatedAt:           row.updated_at,
+      createdBy:           row.created_by,
+      createdByName:       row.created_by_name || '',
     };
 
     // Only expose admin-only financial fields to admin users.

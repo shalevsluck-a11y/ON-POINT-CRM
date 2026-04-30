@@ -826,6 +826,7 @@ app.post('/api/save-job', rateLimit({ max: 120, windowMs: 60_000 }), async (req,
       overdue_flagged_at:   job.overdueAt || null,
       follow_up_at:         job.followUpAt || null,
       created_by:           job.createdBy || null,
+      created_by_name:      job.createdByName || null,
       updated_at:           new Date().toISOString(),
     };
 

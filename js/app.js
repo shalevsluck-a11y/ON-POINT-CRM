@@ -20,6 +20,8 @@ const App = (() => {
     calendarTechFilter: '',  // filter calendar by tech
     jobFilter:      'unpaid',
     jobSearch:      '',
+    jobFilterTech:    (function(){try{return localStorage.getItem('op_jobFilterTech') || '';}catch(_){return '';}})(),
+    jobFilterSource:  (function(){try{return localStorage.getItem('op_jobFilterSource') || '';}catch(_){return '';}})(),
     parsedLead:     null,
     newJobDraft:    {},
     selectedPayMethod: 'cash',
@@ -584,6 +586,7 @@ const App = (() => {
       if (recentWrap) recentWrap.classList.add('hidden');
     } else {
       if (recentWrap) recentWrap.classList.remove('hidden');
+      _state._conflictSet = _buildConflictSet();
       // Home shows only active/upcoming jobs — hide paid and lost
       const recent = jobs.filter(j => j.status !== 'paid' && j.status !== 'lost').slice(0, 8);
       if (recent.length === 0) {
@@ -860,6 +863,8 @@ const App = (() => {
       return db.localeCompare(da);
     });
 
+    _state._conflictSet = _buildConflictSet();
+    _renderDispatcherSourcesBanner();
     container.innerHTML = jobs.map(j => _jobCardHTML(j)).join('');
 
     // If kanban view is also open, keep it in sync
@@ -881,7 +886,22 @@ const App = (() => {
     _state.jobSearch = document.getElementById('job-search')?.value || '';
     _state.jobFilterTech = document.getElementById('job-filter-tech')?.value || '';
     _state.jobFilterSource = document.getElementById('job-filter-source')?.value || '';
+    try {
+      localStorage.setItem('op_jobFilterTech', _state.jobFilterTech);
+      localStorage.setItem('op_jobFilterSource', _state.jobFilterSource);
+    } catch (_) {}
     renderJobList();
+  }
+
+  function _renderDispatcherSourcesBanner() {
+    const banner = document.getElementById('dispatcher-sources-banner');
+    if (!banner) return;
+    if (!Auth.isDispatcher()) { banner.classList.add('hidden'); return; }
+    const user = Auth.getUser();
+    const allowed = Array.isArray(user?.allowedLeadSources) ? user.allowedLeadSources : [];
+    if (allowed.length === 0) { banner.classList.add('hidden'); return; }
+    banner.innerHTML = `<span class="db-label">Showing:</span> ${allowed.map(s => `<span class="db-chip">${_esc(s)}</span>`).join('')}`;
+    banner.classList.remove('hidden');
   }
 
   function _populateJobFilters() {
@@ -898,17 +918,66 @@ const App = (() => {
         `<option value="${t.id}" ${t.id === currentTech ? 'selected' : ''}>${t.name}</option>`
       ).join('');
 
-    // Populate lead source filter
+    // Populate lead source filter — only sources visible to current user
     const currentSource = _state.jobFilterSource || '';
+    const user = Auth.getUser();
+    let visibleSources = settings.leadSources || [];
+    if (Auth.isDispatcher() && Array.isArray(user?.allowedLeadSources) && user.allowedLeadSources.length > 0) {
+      visibleSources = visibleSources.filter(s => user.allowedLeadSources.includes(s.name));
+    }
     sourceSelect.innerHTML = '<option value="">Source</option>' +
-      (settings.leadSources || []).map(s =>
+      visibleSources.map(s =>
         `<option value="${s.name}" ${s.name === currentSource ? 'selected' : ''}>${s.name}</option>`
       ).join('');
+
+    // Hide source filter entirely if dispatcher has 0 or 1 allowed source
+    if (Auth.isDispatcher() && visibleSources.length <= 1) {
+      sourceSelect.classList.add('hidden');
+    } else {
+      sourceSelect.classList.remove('hidden');
+    }
   }
 
   // ══════════════════════════════════════════════════════════
   // JOB CARD HTML
   // ══════════════════════════════════════════════════════════
+
+  // Stale lead badge — only for status=new. Orange after 4h, red after 24h.
+  function _staleLeadBadge(job) {
+    if (job.status !== 'new') return '';
+    const created = job.createdAt ? new Date(job.createdAt).getTime() : 0;
+    if (!created) return '';
+    const ageMs = Date.now() - created;
+    const hours = Math.floor(ageMs / 3600000);
+    if (hours < 4) return '';
+    const cls = hours >= 24 ? 'jc-stale-red' : 'jc-stale-orange';
+    const label = hours >= 24 ? `&#9888; ${Math.floor(hours/24)}d old` : `&#9888; ${hours}h old`;
+    return `<span class="job-card-stale ${cls}">${label}</span>`;
+  }
+
+  // Build a set of (techId|date|hour) keys with multiple jobs — for cross-screen conflict badges.
+  function _buildConflictSet() {
+    const map = {};
+    DB.getJobs().forEach(j => {
+      if (!j.assignedTechId || !j.scheduledDate || !j.scheduledTime) return;
+      if (j.status === 'paid' || j.status === 'lost' || j.status === 'closed') return;
+      const start = parseInt((j.scheduledTime || '').split(/[-:]/)[0], 10);
+      if (!Number.isFinite(start)) return;
+      const key = `${j.assignedTechId}|${j.scheduledDate}|${start}`;
+      map[key] = (map[key] || 0) + 1;
+    });
+    const conflicts = new Set();
+    Object.entries(map).forEach(([k, count]) => { if (count > 1) conflicts.add(k); });
+    return conflicts;
+  }
+
+  function _jobConflictBadge(job, conflictSet) {
+    if (!conflictSet || !job.assignedTechId || !job.scheduledDate || !job.scheduledTime) return '';
+    const start = parseInt((job.scheduledTime || '').split(/[-:]/)[0], 10);
+    if (!Number.isFinite(start)) return '';
+    const key = `${job.assignedTechId}|${job.scheduledDate}|${start}`;
+    return conflictSet.has(key) ? '<span class="job-card-conflict">&#9888; Conflict</span>' : '';
+  }
 
   function _jobCardHTML(job) {
     const settings = DB.getSettings();
@@ -981,6 +1050,9 @@ const App = (() => {
             ${tech ? `<span class="job-card-tech"><span class="tech-dot" style="background:${techColor}"></span>${_esc(tech.name)}</span>` : ''}
             ${returningBadge}
             ${followUpBadge}
+            ${job.createdByName && Auth.isAdmin() ? `<span class="job-card-creator">+ ${_esc(job.createdByName)}</span>` : ''}
+            ${_staleLeadBadge(job)}
+            ${_jobConflictBadge(job, _state._conflictSet)}
           </div>
           <div class="job-card-actions">
             ${callBtn}
@@ -1232,9 +1304,12 @@ const App = (() => {
   function renderReportsDashboard() {
     const el = document.getElementById('reports-dashboard');
     if (!el) return;
-    if (!Auth.isAdminOrDisp()) { el.innerHTML = ''; return; }
+    if (!Auth.isAdmin()) { el.innerHTML = ''; return; }
 
-    const jobs = DB.getJobs();
+    const allJobs = DB.getJobs();
+    const settings = DB.getSettings();
+    const sourceFilter = _state.reportsSourceFilter || '';
+    const jobs = sourceFilter ? allJobs.filter(j => j.source === sourceFilter) : allJobs;
     const showFinancials = Auth.canSeeFinancials();
     const today = new Date(); today.setHours(0,0,0,0);
     const todayStr = today.toISOString().slice(0,10);
@@ -1300,7 +1375,16 @@ const App = (() => {
 
     const fmt = n => '$' + (n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
 
+    const sourcesList = (settings.leadSources || []).map(s => s.name);
+
     el.innerHTML = `
+      <div class="rd-source-filter">
+        <label>Filter by source:</label>
+        <select onchange="App._reportsSetSource(this.value)" class="balance-select" style="margin-left:6px">
+          <option value="">All Sources</option>
+          ${sourcesList.map(s => `<option value="${_esc(s)}" ${sourceFilter === s ? 'selected' : ''}>${_esc(s)}</option>`).join('')}
+        </select>
+      </div>
       ${showFinancials ? `
         <div class="rd-tiles">
           <div class="rd-tile rd-tile-today">
@@ -1408,6 +1492,7 @@ const App = (() => {
           jobId:           DB.generateId(),
           status:          'new',
           createdBy:       Auth.getUser()?.id || null,
+          createdByName:   Auth.getUser()?.name || '',
           customerName:    p.customerName?.value || 'Unknown',
           phone:           p.phone?.value ? LeadParser.formatPhone(p.phone.value) : '',
           address:         p.address?.value || '',
@@ -2568,6 +2653,11 @@ const App = (() => {
     _updateClosePreview();
   }
 
+  function _reportsSetSource(value) {
+    _state.reportsSourceFilter = value || '';
+    renderReportsDashboard();
+  }
+
   // Build round-hour options for service business hours: 6 AM through 8 PM.
   // Latest AM = 9 AM. No 9/10/11 PM.
   function _buildHourOptions(selectedHour) {
@@ -3024,13 +3114,15 @@ const App = (() => {
         <label class="field-label">Notes</label>
         <textarea id="edit-notes" class="field-input field-textarea" rows="2" ${isPaid ? 'disabled' : ''}>${_esc(job.notes || '')}</textarea>
       </div>
+      ${isDispatcher ? '' : `
       <div class="field-group">
         <label class="field-label">Lead Source</label>
-        <select id="edit-lead-source" class="field-input" ${isDispatcher ? 'disabled' : ''}>
+        <select id="edit-lead-source" class="field-input">
           <option value="my_lead" ${job.source === 'my_lead' ? 'selected' : ''}>My Lead</option>
           ${settings.leadSources.map(ls => `<option value="${_esc(ls.name)}" ${job.source === ls.name ? 'selected' : ''}>${_esc(ls.name)}</option>`).join('')}
         </select>
       </div>
+      `}
       <div class="field-group">
         <label class="field-label">Assign Technician</label>
         <select id="edit-tech-id" class="field-input" onchange="App._editAutoFillPayout(this)">
@@ -5322,6 +5414,7 @@ const App = (() => {
     _editAutoFillPayout,
     _editSyncTimeWindow,
     _newSyncTimeWindow,
+    _reportsSetSource,
     _editSelectPay,
     _editTaxSelect,
     _saveEditedJob,
