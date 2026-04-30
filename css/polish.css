@@ -4,6 +4,10 @@
    or existing class behavior. Safe to remove — purely cosmetic.
    ═══════════════════════════════════════════════════════════════ */
 
+/* ── Lock horizontal scroll app-wide (prevents accidental sideways slide) ── */
+html, body { overflow-x: hidden !important; }
+#app, #main-content, .view, .view-body { overflow-x: hidden !important; }
+
 /* ── Smoother global transitions ── */
 .btn, .chip, .nav-item, .job-card, .balance-card, .pay-btn,
 .detail-action-btn, .ttc-btn, .rd-pipeline-cell, .rd-tile {
@@ -321,41 +325,17 @@ h1, h2, h3, .step-title, .modal-title, .settings-section-title {
 .toast-info    { background: linear-gradient(135deg, rgba(59,130,246,.92), rgba(37,99,235,.95)) !important; color: #fff !important; }
 
 /* ═══════════════════════════════════════════════════════════════
-   VIEW TAB TRANSITIONS
+   VIEW TAB TRANSITIONS — opacity only, no transform (avoids scroll clipping)
    ═══════════════════════════════════════════════════════════════ */
-.view {
-  transition: opacity 220ms cubic-bezier(.16,1,.3,1), transform 220ms cubic-bezier(.16,1,.3,1);
-}
-.view:not(.active) { opacity: 0; pointer-events: none; }
 .view.active {
-  opacity: 1;
-  animation: viewIn 280ms cubic-bezier(.16,1,.3,1);
+  animation: viewFadeIn 220ms ease-out;
 }
-@keyframes viewIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+@keyframes viewFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   DASHBOARD — radial glow behind hero
-   ═══════════════════════════════════════════════════════════════ */
-#view-dashboard {
-  position: relative;
-  isolation: isolate;
-}
-#view-dashboard::before {
-  content: '';
-  position: absolute;
-  top: -100px; left: 50%;
-  transform: translateX(-50%);
-  width: 600px; height: 600px;
-  background: radial-gradient(circle, rgba(59,130,246,.10) 0%, transparent 60%);
-  pointer-events: none;
-  z-index: -1;
-}
-[data-theme="light"] #view-dashboard::before {
-  background: radial-gradient(circle, rgba(59,130,246,.06) 0%, transparent 60%);
-}
+/* (Dashboard radial glow removed — it caused horizontal scroll & clipped bottom content) */
 
 /* ═══════════════════════════════════════════════════════════════
    SKELETON LOADERS — usable as <div class="sk sk-line"></div>
