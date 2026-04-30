@@ -508,7 +508,7 @@ const App = (() => {
       }
     }
     if (viewName === 'calendar')   renderCalendar();
-    if (viewName === 'settings')   _loadSettingsForm();
+    if (viewName === 'settings')   { _loadSettingsForm(); _syncThemeToggleUI(document.documentElement.getAttribute('data-theme') || 'light'); }
     if (viewName === 'new-job')    _initNewJobView().catch(e => console.error('[NEW JOB] Init error:', e));
     if (viewName === 'balance')    renderReportsDashboard();
 
@@ -4678,13 +4678,29 @@ const App = (() => {
   }
 
   // ══════════════════════════════════════════════════════════
-  // LIGHT MODE ONLY (dark mode removed per user request)
+  // THEME — light/dark with localStorage persistence (default light)
   // ══════════════════════════════════════════════════════════
 
   function _initDarkMode() {
-    // ALWAYS use light theme - dark mode removed
-    document.documentElement.setAttribute('data-theme', 'light');
-    localStorage.setItem('op_dark_mode', '0');
+    const saved = localStorage.getItem('op_theme') || 'light';
+    document.documentElement.setAttribute('data-theme', saved);
+    _syncThemeToggleUI(saved);
+  }
+
+  function toggleTheme() {
+    const current = document.documentElement.getAttribute('data-theme') || 'light';
+    const next = current === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('op_theme', next);
+    _syncThemeToggleUI(next);
+  }
+
+  function _syncThemeToggleUI(theme) {
+    const pill = document.getElementById('theme-toggle-pill');
+    if (!pill) return;
+    pill.querySelectorAll('.theme-toggle-opt').forEach(b => {
+      b.classList.toggle('active', b.dataset.theme === theme);
+    });
   }
 
   // ══════════════════════════════════════════════════════════
@@ -5415,6 +5431,7 @@ const App = (() => {
     _editSyncTimeWindow,
     _newSyncTimeWindow,
     _reportsSetSource,
+    toggleTheme,
     _editSelectPay,
     _editTaxSelect,
     _saveEditedJob,

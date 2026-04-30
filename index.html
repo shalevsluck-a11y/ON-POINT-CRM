@@ -20,7 +20,10 @@
   <link rel="stylesheet" href="css/notification-settings.css?v=20260427-1">
   <link rel="stylesheet" href="css/balance.css?v=20260427-1">
   <link rel="stylesheet" href="css/balance-premium.css?v=20260427-1">
-  <link rel="stylesheet" href="css/polish.css?v=20260430-1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+  <link rel="stylesheet" href="css/polish.css?v=20260430-2">
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/logo.jpg">
@@ -758,6 +761,19 @@
 
     <!-- ==================== SETTINGS ==================== -->
     <section id="view-settings" class="view">
+
+      <!-- Appearance -->
+      <div class="settings-card">
+        <div class="settings-section-title">Appearance</div>
+        <div class="theme-toggle-row">
+          <span class="theme-toggle-label">Theme</span>
+          <div class="theme-toggle-pill" id="theme-toggle-pill" onclick="App.toggleTheme()">
+            <button data-theme="dark" class="theme-toggle-opt">🌙 Dark</button>
+            <button data-theme="light" class="theme-toggle-opt">☀️ Light</button>
+            <span class="theme-toggle-slider" id="theme-toggle-slider"></span>
+          </div>
+        </div>
+      </div>
 
       <!-- My Info -->
       <div class="settings-card" id="settings-myinfo-card">
