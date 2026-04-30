@@ -103,8 +103,32 @@ const App = (() => {
     // Init dark mode from saved preference
     _initDarkMode();
 
+    // Init header date
+    _updateHeaderDate();
+    setInterval(_updateHeaderDate, 60_000);
+
     // Init pull-to-refresh
     _initPullToRefresh();
+
+    // Live phone formatter on any input[type=tel]
+    document.addEventListener('input', (e) => {
+      const t = e.target;
+      if (!t || t.type !== 'tel') return;
+      const digits = (t.value || '').replace(/\D/g, '').slice(0, 10);
+      let out = digits;
+      if (digits.length > 6)      out = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
+      else if (digits.length > 3) out = `(${digits.slice(0,3)}) ${digits.slice(3)}`;
+      else if (digits.length > 0) out = `(${digits}`;
+      if (out !== t.value) t.value = out;
+    });
+
+    // Currency blur formatter on .currency-field inputs
+    document.addEventListener('blur', (e) => {
+      const t = e.target;
+      if (!t || !t.classList || !t.classList.contains('currency-field')) return;
+      const n = parseFloat(t.value);
+      if (Number.isFinite(n)) t.value = n.toFixed(2);
+    }, true);
 
     // Render immediately from localStorage cache so the app feels instant
     _loadSettingsForm();
@@ -824,7 +848,33 @@ const App = (() => {
   // JOB LIST
   // ══════════════════════════════════════════════════════════
 
+  function _updateChipCounts() {
+    const all = DB.getJobs();
+    const counts = {
+      all:        all.length,
+      unpaid:     all.filter(j => j.status !== 'paid' && j.status !== 'lost').length,
+      new:        all.filter(j => j.status === 'new').length,
+      scheduled:  all.filter(j => j.status === 'scheduled').length,
+      in_progress:all.filter(j => j.status === 'in_progress').length,
+      follow_up:  all.filter(j => j.status === 'follow_up').length,
+      paid:       all.filter(j => j.status === 'paid').length,
+      lost:       all.filter(j => j.status === 'lost').length,
+    };
+    document.querySelectorAll('.chip-count').forEach(el => {
+      const k = el.dataset.count;
+      if (counts[k] !== undefined) el.textContent = counts[k] > 0 ? `(${counts[k]})` : '';
+    });
+  }
+
+  function _updateHeaderDate() {
+    const el = document.getElementById('header-date');
+    if (!el) return;
+    const d = new Date();
+    el.textContent = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+
   function renderJobList() {
+    _updateChipCounts();
     const container = document.getElementById('jobs-list-container');
     let jobs = DB.searchJobs(_state.jobSearch);
 
@@ -848,7 +898,12 @@ const App = (() => {
     }
 
     if (jobs.length === 0) {
-      container.innerHTML = `<div class="empty-state">
+      const isInitialLoad = DB.getJobs().length === 0 && !_state.jobSearch;
+      container.innerHTML = isInitialLoad ? `
+        <div class="sk-card sk"></div>
+        <div class="sk-card sk"></div>
+        <div class="sk-card sk"></div>
+      ` : `<div class="empty-state">
         <div class="empty-icon">&#128269;</div>
         <div class="empty-title">No jobs found</div>
         <div class="empty-sub">${_state.jobSearch ? 'Try a different search' : 'No jobs with this status'}</div>
@@ -942,6 +997,14 @@ const App = (() => {
   // JOB CARD HTML
   // ══════════════════════════════════════════════════════════
 
+  // Hash a string to a stable HSL color (avatar tint).
+  function _stringToColor(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    const h = Math.abs(hash) % 360;
+    return `hsl(${h}, 60%, 50%)`;
+  }
+
   // Stale lead badge — only for status=new. Orange after 4h, red after 24h.
   function _staleLeadBadge(job) {
     if (job.status !== 'new') return '';
@@ -1031,10 +1094,13 @@ const App = (() => {
     const summaryRaw = (job.description || job.notes || job.closingDetails || '').trim();
     const summary = summaryRaw ? _esc(summaryRaw.replace(/\s+/g, ' ').slice(0, 140)) + (summaryRaw.length > 140 ? '…' : '') : '';
 
+    const initial = (job.customerName || '?').trim().charAt(0).toUpperCase();
+    const avatarColor = _stringToColor(job.customerName || job.phone || job.jobId || 'x');
+
     return `<div class="job-card ${statusClass}" onclick="App.openJobDetail('${job.jobId}')">
       <div class="job-card-inner">
         <div class="job-card-top">
-          <div class="job-card-name">${_esc(job.customerName || 'Unknown Customer')}</div>
+          <div class="job-card-name"><span class="customer-avatar" style="background:${avatarColor}">${_esc(initial)}</span>${_esc(job.customerName || 'Unknown Customer')}</div>
           <div class="job-card-right">
             <div class="job-card-total">${totalStr}</div>
             <span class="status-badge ${badgeClass}">${statusLabel}</span>

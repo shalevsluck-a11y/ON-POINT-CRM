@@ -510,3 +510,195 @@ h1, h2, h3, .step-title, .modal-title, .settings-section-title {
   letter-spacing: -.03em !important;
   font-weight: 800 !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   HEADER DATE PILL
+   ═══════════════════════════════════════════════════════════════ */
+.header-date {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  margin-top: 1px;
+  opacity: .82;
+}
+@media (max-width: 380px) { .header-date { display: none; } }
+
+/* ═══════════════════════════════════════════════════════════════
+   FILTER CHIP COUNTS
+   ═══════════════════════════════════════════════════════════════ */
+.chip-count {
+  font-size: 11px;
+  font-weight: 700;
+  margin-left: 4px;
+  opacity: .7;
+}
+.chip.active .chip-count { opacity: 1; color: rgba(255,255,255,.8); }
+
+/* ═══════════════════════════════════════════════════════════════
+   CUSTOMER AVATAR CIRCLES
+   ═══════════════════════════════════════════════════════════════ */
+.customer-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  margin-right: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.18);
+  vertical-align: middle;
+}
+.job-card-name {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+.job-card-name > span:not(.customer-avatar) { /* customer name text falls here? */ }
+
+/* ═══════════════════════════════════════════════════════════════
+   TOAST MOVED TO TOP
+   ═══════════════════════════════════════════════════════════════ */
+.toast {
+  position: fixed !important;
+  top: calc(var(--header-h) + var(--safe-top) + 12px) !important;
+  bottom: auto !important;
+  left: 50% !important;
+  transform: translateX(-50%) translateY(-150%);
+  max-width: calc(100vw - 32px);
+  z-index: 9000 !important;
+  transition: transform 320ms cubic-bezier(.16,1,.3,1) !important;
+}
+.toast.show { transform: translateX(-50%) translateY(0) !important; }
+
+/* ═══════════════════════════════════════════════════════════════
+   REPORTS TILES — phone 2x2 grid (was 4 cols)
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+  .rd-tiles {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+  .rd-tile { padding: 14px !important; min-height: 90px; }
+  .rd-tile-value { font-size: 26px !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BOTTOM NAV ACTIVE GLOW
+   ═══════════════════════════════════════════════════════════════ */
+.nav-item {
+  position: relative;
+  transition: color 200ms;
+}
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(59,130,246,.30) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+  animation: navGlowIn 320ms cubic-bezier(.16,1,.3,1);
+}
+@keyframes navGlowIn {
+  from { opacity: 0; transform: translateX(-50%) scale(.6); }
+  to   { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+.nav-item .nav-icon, .nav-item .nav-label { position: relative; z-index: 1; }
+
+/* ═══════════════════════════════════════════════════════════════
+   MODAL DRAG HANDLE — clearer
+   ═══════════════════════════════════════════════════════════════ */
+.modal-handle {
+  width: 44px !important;
+  height: 5px !important;
+  background: var(--color-text-faint) !important;
+  border-radius: 3px !important;
+  margin: 8px auto 12px !important;
+  opacity: .6;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   EMPTY STATES — richer
+   ═══════════════════════════════════════════════════════════════ */
+.empty-state {
+  padding: 56px 24px;
+  text-align: center;
+}
+.empty-icon {
+  font-size: 64px !important;
+  opacity: .35;
+  margin-bottom: 14px;
+  filter: grayscale(.3);
+}
+.empty-title {
+  font-size: 17px !important;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  margin-bottom: 4px;
+  color: var(--color-text);
+}
+.empty-sub {
+  font-size: 13px !important;
+  color: var(--color-text-muted);
+  max-width: 280px;
+  margin: 0 auto;
+  line-height: 1.4;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ADD JOB STEP INDICATOR
+   ═══════════════════════════════════════════════════════════════ */
+.step-content::before {
+  content: attr(data-step-label);
+  display: inline-block;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-bottom: 10px;
+  box-shadow: 0 2px 6px rgba(59,130,246,.32);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PULL-TO-REFRESH — bigger banner
+   ═══════════════════════════════════════════════════════════════ */
+.ptr-indicator {
+  width: 48px !important;
+  height: 48px !important;
+}
+.ptr-spinner {
+  width: 28px !important;
+  height: 28px !important;
+  border-width: 3px !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SKELETON LOADERS — premium shimmer (used on initial load)
+   ═══════════════════════════════════════════════════════════════ */
+.sk-card {
+  background: linear-gradient(90deg,
+    var(--color-surface) 0%,
+    var(--color-surface-2) 40%,
+    var(--color-surface-3) 50%,
+    var(--color-surface-2) 60%,
+    var(--color-surface) 100%) !important;
+  background-size: 200% 100% !important;
+  border: 1px solid var(--color-border-2);
+  border-radius: 16px !important;
+  margin: 0 12px 12px;
+}

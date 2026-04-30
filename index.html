@@ -233,6 +233,7 @@
     </div>
     <div class="header-center">
       <h1 id="header-title">Dashboard</h1>
+      <div id="header-date" class="header-date"></div>
     </div>
     <div class="header-right">
       <!-- Offline Queue Status -->
@@ -408,10 +409,14 @@
       </div>
 
       <div class="filter-chips" id="filter-chips">
-        <button class="chip" data-filter="all" onclick="App.setJobFilter('all',this)">All</button>
-        <button class="chip" data-filter="paid" onclick="App.setJobFilter('paid',this)">Paid</button>
-        <button class="chip active" data-filter="unpaid" onclick="App.setJobFilter('unpaid',this)">Ongoing</button>
-        <button class="chip" data-filter="lost" onclick="App.setJobFilter('lost',this)">Lost</button>
+        <button class="chip" data-filter="all" onclick="App.setJobFilter('all',this)">All <span class="chip-count" data-count="all"></span></button>
+        <button class="chip active" data-filter="unpaid" onclick="App.setJobFilter('unpaid',this)">Ongoing <span class="chip-count" data-count="unpaid"></span></button>
+        <button class="chip" data-filter="new" onclick="App.setJobFilter('new',this)">New <span class="chip-count" data-count="new"></span></button>
+        <button class="chip" data-filter="scheduled" onclick="App.setJobFilter('scheduled',this)">Scheduled <span class="chip-count" data-count="scheduled"></span></button>
+        <button class="chip" data-filter="in_progress" onclick="App.setJobFilter('in_progress',this)">Active <span class="chip-count" data-count="in_progress"></span></button>
+        <button class="chip" data-filter="follow_up" onclick="App.setJobFilter('follow_up',this)">Follow-Up <span class="chip-count" data-count="follow_up"></span></button>
+        <button class="chip" data-filter="paid" onclick="App.setJobFilter('paid',this)">Paid <span class="chip-count" data-count="paid"></span></button>
+        <button class="chip" data-filter="lost" onclick="App.setJobFilter('lost',this)">Lost <span class="chip-count" data-count="lost"></span></button>
       </div>
 
       <!-- Dispatcher source banner (auto-shown for dispatcher with allowed sources) -->
@@ -441,7 +446,7 @@
       </div>
 
       <!-- STEP 1: Paste Lead -->
-      <div id="step-1" class="step-content active">
+      <div id="step-1" class="step-content active" data-step-label="Step 1 of 2">
         <h2 class="step-title">Paste Lead Text</h2>
         <p class="step-sub">Paste anything — name, phone, address, date, time. I'll parse it automatically.</p>
         <textarea id="raw-lead-input" class="lead-textarea"
@@ -459,7 +464,7 @@
       </div>
 
       <!-- STEP 2: All Details + Save -->
-      <div id="step-2" class="step-content">
+      <div id="step-2" class="step-content" data-step-label="Step 2 of 2">
         <h2 class="step-title">Job Details</h2>
 
         <div class="returning-banner hidden" id="returning-banner">
