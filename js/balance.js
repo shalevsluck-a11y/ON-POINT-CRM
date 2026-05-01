@@ -596,9 +596,21 @@ const Balance = (function() {
         };
       }
 
+      // Recompute via PayoutEngine, do not trust stored tech_payout
+      const _settings = (typeof DB !== 'undefined' && DB.getSettings) ? DB.getSettings() : {};
+      const _calc = (typeof PayoutEngine !== 'undefined') ? PayoutEngine.calculate({
+        jobTotal:      job.jobTotal      || 0,
+        partsCost:     job.partsCost     || 0,
+        techPercent:   job.techPercent   || 0,
+        contractorPct: job.contractorPct || 0,
+        taxOption:     job.taxOption     || 'none',
+        isSelfAssigned: job.isSelfAssigned || false,
+        taxRateNY:     _settings.taxRateNY || 8.875,
+        taxRateNJ:     _settings.taxRateNJ || 6.625,
+      }) : null;
       techStats[job.assignedTechId].jobs++;
       techStats[job.assignedTechId].revenue += job.jobTotal || 0;
-      techStats[job.assignedTechId].payout += job.techPayout || 0;
+      techStats[job.assignedTechId].payout += _calc ? _calc.techPayout : (job.techPayout || 0);
     });
 
     return Object.entries(techStats)
@@ -629,16 +641,32 @@ const Balance = (function() {
       paymentMethods: {}
     };
 
+    const settings = (typeof DB !== 'undefined' && DB.getSettings) ? DB.getSettings() : {};
     jobs.forEach(job => {
-      const jobTotal = job.jobTotal || 0;
-      const parts = job.partsCost || 0;
-      const techPay = job.techPayout || 0;
-      const contractorPay = job.contractorFee || 0;
-      const ownerPay = job.ownerPayout || 0;
+      // Always recompute splits from raw inputs via PayoutEngine — never trust stored
+      // techPayout / contractorFee / ownerPayout fields. They may have been written by
+      // an earlier version of the formula and are kept only for legacy/audit purposes.
+      const calc = (typeof PayoutEngine !== 'undefined') ? PayoutEngine.calculate({
+        jobTotal:      job.jobTotal      || 0,
+        partsCost:     job.partsCost     || 0,
+        techPercent:   job.techPercent   || 0,
+        contractorPct: job.contractorPct || 0,
+        taxOption:     job.taxOption     || 'none',
+        isSelfAssigned: job.isSelfAssigned || false,
+        taxRateNY:     settings.taxRateNY || 8.875,
+        taxRateNJ:     settings.taxRateNJ || 6.625,
+      }) : null;
+
+      const jobTotal      = job.jobTotal || 0;
+      const parts         = job.partsCost || 0;
+      const techPay       = calc ? calc.techPayout      : (job.techPayout      || 0);
+      const contractorPay = calc ? calc.contractorFee   : (job.contractorFee   || 0);
+      const ownerPay      = calc ? calc.ownerPayout     : (job.ownerPayout     || 0);
+      const laborNet      = calc ? calc.netAfterParts   : (jobTotal - parts);
 
       stats.totalCollected += jobTotal;
       stats.partsCost += parts;
-      stats.laborTotal += (jobTotal - parts);
+      stats.laborTotal += laborNet;
       stats.techPayout += techPay;
       stats.contractorFee += contractorPay;
       stats.ownerPayout += ownerPay;

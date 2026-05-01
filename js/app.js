@@ -2255,6 +2255,17 @@ const App = (() => {
       <!-- Close Job -->
       ${closeBtn}
 
+      <!-- Financials FIRST for paid/closed jobs (admin sees money immediately) -->
+      ${(job.status === 'paid' || job.status === 'closed') && !Auth.isDispatcher() && total > 0 ? `
+      <div class="detail-section" id="ds-financials-top">
+        <div class="detail-section-title" onclick="App.toggleDetailSection('ds-financials-top')">
+          ${Auth.isTechOrContractor() ? 'Your Payout' : 'Financials'} <span class="section-chevron">›</span>
+        </div>
+        <div class="detail-section-body">
+          ${PayoutEngine.renderBreakdownHTML(calc, job.assignedTechName || 'Tech', '', Auth.getUser()?.role || 'admin')}
+        </div>
+      </div>` : ''}
+
       <!-- Customer Info -->
       <div class="detail-section" id="ds-customer">
         <div class="detail-section-title" onclick="App.toggleDetailSection('ds-customer')">
@@ -2328,8 +2339,8 @@ const App = (() => {
         </div>
       </div>
 
-      <!-- Financials (role-based view: admin full, tech their cut, contractor all splits, dispatcher hidden) -->
-      ${!Auth.isDispatcher() && (total > 0 || Auth.isTechOrContractor() && (parseFloat(job.techPayout) > 0 || parseFloat(job.contractorFee) > 0)) ? `
+      <!-- Financials (skipped for paid/closed since shown at top above) -->
+      ${!Auth.isDispatcher() && !((job.status === 'paid' || job.status === 'closed') && total > 0) && (total > 0 || Auth.isTechOrContractor() && (parseFloat(job.techPayout) > 0 || parseFloat(job.contractorFee) > 0)) ? `
       <div class="detail-section collapsed" id="ds-financials">
         <div class="detail-section-title" onclick="App.toggleDetailSection('ds-financials')">
           ${Auth.isTechOrContractor() ? 'Your Payout' : 'Financials'} <span class="section-chevron">›</span>
