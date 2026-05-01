@@ -563,6 +563,27 @@ const App = (() => {
   // DASHBOARD
   // ══════════════════════════════════════════════════════════
 
+  // ════════════════════════════════════════════════════════════════
+  // FINANCIAL SAFETY: single source of truth for any money figure.
+  // Always recompute splits from raw inputs via PayoutEngine.
+  // NEVER read job.techPayout / job.ownerPayout / job.contractorFee for display
+  // — those are legacy fields that may have been written by an older formula.
+  // ════════════════════════════════════════════════════════════════
+  function _jobCalc(job) {
+    if (!job) return null;
+    const settings = DB.getSettings();
+    return PayoutEngine.calculate({
+      jobTotal:       job.jobTotal      || 0,
+      partsCost:      job.partsCost     || 0,
+      techPercent:    job.techPercent   || 0,
+      contractorPct:  job.contractorPct || 0,
+      taxOption:      job.taxOption     || 'none',
+      isSelfAssigned: job.isSelfAssigned || false,
+      taxRateNY:      settings.taxRateNY || 8.875,
+      taxRateNJ:      settings.taxRateNJ || 6.625,
+    });
+  }
+
   function renderDashboard() {
     const jobs = DB.getJobs();
     const today = _todayStr();
@@ -581,11 +602,13 @@ const App = (() => {
     if (revSection) revSection.classList.toggle('hidden', !Auth.isAdmin());
 
     if (Auth.canSeeFinancials()) {
-      // Admin: show owner revenue (ownerPayout + selfBonus for self-assigned)
+      // Admin: show owner revenue (ownerPayout + selfBonus for self-assigned).
+      // Always recompute via PayoutEngine — never trust stored splits.
       const toOwnerRev = arr => arr.reduce((s, j) => {
-        const ownerCut  = parseFloat(j.ownerPayout) || 0;
+        const c = _jobCalc(j);
+        const ownerCut  = c ? c.ownerPayout : 0;
         const selfBonus = (j.isSelfAssigned === true || j.isSelfAssigned === 'true')
-          ? (parseFloat(j.techPayout) || 0) : 0;
+          ? (c ? c.techPayout : 0) : 0;
         return s + ownerCut + selfBonus;
       }, 0);
       _setText('rev-day-amount', _fmt(toOwnerRev(paidToday)));
@@ -651,7 +674,7 @@ const App = (() => {
     const thisWeekPaid = myJobs.filter(j =>
       j.status === 'paid' && j.scheduledDate >= _daysAgoStr(6)
     );
-    const weekEarnings = thisWeekPaid.reduce((s, j) => s + (parseFloat(j.techPayout) || 0), 0);
+    const weekEarnings = thisWeekPaid.reduce((s, j) => { const c = _jobCalc(j); return s + (c ? c.techPayout : 0); }, 0);
 
     const jobCards = todayJobs.length > 0
       ? todayJobs.map(j => {
@@ -768,7 +791,7 @@ const App = (() => {
     const stats = techs.map(tech => {
       const techJobs = jobs.filter(j => j.assignedTechId === tech.id);
       const paidJobs = techJobs.filter(j => j.status === 'paid');
-      const totalPayout = paidJobs.reduce((s, j) => s + (parseFloat(j.techPayout) || 0), 0);
+      const totalPayout = paidJobs.reduce((s, j) => { const c = _jobCalc(j); return s + (c ? c.techPayout : 0); }, 0);
       const avgPayout   = paidJobs.length > 0 ? totalPayout / paidJobs.length : 0;
       const estVsActual = techJobs.filter(j => j.estimatedTotal && j.jobTotal)
         .map(j => ({ est: parseFloat(j.estimatedTotal), actual: parseFloat(j.jobTotal) }));
@@ -5225,7 +5248,9 @@ const App = (() => {
       lines.push(`  ${job.notes}`);
     }
 
-    const techPayout = parseFloat(job.techPayout) || parseFloat(job.contractorFee) || 0;
+    // Always recompute so tech sees the correct cut even if storage has stale split
+    const _calcTd = _jobCalc(job);
+    const techPayout = _calcTd ? (_calcTd.techPayout || _calcTd.contractorFee) : 0;
     if (techPayout > 0) {
       lines.push('');
       lines.push('*💰 YOUR PAYOUT*');
