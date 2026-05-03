@@ -1500,17 +1500,17 @@ const App = (() => {
       </div>
       ${showFinancials ? `
         <div class="rd-tiles">
-          <div class="rd-tile rd-tile-today">
+          <div class="rd-tile rd-tile-today" style="cursor:pointer" onclick="App.showReportJobs('all','All paid jobs','today')">
             <div class="rd-tile-label">Today</div>
             <div class="rd-tile-value">${fmt(totalToday)}</div>
             <div class="rd-tile-sub">${todayPaid.length} paid</div>
           </div>
-          <div class="rd-tile rd-tile-week">
+          <div class="rd-tile rd-tile-week" style="cursor:pointer" onclick="App.showReportJobs('all','All paid jobs','7d')">
             <div class="rd-tile-label">7 days</div>
             <div class="rd-tile-value">${fmt(totalWeek)}</div>
             <div class="rd-tile-sub">${weekPaid.length} paid</div>
           </div>
-          <div class="rd-tile rd-tile-month">
+          <div class="rd-tile rd-tile-month" style="cursor:pointer" onclick="App.showReportJobs('all','All paid jobs','30d')">
             <div class="rd-tile-label">30 days</div>
             <div class="rd-tile-value">${fmt(totalMonth)}</div>
             <div class="rd-tile-sub">${monthPaid.length} paid · avg ${fmt(avgTicket)}</div>
@@ -1534,11 +1534,11 @@ const App = (() => {
 
       ${showFinancials && sourceRows.length ? `
         <div class="rd-list">
-          <div class="rd-list-title">Revenue by source · last 30d</div>
+          <div class="rd-list-title">Revenue by source · last 30d <span style="font-weight:400;color:var(--color-text-muted);font-size:11px">(tap to see jobs)</span></div>
           ${sourceRows.map(([name, d]) => {
             const pct = totalMonth ? Math.round(d.revenue / totalMonth * 100) : 0;
             return `
-              <div class="rd-list-row">
+              <div class="rd-list-row" style="cursor:pointer" onclick="App.showReportJobs('source','${_esc(name).replace(/'/g, "\\'")}','30d')">
                 <div class="rd-list-row-name">${_esc(name)}</div>
                 <div class="rd-list-row-bar"><div style="width:${pct}%"></div></div>
                 <div class="rd-list-row-val">${fmt(d.revenue)}</div>
@@ -1551,11 +1551,11 @@ const App = (() => {
 
       ${showFinancials && techRows.length ? `
         <div class="rd-list">
-          <div class="rd-list-title">Revenue by tech · last 30d</div>
+          <div class="rd-list-title">Revenue by tech · last 30d <span style="font-weight:400;color:var(--color-text-muted);font-size:11px">(tap to see jobs)</span></div>
           ${techRows.map(([name, d]) => {
             const pct = totalMonth ? Math.round(d.revenue / totalMonth * 100) : 0;
             return `
-              <div class="rd-list-row">
+              <div class="rd-list-row" style="cursor:pointer" onclick="App.showReportJobs('tech','${_esc(name).replace(/'/g, "\\'")}','30d')">
                 <div class="rd-list-row-name">${_esc(name)}</div>
                 <div class="rd-list-row-bar"><div style="width:${pct}%"></div></div>
                 <div class="rd-list-row-val">${fmt(d.revenue)}</div>
@@ -1566,6 +1566,85 @@ const App = (() => {
         </div>
       ` : ''}
     `;
+  }
+
+  // Show drilldown modal listing jobs that contributed to a Reports row.
+  // dim = 'source' | 'tech' ; key = source name OR tech name ; period = 'today' | '7d' | '30d'
+  function showReportJobs(dim, key, period) {
+    const allJobs = DB.getJobs();
+    const today = new Date(); today.setHours(0,0,0,0);
+    let fromDate;
+    if (period === 'today') fromDate = today;
+    else if (period === '7d') { fromDate = new Date(today); fromDate.setDate(fromDate.getDate() - 7); }
+    else { fromDate = new Date(today); fromDate.setDate(fromDate.getDate() - 30); }
+
+    let matching = allJobs.filter(j => {
+      if (j.status !== 'paid') return false;
+      const d = j.paidAt || j.scheduledDate || j.createdAt || '';
+      if (!d || new Date(d) < fromDate) return false;
+      if (dim === 'all')    return true;
+      if (dim === 'source') return j.source === key;
+      if (dim === 'tech')   return (j.assignedTechName || 'Unassigned') === key;
+      return false;
+    }).sort((a, b) => {
+      const da = new Date(a.paidAt || a.scheduledDate || a.createdAt || 0).getTime();
+      const dbb = new Date(b.paidAt || b.scheduledDate || b.createdAt || 0).getTime();
+      return dbb - da;
+    });
+
+    const titleEl = document.getElementById('customer-history-title');
+    const periodLabel = period === 'today' ? 'today' : period === '7d' ? 'last 7 days' : 'last 30 days';
+    if (titleEl) titleEl.textContent = `${key} · ${matching.length} job${matching.length !== 1 ? 's' : ''} · ${periodLabel}`;
+
+    const body = document.getElementById('modal-customer-history-body');
+    if (!body) return;
+
+    if (matching.length === 0) {
+      body.innerHTML = `<div class="empty-state"><div class="empty-icon">&#128202;</div><div class="empty-title">No jobs</div><div class="empty-sub">No paid jobs match this filter.</div></div>`;
+      showModal('modal-customer-history');
+      return;
+    }
+
+    const settings = DB.getSettings();
+    let totalRevenue = 0, totalParts = 0, totalTechCut = 0, totalOwner = 0;
+    matching.forEach(j => {
+      const c = _jobCalc(j) || {};
+      totalRevenue += parseFloat(j.jobTotal) || 0;
+      totalParts   += parseFloat(j.partsCost) || 0;
+      totalTechCut += c.techPayout || 0;
+      totalOwner   += c.ownerPayout || 0;
+    });
+    const fmt = n => '$' + (n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+
+    body.innerHTML = `
+      <div style="background:rgba(99,102,241,0.08);border-radius:12px;padding:14px;margin-bottom:14px">
+        <div style="display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--color-text-muted)">
+          <div><b style="color:var(--color-text);font-size:18px;display:block">${fmt(totalRevenue)}</b>Revenue</div>
+          <div><b style="color:var(--color-text);font-size:18px;display:block">${fmt(totalRevenue - totalParts)}</b>After parts</div>
+          <div><b style="color:var(--color-success);font-size:18px;display:block">${fmt(totalTechCut)}</b>Tech cut</div>
+          <div><b style="color:var(--color-success);font-size:18px;display:block">${fmt(totalOwner)}</b>Owner cut</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow-y:auto">
+        ${matching.map(j => {
+          const c = _jobCalc(j) || {};
+          return `
+            <div onclick="App.closeModal();App.openJobDetail('${j.jobId}')" style="background:var(--color-surface-raised);border-radius:10px;padding:12px;cursor:pointer;border-left:3px solid #22c55e">
+              <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700">
+                <span>${_esc(j.customerName || 'Unknown')}</span>
+                <span>${fmt(parseFloat(j.jobTotal) || 0)}</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--color-text-muted);margin-top:4px">
+                <span>${(j.paidAt || j.scheduledDate || '').slice(0,10)} · ${_esc(j.assignedTechName || '—')}</span>
+                <span>Tech: ${fmt(c.techPayout || 0)}</span>
+              </div>
+              ${j.description ? `<div style="font-size:12px;color:var(--color-text-muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_esc(j.description)}</div>` : ''}
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+    showModal('modal-customer-history');
   }
 
   // Bulk add — paste multiple leads separated by `---` or 2+ blank lines.
@@ -5557,6 +5636,7 @@ const App = (() => {
     _editSyncTimeWindow,
     _newSyncTimeWindow,
     _reportsSetSource,
+    showReportJobs,
     toggleTheme,
     _editSelectPay,
     _editTaxSelect,
