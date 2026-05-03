@@ -4,9 +4,11 @@
    or existing class behavior. Safe to remove — purely cosmetic.
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── Lock horizontal scroll app-wide (prevents accidental sideways slide) ── */
-html, body { overflow-x: hidden !important; }
-#app, #main-content, .view, .view-body { overflow-x: hidden !important; }
+/* (overflow-x lock removed — body already has overflow:hidden in app.css. The !important rule
+   was conflicting with iOS Safari scroll-momentum and locking pages on scroll-up.) */
+.view, .view-body { overflow-x: hidden; }
+/* Ensure scrollable views always release momentum cleanly */
+.view { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 
 /* (Removed header z-index override — was breaking tap targets) */
 
@@ -141,8 +143,13 @@ html, body { overflow-x: hidden !important; }
 /* ── Modal entrance — silkier ── */
 .modal {
   box-shadow: 0 -10px 40px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.04);
+  /* Trap scroll so dragging up at the top doesn't chain to body and cause iOS lock */
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
-.modal-overlay { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.modal-overlay {
+  /* No backdrop-filter — was contributing to iOS compositing stalls / scroll freeze */
+}
 .modal-handle {
   background: var(--color-text-faint) !important;
   opacity: .7;
