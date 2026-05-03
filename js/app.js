@@ -110,11 +110,16 @@ const App = (() => {
     // Init pull-to-refresh
     _initPullToRefresh();
 
-    // Live phone formatter on any input[type=tel]
+    // Live phone formatter on any input[type=tel].
+    // Strips a leading "+1" or "1" country code BEFORE truncating so the last digit is never lost.
     document.addEventListener('input', (e) => {
       const t = e.target;
       if (!t || t.type !== 'tel') return;
-      const digits = (t.value || '').replace(/\D/g, '').slice(0, 10);
+      let raw = (t.value || '').replace(/\D/g, '');
+      // Drop US country code if present
+      if (raw.length === 11 && raw.startsWith('1')) raw = raw.slice(1);
+      else if (raw.length > 11 && raw.startsWith('1')) raw = raw.slice(1, 11);
+      const digits = raw.slice(0, 10);
       let out = digits;
       if (digits.length > 6)      out = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
       else if (digits.length > 3) out = `(${digits.slice(0,3)}) ${digits.slice(3)}`;
