@@ -302,11 +302,6 @@ const App = (() => {
     if (roleEl) roleEl.textContent = user.role;
   }
 
-  function closeUserMenu() {
-    const menu = document.getElementById('user-menu');
-    if (menu) menu.classList.add('hidden');
-  }
-
   function _applyRoleUI() {
     // Hide "New Job" button from tech/contractor users (they don't create jobs)
     document.querySelectorAll('.nav-add').forEach(el => {
@@ -420,6 +415,19 @@ const App = (() => {
   function hideMoreMenu() {
     const menu = document.getElementById('more-menu');
     if (menu) menu.classList.add('hidden');
+    if (_moreMenuCloseHandler) {
+      document.removeEventListener('click', _moreMenuCloseHandler);
+      _moreMenuCloseHandler = null;
+    }
+  }
+
+  function closeUserMenu() {
+    const menu = document.getElementById('user-menu');
+    if (menu) menu.classList.add('hidden');
+    if (_userMenuCloseHandler) {
+      document.removeEventListener('click', _userMenuCloseHandler);
+      _userMenuCloseHandler = null;
+    }
   }
 
   async function logout() {
@@ -448,8 +456,10 @@ const App = (() => {
   };
 
   function navigate(viewName, opts = {}) {
-    // Hide more menu when navigating
+    // Panic reset: dismiss anything that might be intercepting taps
     hideMoreMenu();
+    closeUserMenu();
+    document.body.style.overflow = '';
 
     // Ignore 'more' view (it's just a menu toggle, not a real view)
     if (viewName === 'more') return;
