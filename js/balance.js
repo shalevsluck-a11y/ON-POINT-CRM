@@ -466,9 +466,69 @@ const Balance = (function() {
           </div>
         `).join('')}
       </div>
+
+      ${renderJobsList(jobs, 'Jobs in this report')}
     `;
 
     return html;
+  }
+
+  // Collapsible per-job list. Each row shows customer, date, total, tech cut.
+  // Tap a row to open the job detail.
+  function renderJobsList(jobs, title) {
+    if (!jobs || jobs.length === 0) return '';
+    const settings = (typeof DB !== 'undefined' && DB.getSettings) ? DB.getSettings() : {};
+    // Sort newest first
+    const sorted = [...jobs].sort((a, b) => {
+      const da = new Date(a.paidAt || a.scheduledDate || a.createdAt || 0).getTime();
+      const dbb = new Date(b.paidAt || b.scheduledDate || b.createdAt || 0).getTime();
+      return dbb - da;
+    });
+    const id = 'jobs-list-' + Math.random().toString(36).slice(2, 7);
+    return `
+      <div class="report-jobs-list" id="${id}">
+        <h3 style="cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="document.getElementById('${id}-body').classList.toggle('hidden');this.querySelector('.chev').textContent=document.getElementById('${id}-body').classList.contains('hidden')?'›':'⌄'">
+          ${title} <span style="font-size:13px;color:var(--color-text-muted);font-weight:400">${sorted.length} jobs <span class="chev">⌄</span></span>
+        </h3>
+        <div id="${id}-body" style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+          ${sorted.map(j => {
+            const calc = (typeof PayoutEngine !== 'undefined') ? PayoutEngine.calculate({
+              jobTotal:      j.jobTotal      || 0,
+              partsCost:     j.partsCost     || 0,
+              techPercent:   j.techPercent   || 0,
+              contractorPct: j.contractorPct || 0,
+              taxOption:     j.taxOption     || 'none',
+              isSelfAssigned: j.isSelfAssigned || false,
+              taxRateNY:     settings.taxRateNY || 8.875,
+              taxRateNJ:     settings.taxRateNJ || 6.625,
+            }) : null;
+            const total = parseFloat(j.jobTotal) || 0;
+            const parts = parseFloat(j.partsCost) || 0;
+            const techCut = calc ? calc.techPayout : 0;
+            const dateStr = (j.paidAt || j.scheduledDate || j.createdAt || '').slice(0, 10);
+            const statusColor = j.status === 'paid' ? '#22c55e' : j.status === 'lost' ? '#ef4444' : j.status === 'follow_up' ? '#f59e0b' : '#6366f1';
+            return `
+              <div class="report-job-row" onclick="if(typeof App!=='undefined'&&App.openJobDetail)App.openJobDetail('${j.jobId}')" style="background:var(--color-surface-raised);border-radius:10px;padding:10px 12px;cursor:pointer;border-left:3px solid ${statusColor}">
+                <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;gap:8px">
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(j.customerName || 'Unknown')}</span>
+                  <span style="white-space:nowrap">$${formatMoney(total)}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--color-text-muted);margin-top:4px;gap:8px">
+                  <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${dateStr} · ${escapeHtml(j.assignedTechName || '—')} · ${escapeHtml(j.source || '—')}</span>
+                  <span style="white-space:nowrap">parts $${formatMoney(parts)} · tech $${formatMoney(techCut)}</span>
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   function generateTechReport(jobs, period, status, techId, dateRange) {
@@ -576,6 +636,8 @@ const Balance = (function() {
           <div class="alert-text" style="font-size:14px;margin-top:8px;color:#555">Please send a screenshot of your Zelle transfer for our records. Thank you!</div>
         </div>
       </div>
+
+      ${renderJobsList(techJobs, techId ? `${techName}'s jobs in this report` : 'Jobs in this report')}
     `;
 
     return html;
