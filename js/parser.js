@@ -271,32 +271,74 @@ const LeadParser = (() => {
       }
     }
 
-    // Labeled address
+    // Labeled address — accept on same line OR on the next line, but
+    // reject captures whose first word is another field label
+    // ("Date: 5/6", "Time: 3pm", "City: ..."). That bug let an empty
+    // "Address:" header swallow the next labelled field as its value.
     const labeled = text.match(/(?:address|location|addr)[:\s]+(.+?)(?:\n|,\s*[A-Z]{2}|$)/i);
     if (labeled) {
-      return { value: _titleCase(labeled[1].trim()), confidence: 'medium' };
+      const v = labeled[1].trim();
+      const firstWord = (v.split(/[\s:]+/)[0] || '').toLowerCase();
+      if (v.length >= 3 && !_LABEL_WORDS.has(firstWord) && /[A-Za-z0-9]/.test(v)) {
+        return { value: _titleCase(v), confidence: 'medium' };
+      }
     }
 
     return { value: '', confidence: 'low' };
   }
+
+  // Field labels that must never be captured as a value
+  const _LABEL_WORDS = new Set([
+    'name','customer','client','contact','phone','cell','mobile','tel',
+    'address','street','city','state','zip','email','date','time',
+    'description','notes','source','tech','technician','price','total',
+    'when','schedule','scheduled'
+  ]);
 
   // ────────────────────────────────────────────
   // CITY PARSER
   // ────────────────────────────────────────────
 
   function _parseCity(text) {
-    // Pattern: "City, ST ZIP" or "City, ST" or common city names
-    const m = text.match(/([A-Za-z\s]{2,25}),?\s*(?:ME|NH|VT|MA|RI|CT|NY|NJ|PA|DE|MD|DC|VA|WV|NC|SC|GA|FL|OH|KY|TN|IN|MI|CA|TX)\b/i);
+    // Pattern: "City, ST ZIP" or "City ST" — require a word boundary BEFORE
+    // the state code. Old regex (`(?:NY|..|IN|..)\b`) had a boundary only at
+    // the end, so `IN` (Indiana) matched inside "Main" — capturing "Ma" as
+    // the city. Now we require a word/space boundary on both sides of the
+    // state code, and we capture 1-3 alphabetic words immediately before it
+    // (with optional comma).
+    const m = text.match(/([A-Za-z][A-Za-z'\-]*(?:\s+[A-Za-z][A-Za-z'\-]*){0,2}),?\s+\b(?:ME|NH|VT|MA|RI|CT|NY|NJ|PA|DE|MD|DC|VA|WV|NC|SC|GA|FL|OH|KY|TN|IN|MI|CA|TX)\b/i);
     if (m) {
-      // Isolate city part — take last word group before state
-      const cityRaw = m[1].replace(/\d+\s+/g, '').trim();
-      const words = cityRaw.split(/\s+/).slice(-3).join(' ');
-      if (words.length >= 2) return { value: _titleCase(words), confidence: 'high' };
+      // Take only the words AFTER any street-suffix marker so
+      // "Ocean Pkwy Brooklyn" → "Brooklyn" (not "Ocean Pkwy Brooklyn").
+      const _suffixSet = new Set([
+        'st','street','ave','avenue','blvd','boulevard','rd','road','dr','drive',
+        'ln','lane','way','ct','court','pl','place','pkwy','parkway','hwy','highway',
+        'cir','circle','loop','trail','trl','terr','terrace'
+      ]);
+      const allParts = m[1].trim().split(/\s+/).filter(Boolean);
+      let lastSuffixIdx = -1;
+      for (let i = 0; i < allParts.length; i++) {
+        if (_suffixSet.has(allParts[i].toLowerCase().replace(/[.,]/g,''))) lastSuffixIdx = i;
+      }
+      const cityParts = allParts.slice(lastSuffixIdx + 1).slice(-3);
+      const words = cityParts.join(' ').trim();
+      if (words.length >= 2 && !_LABEL_WORDS.has(words.toLowerCase())) {
+        return { value: _titleCase(words), confidence: 'high' };
+      }
     }
 
-    // City: label
+    // City: label — reject captures whose first word is another field label.
+    // Without the blocklist check, an empty "City:" header would swallow the
+    // next labelled field's label word ("Date", "Time", "Phone", etc.) — that
+    // is why date/time were showing up as the city.
     const labeled = text.match(/(?:city)[:\s]+([A-Za-z\s]{2,25})/i);
-    if (labeled) return { value: _titleCase(labeled[1].trim()), confidence: 'medium' };
+    if (labeled) {
+      const v = labeled[1].trim();
+      const firstWord = (v.split(/\s+/)[0] || '').toLowerCase();
+      if (v.length >= 2 && !_LABEL_WORDS.has(firstWord)) {
+        return { value: _titleCase(v), confidence: 'medium' };
+      }
+    }
 
     return { value: '', confidence: 'low' };
   }
