@@ -97,9 +97,9 @@ const LeadParser = (() => {
   // ─── helpers used by name parser to skip non-name lines ───
   function _looksLikePhone(line) {
     const digits = line.replace(/\D/g, '');
-    if (digits.length >= 7 && digits.length <= 11) {
-      // Has parens/dashes typical of phone, OR is mostly digits
-      if (/[\(\)\-\.]/.test(line) || /\b\d{10,11}\b/.test(line)) return true;
+    if (digits.length >= 7 && digits.length <= 15) {
+      // Has parens/dashes/plus typical of phone, OR is mostly digits
+      if (/[\(\)\-\.\+]/.test(line) || /\b\d{10,15}\b/.test(line)) return true;
       const nonDigit = line.replace(/[\d\s\-\.\(\)\+]/g, '');
       if (nonDigit.length <= 2) return true;
     }
@@ -174,22 +174,29 @@ const LeadParser = (() => {
   // ────────────────────────────────────────────
 
   function _parsePhone(text) {
-    // Match: (516) 555-1234, 516-555-1234, 5165551234, +15165551234
-    // IMPORTANT: Only match 10-digit phone numbers, NOT 5-digit ZIPs
+    // Match: (516) 555-1234, 516-555-1234, 5165551234, +15165551234, +972 50 123 4567, etc.
+    // Supports international (10-15 digits per E.164). Skips 5-digit ZIPs.
+    // Uses word-boundary anchors only — no lookbehind, for older iOS Safari support.
     const patterns = [
-      /(?:phone|cell|mobile|tel|call)[:\s#]*([\+1]?\s*\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4})/i,
+      // Labeled with optional + and country code, 10-22 chars of digits/separators
+      /(?:phone|cell|mobile|tel|call)[:\s#]*(\+?[\d\s.\-\(\)]{10,22})/i,
+      // Standard US 3-3-4 formatted
       /\b(\(?\d{3}\)?[\s.\-]\d{3}[\s.\-]\d{4})\b/,
-      /\b(\d{10})\b/,
-      /\b(\+1\d{10})\b/,
+      // 10-15 raw digits
+      /\b(\d{10,15})\b/,
+      // International with + prefix — start-of-string or after whitespace/punctuation
+      /(?:^|[\s,;:])(\+\d{10,14})(?=$|[\s,;:.])/,
     ];
 
     for (const pat of patterns) {
-      const m = text.match(pat);
+      let m;
+      try { m = text.match(pat); } catch (_) { continue; }
       if (m) {
         const raw = m[1];
-        // Skip if this looks like a ZIP code (exactly 5 digits with no separators)
         const digitsOnly = raw.replace(/\D/g, '');
-        if (digitsOnly.length === 5) continue;
+        // Skip ZIP-like (5 digits) and too-short / too-long
+        if (digitsOnly.length < 10) continue;
+        if (digitsOnly.length > 15) continue;
 
         const phone = _formatPhone(raw);
         if (phone) return { value: phone, confidence: 'high' };
@@ -201,10 +208,21 @@ const LeadParser = (() => {
   function _formatPhone(raw) {
     if (!raw) return '';
     const digits = raw.replace(/\D/g, '');
-    // Remove leading 1 if 11 digits
-    const d = digits.length === 11 && digits[0] === '1' ? digits.slice(1) : digits;
-    if (d.length !== 10) return raw; // Return as-is if not standard
-    return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
+    // US with leading 1 country code: 11 digits → strip and format
+    if (digits.length === 11 && digits[0] === '1') {
+      const d = digits.slice(1);
+      return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
+    }
+    // US 10 digits
+    if (digits.length === 10) {
+      return `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
+    }
+    // International (E.164 max 15) — keep all digits with + prefix
+    if (digits.length >= 11 && digits.length <= 15) {
+      return `+${digits}`;
+    }
+    // Outside spec — return as-is
+    return raw;
   }
 
   // ────────────────────────────────────────────
@@ -238,11 +256,11 @@ const LeadParser = (() => {
                         .trim();
 
         // Reject lines that are phone numbers.
-        // A phone number has 7–11 digits and almost no non-digit, non-separator chars.
+        // A phone number has 7–15 digits and almost no non-digit, non-separator chars.
         // Real house numbers have at most 5 digits and are surrounded by street words.
         const digitsOnly     = addr.replace(/\D/g, '');
         const nonDigitNonSep = addr.replace(/[\d\s\-\.\(\)\+]/g, '');
-        if (digitsOnly.length >= 7 && digitsOnly.length <= 11 && nonDigitNonSep.length <= 2) continue;
+        if (digitsOnly.length >= 7 && digitsOnly.length <= 15 && nonDigitNonSep.length <= 2) continue;
 
         // Also reject if it's just 5 digits (ZIP code)
         if (digitsOnly.length === 5 && nonDigitNonSep.length === 0) continue;

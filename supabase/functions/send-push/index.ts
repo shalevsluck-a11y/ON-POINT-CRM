@@ -14,9 +14,9 @@ serve(async (req) => {
 
   try {
     // Parse request body first to check if this is a database trigger call
-    const { title, body, jobId, targetUserId, broadcast, roles, excludedUserId } = await req.json();
+    const { title, body, jobId, targetUserId, broadcast, roles, excludedUserId, creatorUserId } = await req.json();
 
-    const requestBody = { title, body, jobId, targetUserId, broadcast, roles, excludedUserId };
+    const requestBody = { title, body, jobId, targetUserId, broadcast, roles, excludedUserId, creatorUserId };
     console.log('[Send Push] ========== INCOMING REQUEST ==========');
     console.log('[Send Push] Request body:', requestBody);
 
@@ -138,7 +138,15 @@ serve(async (req) => {
       vapidPrivate
     );
 
-    const payload = JSON.stringify({ title, body, jobId });
+    // Include creatorUserId (defaults to excludedUserId) so the service worker
+    // can self-suppress as a belt-and-suspenders safeguard against stale
+    // push_subscriptions rows registered under a different user_id.
+    const payload = JSON.stringify({
+      title,
+      body,
+      jobId,
+      creatorUserId: creatorUserId ?? excludedUserId ?? null
+    });
 
     let sent = 0;
     const staleIds: string[] = [];

@@ -790,14 +790,14 @@ const Balance = (function() {
 
       text += `📈 SUMMARY\n`;
       text += `Jobs Completed: ${stats.totalJobs}\n`;
-      text += `Total Collected: $${formatMoney(stats.totalCollected)}\n`;
+      text += `Total Sales: $${formatMoney(stats.totalCollected)}\n`;
       text += `Parts Total: $${formatMoney(stats.partsCost)}\n`;
       text += `Labor Total: $${formatMoney(stats.laborTotal)}\n\n`;
 
-      text += `💰 BREAKDOWN\n`;
-      text += `Tech Payouts: $${formatMoney(stats.techPayout)}\n`;
-      text += `Contractor Fees: $${formatMoney(stats.contractorFee)}\n`;
-      text += `Net Amount (Company): $${formatMoney(stats.ownerPayout)}\n\n`;
+      text += `💰 FINANCIAL BREAKDOWN\n`;
+      text += `Tech Cut: $${formatMoney(stats.techPayout)}\n`;
+      text += `Contractor Cut: $${formatMoney(stats.contractorFee)}\n`;
+      text += `My Cut (Company): $${formatMoney(stats.ownerPayout)}\n\n`;
 
       if (stats.unpaidJobs > 0) {
         text += `⚠️ OUTSTANDING\n`;
@@ -808,6 +808,45 @@ const Balance = (function() {
       Object.entries(stats.paymentMethods).forEach(([method, amount]) => {
         text += `${capitalizeFirst(method)}: $${formatMoney(amount)}\n`;
       });
+
+      // Per-job breakdown — every completed job with full financials
+      if (jobs && jobs.length > 0) {
+        const settings = (typeof DB !== 'undefined' && DB.getSettings) ? DB.getSettings() : {};
+        const sorted = [...jobs].sort((a, b) => {
+          const da = new Date(a.paidAt || a.scheduledDate || a.createdAt || 0).getTime();
+          const dbb = new Date(b.paidAt || b.scheduledDate || b.createdAt || 0).getTime();
+          return dbb - da;
+        });
+        text += `\n📋 JOBS (${sorted.length})\n`;
+        text += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+        sorted.forEach((j, i) => {
+          const calc = (typeof PayoutEngine !== 'undefined') ? PayoutEngine.calculate({
+            jobTotal:      j.jobTotal      || 0,
+            partsCost:     j.partsCost     || 0,
+            techPercent:   j.techPercent   || 0,
+            contractorPct: j.contractorPct || 0,
+            taxOption:     j.taxOption     || 'none',
+            isSelfAssigned: j.isSelfAssigned || false,
+            taxRateNY:     settings.taxRateNY || 8.875,
+            taxRateNJ:     settings.taxRateNJ || 6.625,
+          }) : null;
+          const total = parseFloat(j.jobTotal) || 0;
+          const parts = parseFloat(j.partsCost) || 0;
+          const techCut = calc ? calc.techPayout : 0;
+          const contractorCut = calc ? calc.contractorFee : 0;
+          const myCut = calc ? calc.ownerPayout : 0;
+          const dateStr = (j.paidAt || j.scheduledDate || j.createdAt || '').slice(0, 10);
+          const paidMark = j.paidAt ? '✅' : '⏳';
+          text += `\n${i+1}. ${paidMark} ${j.customerName || 'Unknown'}`;
+          text += ` (${dateStr})`;
+          if (j.assignedTechName) text += ` — ${j.assignedTechName}`;
+          text += `\n   Sales: $${formatMoney(total)}`;
+          text += ` | Parts: $${formatMoney(parts)}`;
+          text += `\n   Tech: $${formatMoney(techCut)}`;
+          text += ` | Contractor: $${formatMoney(contractorCut)}`;
+          text += ` | My Cut: $${formatMoney(myCut)}\n`;
+        });
+      }
 
     } else {
       const techId = currentReportData.techId;

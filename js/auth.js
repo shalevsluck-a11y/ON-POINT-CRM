@@ -10,6 +10,37 @@ const Auth = (() => {
   let _sessionHealthInterval = null;
   let _consecutiveRefreshFailures = 0;
 
+  // ── IndexedDB user-id mirror (read by sw.js to suppress self-pushes) ──
+  async function _persistUserIdForSW(userId) {
+    try {
+      const db = await new Promise((resolve, reject) => {
+        const r = indexedDB.open('OnPointCRM_Auth', 1);
+        r.onerror = () => reject(r.error);
+        r.onsuccess = () => resolve(r.result);
+        r.onupgradeneeded = (e) => {
+          const d = e.target.result;
+          if (!d.objectStoreNames.contains('session')) {
+            d.createObjectStore('session', { keyPath: 'key' });
+          }
+        };
+      });
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(['session'], 'readwrite');
+        const store = tx.objectStore('session');
+        if (userId) {
+          store.put({ key: 'currentUserId', value: userId });
+        } else {
+          store.delete('currentUserId');
+        }
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+      db.close();
+    } catch (e) {
+      console.warn('[Auth] Could not persist user id for SW:', e.message);
+    }
+  }
+
   // ──────────────────────────────────────────────────────────
   // INIT — call once on page load
   // ──────────────────────────────────────────────────────────
@@ -181,6 +212,7 @@ const Auth = (() => {
         isMagicAuth: true
       };
 
+      _persistUserIdForSW(_currentUser.id);
       _startSessionHealthCheck();
       return _currentUser;
 
@@ -302,6 +334,7 @@ const Auth = (() => {
       console.log('[Auth._loadProfile] ✓ Profile loaded:', data.name, data.role);
       _currentUser = _buildUser(authUser, data);
     }
+    if (_currentUser?.id) _persistUserIdForSW(_currentUser.id);
   }
 
   // ──────────────────────────────────────────────────────────
@@ -403,6 +436,7 @@ const Auth = (() => {
     await SupabaseClient.auth.signOut();
     _currentUser = null;
     _consecutiveRefreshFailures = 0;
+    _persistUserIdForSW(null);
   }
 
   // ──────────────────────────────────────────────────────────

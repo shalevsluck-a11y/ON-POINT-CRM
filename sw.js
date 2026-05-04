@@ -1,8 +1,38 @@
 // On Point Pro Doors CRM — Service Worker
 // CACHE_VERSION is stamped by the deploy script on every push so the
 // browser always sees a changed sw.js file and installs the new version.
-const CACHE_VERSION = 'v20260426-force-reload';
+const CACHE_VERSION = 'v20260505-phone-balance-selfpush';
 const CACHE_NAME = `onpoint-${CACHE_VERSION}`;
+
+// ── CURRENT USER ID — used to suppress self-pushes ────────
+// The page writes the user id to IndexedDB on login (auth.js).
+// SW reads it before showing a push to filter out actions the user took themselves.
+async function getCurrentUserId() {
+  try {
+    const db = await new Promise((resolve, reject) => {
+      const r = indexedDB.open('OnPointCRM_Auth', 1);
+      r.onerror = () => reject(r.error);
+      r.onsuccess = () => resolve(r.result);
+      r.onupgradeneeded = (e) => {
+        const d = e.target.result;
+        if (!d.objectStoreNames.contains('session')) {
+          d.createObjectStore('session', { keyPath: 'key' });
+        }
+      };
+    });
+    const userId = await new Promise((resolve, reject) => {
+      const tx = db.transaction(['session'], 'readonly');
+      const req = tx.objectStore('session').get('currentUserId');
+      req.onsuccess = () => resolve(req.result?.value || null);
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+    return userId;
+  } catch (e) {
+    console.warn('[SW Push] Could not read current user id:', e.message);
+    return null;
+  }
+}
 
 // Import remote debug logger
 importScripts('/js/remote-debug.js');
@@ -239,7 +269,7 @@ self.addEventListener('push', (event) => {
     RemoteDebug.logPushEvent('push_parse_error', 'Failed to parse push data as JSON', { fallbackText: data.body }, _e);
   }
 
-  console.log('[SW Push] Final notification data:', { title: data.title, body: data.body, jobId: data.jobId });
+  console.log('[SW Push] Final notification data:', { title: data.title, body: data.body, jobId: data.jobId, creatorUserId: data.creatorUserId });
 
   // Notify all clients about the push
   event.waitUntil(
@@ -257,6 +287,25 @@ self.addEventListener('push', (event) => {
           parseError: parseError,
           step: 'START'
         });
+
+        // ── SELF-SUPPRESSION ─────────────────────────────
+        // If this push was triggered by the current user (creatorUserId
+        // matches the stored user id), don't show — the actor doesn't need
+        // to be told about their own action. Defends against stale
+        // push_subscriptions rows that bypass server-side excludedUserId.
+        if (data.creatorUserId) {
+          const myUserId = await getCurrentUserId();
+          if (myUserId && myUserId === data.creatorUserId) {
+            console.log('[SW Push] 🔕 Suppressing self-push (creator =', myUserId, ')');
+            await logPushEvent({
+              timestamp: new Date().toISOString(),
+              event: 'PUSH_SUPPRESSED_SELF',
+              creatorUserId: data.creatorUserId,
+              myUserId
+            });
+            return;
+          }
+        }
 
         // Show notification
         console.log('[SW Push] Calling showNotification...');

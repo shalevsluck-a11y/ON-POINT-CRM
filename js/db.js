@@ -301,7 +301,8 @@ const DB = (() => {
         return;
       }
 
-      console.log('[DB] Calling Edge Function for job notification:', jobId);
+      const creatorId = Auth.getUser()?.id || null;
+      console.log('[DB] Calling Edge Function for job notification:', jobId, 'creatorId:', creatorId);
       const response = await fetch('https://api.onpointprodoors.com/functions/v1/send-push', {
         method: 'POST',
         headers: {
@@ -311,10 +312,11 @@ const DB = (() => {
         body: JSON.stringify({
           broadcast: true,
           roles: ['admin', 'dispatcher'],
-          excludedUserId: Auth.getUser()?.id || null,
+          excludedUserId: creatorId,
           title: 'New Job Added',
           body: `Job #${jobId} - ${customerName || 'Customer'}`,
-          jobId: jobId
+          jobId: jobId,
+          creatorUserId: creatorId
         })
       });
 

@@ -111,19 +111,27 @@ const App = (() => {
     _initPullToRefresh();
 
     // Live phone formatter on any input[type=tel].
-    // Strips a leading "+1" or "1" country code BEFORE truncating so the last digit is never lost.
+    // Supports US 10-digit, US +1 (11), and international (up to 15 digits per E.164).
     document.addEventListener('input', (e) => {
       const t = e.target;
       if (!t || t.type !== 'tel') return;
-      let raw = (t.value || '').replace(/\D/g, '');
-      // Drop US country code if present
-      if (raw.length === 11 && raw.startsWith('1')) raw = raw.slice(1);
-      else if (raw.length > 11 && raw.startsWith('1')) raw = raw.slice(1, 11);
-      const digits = raw.slice(0, 10);
-      let out = digits;
-      if (digits.length > 6)      out = `(${digits.slice(0,3)}) ${digits.slice(3,6)}-${digits.slice(6)}`;
-      else if (digits.length > 3) out = `(${digits.slice(0,3)}) ${digits.slice(3)}`;
-      else if (digits.length > 0) out = `(${digits}`;
+      const raw = (t.value || '').replace(/\D/g, '').slice(0, 15);
+      let out = '';
+      if (raw.length === 0) {
+        out = '';
+      } else if (raw.length <= 10) {
+        // US partial / full 10-digit
+        if (raw.length > 6)      out = `(${raw.slice(0,3)}) ${raw.slice(3,6)}-${raw.slice(6)}`;
+        else if (raw.length > 3) out = `(${raw.slice(0,3)}) ${raw.slice(3)}`;
+        else                     out = `(${raw}`;
+      } else if (raw.length === 11 && raw[0] === '1') {
+        // US with leading 1 country code → strip and format
+        const d = raw.slice(1);
+        out = `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
+      } else {
+        // International (>10 digits, non-US, or US with extension digits)
+        out = `+${raw}`;
+      }
       if (out !== t.value) t.value = out;
     });
 
