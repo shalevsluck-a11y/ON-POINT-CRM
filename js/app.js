@@ -2815,6 +2815,14 @@ const App = (() => {
         <input type="hidden" id="close-tax-option" value="${job.taxOption||'none'}">
       </div>
 
+      <div class="field-group">
+        <label class="field-label">Tech Payout % ${tech ? `(${_esc(tech.name)})` : '(no tech assigned)'}</label>
+        <input type="number" id="close-tech-pct" class="field-input"
+               placeholder="0" step="0.1" min="0" max="100"
+               value="${parseFloat(job.techPercent) || 0}"
+               oninput="App._updateClosePreview()">
+      </div>
+
       <div id="close-payout-preview" class="payout-preview">
         <div class="empty-state-sm">Enter job total above</div>
       </div>
@@ -2917,6 +2925,7 @@ const App = (() => {
   }
 
   // When tech picked in Edit modal, auto-fill payout % from tech's default. Still editable.
+  // "No Tech Assigned" leaves whatever % the user typed — calc still respects it.
   function _editAutoFillPayout(selectEl) {
     if (!selectEl) return;
     const opt = selectEl.options[selectEl.selectedIndex];
@@ -2924,7 +2933,6 @@ const App = (() => {
     const pctInput = document.getElementById('edit-tech-pct');
     if (!pctInput || pctInput.disabled) return;
     if (Number.isFinite(pct) && pct > 0) pctInput.value = pct;
-    if (!opt?.value) pctInput.value = 0;
   }
 
   function _editSelectPay(btn) {
@@ -2967,9 +2975,14 @@ const App = (() => {
       }
     }
 
+    const techPctInput = document.getElementById('close-tech-pct');
+    const techPctVal = techPctInput
+      ? (parseFloat(techPctInput.value) || 0)
+      : (parseFloat(job.techPercent) || 0);
+
     const calc = PayoutEngine.calculate({
       jobTotal: total, partsCost: parts,
-      techPercent: parseFloat(job.techPercent) || 0,
+      techPercent: techPctVal,
       contractorPct,
       taxOption,
       isSelfAssigned: job.isSelfAssigned,
@@ -3006,6 +3019,10 @@ const App = (() => {
     const method    = document.getElementById('close-pay-method')?.value || 'cash';
     const taxOption = document.getElementById('close-tax-option')?.value || 'none';
     const closingDetails = document.getElementById('close-details')?.value?.trim() || '';
+    const techPctRaw = document.getElementById('close-tech-pct')?.value;
+    const techPct = (techPctRaw === '' || techPctRaw == null)
+      ? (parseFloat(job.techPercent) || 0)
+      : (parseFloat(techPctRaw) || 0);
 
     const settings = DB.getSettings();
     const tech = job.assignedTechId ? settings.technicians.find(t => t.id === job.assignedTechId) : null;
@@ -3023,7 +3040,7 @@ const App = (() => {
 
     const calc = PayoutEngine.calculate({
       jobTotal: total, partsCost: parts,
-      techPercent: parseFloat(job.techPercent) || 0,
+      techPercent: techPct,
       contractorPct,
       taxOption,
       isSelfAssigned: job.isSelfAssigned,
@@ -3049,6 +3066,7 @@ const App = (() => {
           partsCost:     parts,
           taxOption,
           taxAmount:     calc.taxAmount,
+          techPercent:   techPct,
           techPayout:    calc.techPayout,
           paymentMethod: method,
           closingDetails,
@@ -3061,12 +3079,13 @@ const App = (() => {
           partsCost:     parts,
           taxOption,
           taxAmount:     calc.taxAmount,
+          techPercent:   techPct,
           techPayout:    calc.techPayout,
           ownerPayout:   calc.ownerPayout,
           contractorFee: calc.contractorFee,
           contractorPct,
           contractorName,
-          ownerPct:      100 - (parseFloat(job.techPercent) || 0) - contractorPct,
+          ownerPct:      100 - techPct - contractorPct,
           paymentMethod: method,
           paidAt:        new Date().toISOString(),
           zelleMemo,
@@ -3274,7 +3293,7 @@ const App = (() => {
     if (titleEl) titleEl.textContent = 'Edit Job';
 
     body.innerHTML = `
-      ${isPaid ? `<div style="padding:8px;background:var(--color-warning-bg);color:var(--color-warning);border-radius:6px;margin-bottom:12px;font-size:13px">⚠️ Paid job - only date, tech assignment${isDispatcher ? '' : ', lead source'}, and closing details can be changed</div>` : ''}
+      ${isPaid ? `<div style="padding:8px;background:var(--color-warning-bg);color:var(--color-warning);border-radius:6px;margin-bottom:12px;font-size:13px">⚠️ Paid job — financials will recalculate when you save</div>` : ''}
       <div class="field-group">
         <label class="field-label">Customer Name</label>
         <input type="text" id="edit-name" class="field-input" value="${_esc(job.customerName || '')}" ${isPaid ? 'disabled' : ''}>
@@ -3348,7 +3367,7 @@ const App = (() => {
       </div>
       <div class="field-group">
         <label class="field-label">Tech Payout %</label>
-        <input type="number" id="edit-tech-pct" class="field-input" value="${job.techPercent || 0}" min="0" max="100" ${isPaid ? 'disabled' : ''}>
+        <input type="number" id="edit-tech-pct" class="field-input" value="${job.techPercent || 0}" min="0" max="100" step="0.1">
       </div>
       ${isPaid ? `
       <div class="field-group">
@@ -3427,38 +3446,90 @@ const App = (() => {
     const newDate = document.getElementById('edit-date')?.value;
     console.log('[EditJob] Date field value:', newDate, 'Old date:', job.scheduledDate);
 
-    const updated = job.status === 'paid'
-      ? {
-          ...job,
-          source:           newLeadSource,
-          scheduledDate:    newDate || job.scheduledDate,
-          assignedTechId:   techId,
-          assignedTechName: tech ? tech.name : '',
-          isSelfAssigned:   tech ? tech.isOwner : false,
-          closingDetails:   document.getElementById('edit-closing-details')?.value?.trim() || job.closingDetails,
-          jobTotal:         parseFloat(document.getElementById('edit-job-total')?.value) || job.jobTotal,
-          partsCost:        parseFloat(document.getElementById('edit-parts-cost')?.value) || job.partsCost,
-          taxOption:        document.getElementById('edit-tax-option')?.value || job.taxOption,
-          paymentMethod:    document.getElementById('edit-pay-method')?.value || job.paymentMethod,
+    // Tech % — accept explicit 0 (parseFloat handles empty as NaN → fallback)
+    const techPctRawEdit = document.getElementById('edit-tech-pct')?.value;
+    const techPctEdit = (techPctRawEdit === '' || techPctRawEdit == null || !Number.isFinite(parseFloat(techPctRawEdit)))
+      ? (parseFloat(job.techPercent) || 0)
+      : parseFloat(techPctRawEdit);
+
+    let updated;
+    if (job.status === 'paid') {
+      // Paid path — recalc payouts so % changes propagate to financials
+      const newJobTotal  = parseFloat(document.getElementById('edit-job-total')?.value)  || job.jobTotal  || 0;
+      const newPartsCost = parseFloat(document.getElementById('edit-parts-cost')?.value) || job.partsCost || 0;
+      const newTaxOption = document.getElementById('edit-tax-option')?.value || job.taxOption || 'none';
+      const newPayMethod = document.getElementById('edit-pay-method')?.value || job.paymentMethod || 'cash';
+
+      // Resolve contractor % from current source (lookup if not locked in)
+      let contractorPctEdit = parseFloat(job.contractorPct) || 0;
+      let contractorNameEdit = job.contractorName || '';
+      const sourceChanged = newLeadSource !== job.source;
+      if ((contractorPctEdit === 0 || sourceChanged) && newLeadSource && newLeadSource !== 'my_lead') {
+        const ls = settings.leadSources?.find(l => l.name === newLeadSource);
+        if (ls) {
+          contractorPctEdit  = parseFloat(ls.contractorPercent) || 0;
+          contractorNameEdit = ls.name || '';
+        } else {
+          contractorPctEdit  = 0;
+          contractorNameEdit = '';
         }
-      : {
-          ...job,
-          customerName:     document.getElementById('edit-name')?.value?.trim()    || job.customerName,
-          phone:            document.getElementById('edit-phone')?.value?.trim()   || job.phone,
-          address:          document.getElementById('edit-address')?.value?.trim() || job.address,
-          city:             document.getElementById('edit-city')?.value?.trim()    || job.city,
-          state:            document.getElementById('edit-state')?.value           || job.state,
-          zip:              document.getElementById('edit-zip')?.value?.trim()     || job.zip,
-          scheduledDate:    document.getElementById('edit-date')?.value            || job.scheduledDate,
-          scheduledTime:    document.getElementById('edit-time')?.value            || job.scheduledTime,
-          description:      document.getElementById('edit-desc')?.value?.trim()    || job.description,
-          notes:            document.getElementById('edit-notes')?.value?.trim()   || job.notes,
-          source:           newLeadSource,
-          techPercent:      parseFloat(document.getElementById('edit-tech-pct')?.value) || job.techPercent,
-          assignedTechId:   techId,
-          assignedTechName: tech ? tech.name : '',
-          isSelfAssigned:   tech ? tech.isOwner : false,
-        };
+      } else if (newLeadSource === 'my_lead') {
+        contractorPctEdit  = 0;
+        contractorNameEdit = '';
+      }
+
+      const recalc = PayoutEngine.calculate({
+        jobTotal: newJobTotal,
+        partsCost: newPartsCost,
+        techPercent: techPctEdit,
+        contractorPct: contractorPctEdit,
+        taxOption: newTaxOption,
+        isSelfAssigned: tech ? tech.isOwner : false,
+        taxRateNY: settings.taxRateNY,
+        taxRateNJ: settings.taxRateNJ,
+      });
+
+      updated = {
+        ...job,
+        source:           newLeadSource,
+        scheduledDate:    newDate || job.scheduledDate,
+        assignedTechId:   techId,
+        assignedTechName: tech ? tech.name : '',
+        isSelfAssigned:   tech ? tech.isOwner : false,
+        closingDetails:   document.getElementById('edit-closing-details')?.value?.trim() || job.closingDetails,
+        jobTotal:         newJobTotal,
+        partsCost:        newPartsCost,
+        taxOption:        newTaxOption,
+        paymentMethod:    newPayMethod,
+        techPercent:      techPctEdit,
+        techPayout:       recalc.techPayout,
+        ownerPayout:      recalc.ownerPayout,
+        contractorFee:    recalc.contractorFee,
+        contractorPct:    contractorPctEdit,
+        contractorName:   contractorNameEdit,
+        ownerPct:         100 - techPctEdit - contractorPctEdit,
+        taxAmount:        recalc.taxAmount,
+      };
+    } else {
+      updated = {
+        ...job,
+        customerName:     document.getElementById('edit-name')?.value?.trim()    || job.customerName,
+        phone:            document.getElementById('edit-phone')?.value?.trim()   || job.phone,
+        address:          document.getElementById('edit-address')?.value?.trim() || job.address,
+        city:             document.getElementById('edit-city')?.value?.trim()    || job.city,
+        state:            document.getElementById('edit-state')?.value           || job.state,
+        zip:              document.getElementById('edit-zip')?.value?.trim()     || job.zip,
+        scheduledDate:    document.getElementById('edit-date')?.value            || job.scheduledDate,
+        scheduledTime:    document.getElementById('edit-time')?.value            || job.scheduledTime,
+        description:      document.getElementById('edit-desc')?.value?.trim()    || job.description,
+        notes:            document.getElementById('edit-notes')?.value?.trim()   || job.notes,
+        source:           newLeadSource,
+        techPercent:      techPctEdit,
+        assignedTechId:   techId,
+        assignedTechName: tech ? tech.name : '',
+        isSelfAssigned:   tech ? tech.isOwner : false,
+      };
+    }
 
     console.log('[EditJob] Updated job object:', {
       assignedTechId: updated.assignedTechId,
