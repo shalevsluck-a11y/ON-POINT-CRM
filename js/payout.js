@@ -221,15 +221,13 @@ const PayoutEngine = (() => {
 
       if (calc.isSelfAssigned) {
         const yourTotal = round2(calc.ownerPayout + calc.techPayout);
-        const label = viewerRole === 'dispatcher' ? 'Total' : 'My Total';
         rows.push(`<div class="payout-total-row">
-          <span class="payout-total-label">${label} (Tech + Owner ${ownerPct.toFixed(1)}%)</span>
+          <span class="payout-total-label">Company Cut (Tech + Company ${ownerPct.toFixed(1)}%)</span>
           <span class="payout-total-value">$${yourTotal.toFixed(2)}</span>
         </div>`);
       } else {
-        const label = viewerRole === 'dispatcher' ? 'Owner Payout' : 'My Cut';
         rows.push(`<div class="payout-total-row">
-          <span class="payout-total-label">${label} (${ownerPct.toFixed(1)}%)</span>
+          <span class="payout-total-label">Company Cut (${ownerPct.toFixed(1)}%)</span>
           <span class="payout-total-value">$${calc.ownerPayout.toFixed(2)}</span>
         </div>`);
       }

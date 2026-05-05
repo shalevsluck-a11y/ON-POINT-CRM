@@ -1505,9 +1505,9 @@ const App = (() => {
 
     el.innerHTML = `
       <div class="rd-source-filter" onclick="event.stopPropagation()">
-        <label style="font-weight:700">Filter by source:</label>
+        <label style="font-weight:700">Filter by company:</label>
         <select onchange="event.stopPropagation();App._reportsSetSource(this.value)" onclick="event.stopPropagation()" class="balance-select" style="margin-left:6px">
-          <option value="">All Sources</option>
+          <option value="">All Companies</option>
           ${sourcesList.map(s => `<option value="${_esc(s)}" ${sourceFilter === s ? 'selected' : ''}>${_esc(s)}</option>`).join('')}
         </select>
       </div>
@@ -2449,7 +2449,7 @@ const App = (() => {
             </div>
           </div>
           <div class="detail-row">
-            <div class="detail-row-label">Lead Source</div>
+            <div class="detail-row-label">Company</div>
             <div class="detail-row-value">${job.source === 'my_lead' ? 'My Lead (Direct)' : _esc(job.contractorName || job.source || '—')}</div>
           </div>
           ${job.contractorPct > 0 ? `
@@ -3351,7 +3351,7 @@ const App = (() => {
       </div>
       ${isDispatcher ? '' : `
       <div class="field-group">
-        <label class="field-label">Lead Source</label>
+        <label class="field-label">Company</label>
         <select id="edit-lead-source" class="field-input">
           <option value="my_lead" ${job.source === 'my_lead' ? 'selected' : ''}>My Lead</option>
           ${settings.leadSources.map(ls => `<option value="${_esc(ls.name)}" ${job.source === ls.name ? 'selected' : ''}>${_esc(ls.name)}</option>`).join('')}
@@ -3855,7 +3855,7 @@ const App = (() => {
       <div class="print-section">
         <div class="print-section-title">Assignment</div>
         <div class="print-row"><span class="print-label">Technician</span><span class="print-value">${_esc(job.assignedTechName||'—')}${job.isSelfAssigned?' (Owner)':''}</span></div>
-        <div class="print-row"><span class="print-label">Lead Source</span><span class="print-value">${job.source === 'my_lead' ? 'My Lead' : _esc(job.contractorName||job.source||'—')}</span></div>
+        <div class="print-row"><span class="print-label">Company</span><span class="print-value">${job.source === 'my_lead' ? 'My Lead' : _esc(job.contractorName||job.source||'—')}</span></div>
       </div>
 
       <div class="print-section">
@@ -4754,7 +4754,7 @@ const App = (() => {
     const settings = DB.getSettings();
     const source = sourceId ? settings.leadSources.find(s => s.id === sourceId) : null;
     const title = document.getElementById('source-modal-title');
-    if (title) title.textContent = source ? 'Edit Lead Source' : 'Add Lead Source';
+    if (title) title.textContent = source ? 'Edit Company' : 'Add Company';
 
     document.getElementById('m-source-id').value   = source?.id   || '';
     document.getElementById('m-source-name').value = source?.name || '';

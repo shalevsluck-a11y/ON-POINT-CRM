@@ -367,7 +367,7 @@
 
 .balance-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   margin-top: 32px;
 }
@@ -376,6 +376,93 @@
   .balance-actions {
     grid-template-columns: 1fr;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BIG-NUMBER CARDS (V1 Overall Balance — 4-up summary)
+   ═══════════════════════════════════════════════════════════════ */
+.bal-big-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+@media (min-width: 700px) {
+  .bal-big-grid { grid-template-columns: repeat(4, 1fr); }
+}
+.bal-big-card {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border-2);
+  border-radius: 16px;
+  padding: 20px 18px;
+  position: relative;
+  overflow: hidden;
+  min-height: 110px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+}
+.bal-big-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #6366f1, #a855f7);
+}
+.bal-big-sales::before   { background: linear-gradient(90deg, #3b82f6, #6366f1); }
+.bal-big-tech::before    { background: linear-gradient(90deg, #ef4444, #f97316); }
+.bal-big-parts::before   { background: linear-gradient(90deg, #f59e0b, #f97316); }
+.bal-big-company::before { background: linear-gradient(90deg, #22c55e, #10b981); }
+
+.bal-big-label {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 10px;
+}
+.bal-big-value {
+  font-size: 30px;
+  font-weight: 900;
+  color: var(--color-text);
+  line-height: 1;
+  letter-spacing: -0.5px;
+  margin-bottom: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.bal-big-company .bal-big-value { color: #16a34a; }
+.bal-big-tech    .bal-big-value { color: #dc2626; }
+.bal-big-parts   .bal-big-value { color: #d97706; }
+.bal-big-sub {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+/* PDF download button */
+.btn-pdf {
+  background: linear-gradient(135deg, #ef4444 0%, #f97316 100%);
+  color: #fff;
+  font-weight: 700;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 16px 24px;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 52px;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-pdf:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.32);
+}
+.btn-pdf:active {
+  transform: scale(0.98);
 }
 
 .balance-actions button {

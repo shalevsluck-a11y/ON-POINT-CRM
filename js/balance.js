@@ -381,19 +381,26 @@ const Balance = (function() {
     const periodLabel = dateRange.label;
     const statusLabel = status === 'all' ? 'All Jobs' : status === 'paid' ? 'Paid Only' : 'Unpaid Only';
 
-    // Show lead source for dispatchers or admin-selected filter
     const currentUser = Auth.getUser();
     const assignedLeadSource = currentUser?.assignedLeadSource;
     const sourceFilter = currentReportData?.sourceFilter;
     const displaySource = assignedLeadSource || sourceFilter;
 
+    // Two-party model only: TECH and COMPANY. Collapse contractor + owner into Company.
+    const totalSales = stats.totalCollected;
+    const techPay    = stats.techPayout;
+    const partsTotal = stats.partsCost;
+    const companyCut = round2((stats.contractorFee || 0) + (stats.ownerPayout || 0));
+
+    const pct = (n) => totalSales > 0 ? ((n / totalSales) * 100).toFixed(1) + '%' : '—';
+
     let html = `
       <div class="report-header">
-        <h2>Overall Balance Report</h2>
+        <h2>Overall Balance</h2>
         <div class="report-meta">
           ${displaySource ? `
             <div class="report-meta-item">
-              <span class="report-meta-label">Lead Source:</span>
+              <span class="report-meta-label">Company:</span>
               <span class="report-meta-value">${displaySource}</span>
             </div>
           ` : ''}
@@ -412,38 +419,26 @@ const Balance = (function() {
         </div>
       </div>
 
-      <div class="report-summary">
-        <div class="summary-card">
-          <div class="summary-label">Jobs Completed</div>
-          <div class="summary-value">${stats.totalJobs}</div>
+      <div class="bal-big-grid">
+        <div class="bal-big-card bal-big-sales">
+          <div class="bal-big-label">TOTAL SALES</div>
+          <div class="bal-big-value">$${formatMoney(totalSales)}</div>
+          <div class="bal-big-sub">${stats.totalJobs} jobs · 100%</div>
         </div>
-        <div class="summary-card ${stats.totalCollected > 0 ? 'positive' : ''}">
-          <div class="summary-label">Total Collected</div>
-          <div class="summary-value">$${formatMoney(stats.totalCollected)}</div>
+        <div class="bal-big-card bal-big-tech">
+          <div class="bal-big-label">TECH PAY</div>
+          <div class="bal-big-value">$${formatMoney(techPay)}</div>
+          <div class="bal-big-sub">${pct(techPay)} of sales</div>
         </div>
-        <div class="summary-card">
-          <div class="summary-label">Parts Total</div>
-          <div class="summary-value">$${formatMoney(stats.partsCost)}</div>
+        <div class="bal-big-card bal-big-parts">
+          <div class="bal-big-label">TOTAL PARTS</div>
+          <div class="bal-big-value">$${formatMoney(partsTotal)}</div>
+          <div class="bal-big-sub">${pct(partsTotal)} of sales</div>
         </div>
-        <div class="summary-card">
-          <div class="summary-label">Labor Total</div>
-          <div class="summary-value">$${formatMoney(stats.laborTotal)}</div>
-        </div>
-      </div>
-
-      <div class="report-breakdown">
-        <h3>Financial Breakdown</h3>
-        <div class="breakdown-row">
-          <span class="breakdown-label">Tech Payouts</span>
-          <span class="breakdown-value">$${formatMoney(stats.techPayout)}</span>
-        </div>
-        <div class="breakdown-row">
-          <span class="breakdown-label">Contractor Fees</span>
-          <span class="breakdown-value">$${formatMoney(stats.contractorFee)}</span>
-        </div>
-        <div class="breakdown-row total">
-          <span class="breakdown-label">Net Amount (Company)</span>
-          <span class="breakdown-value positive">$${formatMoney(stats.ownerPayout)}</span>
+        <div class="bal-big-card bal-big-company">
+          <div class="bal-big-label">COMPANY CUT</div>
+          <div class="bal-big-value">$${formatMoney(companyCut)}</div>
+          <div class="bal-big-sub">${pct(companyCut)} · after tech &amp; parts</div>
         </div>
       </div>
 
@@ -472,6 +467,8 @@ const Balance = (function() {
 
     return html;
   }
+
+  function round2(n) { return Math.round(n * 100) / 100; }
 
   // Collapsible per-job list. Each row shows customer, date, total, tech cut.
   // Tap a row to open the job detail.
@@ -572,7 +569,7 @@ const Balance = (function() {
         <div class="report-meta">
           ${displaySource ? `
             <div class="report-meta-item">
-              <span class="report-meta-label">Lead Source:</span>
+              <span class="report-meta-label">Company:</span>
               <span class="report-meta-value">${displaySource}</span>
             </div>
           ` : ''}
@@ -779,25 +776,22 @@ const Balance = (function() {
     let text = '';
 
     if (type === 'overall') {
-      text = `📊 OVERALL BALANCE REPORT\n`;
+      const _companyCut = round2((stats.contractorFee || 0) + (stats.ownerPayout || 0));
+      const _pctOf = (n) => stats.totalCollected > 0 ? ' (' + ((n / stats.totalCollected) * 100).toFixed(1) + '%)' : '';
+      text = `📊 OVERALL BALANCE\n`;
       text += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
       if (displaySource) {
-        text += `Lead Source: ${displaySource}\n`;
+        text += `Company: ${displaySource}\n`;
       }
       text += `Period: ${periodLabel}\n`;
       text += `Date: ${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}\n`;
       text += `Status: ${status === 'all' ? 'All Jobs' : status === 'paid' ? 'Paid Only' : 'Unpaid Only'}\n\n`;
 
-      text += `📈 SUMMARY\n`;
-      text += `Jobs Completed: ${stats.totalJobs}\n`;
-      text += `Total Sales: $${formatMoney(stats.totalCollected)}\n`;
-      text += `Parts Total: $${formatMoney(stats.partsCost)}\n`;
-      text += `Labor Total: $${formatMoney(stats.laborTotal)}\n\n`;
-
-      text += `💰 FINANCIAL BREAKDOWN\n`;
-      text += `Tech Cut: $${formatMoney(stats.techPayout)}\n`;
-      text += `Contractor Cut: $${formatMoney(stats.contractorFee)}\n`;
-      text += `My Cut (Company): $${formatMoney(stats.ownerPayout)}\n\n`;
+      text += `💰 BIG NUMBERS\n`;
+      text += `Total Sales: $${formatMoney(stats.totalCollected)}  (${stats.totalJobs} jobs)\n`;
+      text += `Tech Pay:    $${formatMoney(stats.techPayout)}${_pctOf(stats.techPayout)}\n`;
+      text += `Total Parts: $${formatMoney(stats.partsCost)}${_pctOf(stats.partsCost)}\n`;
+      text += `Company Cut: $${formatMoney(_companyCut)}${_pctOf(_companyCut)}\n\n`;
 
       if (stats.unpaidJobs > 0) {
         text += `⚠️ OUTSTANDING\n`;
@@ -833,8 +827,7 @@ const Balance = (function() {
           const total = parseFloat(j.jobTotal) || 0;
           const parts = parseFloat(j.partsCost) || 0;
           const techCut = calc ? calc.techPayout : 0;
-          const contractorCut = calc ? calc.contractorFee : 0;
-          const myCut = calc ? calc.ownerPayout : 0;
+          const compCut = calc ? round2((calc.contractorFee || 0) + (calc.ownerPayout || 0)) : 0;
           const dateStr = (j.paidAt || j.scheduledDate || j.createdAt || '').slice(0, 10);
           const paidMark = j.paidAt ? '✅' : '⏳';
           text += `\n${i+1}. ${paidMark} ${j.customerName || 'Unknown'}`;
@@ -843,8 +836,7 @@ const Balance = (function() {
           text += `\n   Sales: $${formatMoney(total)}`;
           text += ` | Parts: $${formatMoney(parts)}`;
           text += `\n   Tech: $${formatMoney(techCut)}`;
-          text += ` | Contractor: $${formatMoney(contractorCut)}`;
-          text += ` | My Cut: $${formatMoney(myCut)}\n`;
+          text += ` | Company: $${formatMoney(compCut)}\n`;
         });
       }
 
@@ -858,7 +850,7 @@ const Balance = (function() {
       text = `👤 TECH BALANCE REPORT\n`;
       text += `━━━━━━━━━━━━━━━━━━━━━━━━\n`;
       if (displaySource) {
-        text += `Lead Source: ${displaySource}\n`;
+        text += `Company: ${displaySource}\n`;
       }
       text += `Tech: ${techName}\n`;
       text += `Period: ${periodLabel}\n`;
@@ -913,6 +905,197 @@ const Balance = (function() {
     window.open(url, '_blank');
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // PDF export — branded, per-job table, totals footer.
+  // Uses jsPDF + autoTable loaded via CDN in index.html.
+  // ─────────────────────────────────────────────────────────────
+  function downloadPDF() {
+    if (!currentReportData) {
+      alert('Generate a report first.');
+      return;
+    }
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      alert('PDF library still loading — try again in a second.');
+      return;
+    }
+    try {
+      const { type, period, status, sourceFilter, jobs, dateRange, techId } = currentReportData;
+      const stats = calculateStats(jobs);
+      const settings = (typeof DB !== 'undefined' && DB.getSettings) ? DB.getSettings() : {};
+      const currentUser = Auth.getUser();
+      const displaySource = currentUser?.assignedLeadSource || sourceFilter;
+
+      const totalSales = stats.totalCollected;
+      const techPay    = stats.techPayout;
+      const partsTotal = stats.partsCost;
+      const companyCut = round2((stats.contractorFee || 0) + (stats.ownerPayout || 0));
+      const pct = (n) => totalSales > 0 ? ((n / totalSales) * 100).toFixed(1) + '%' : '—';
+
+      const { jsPDF } = window.jspdf;
+      const doc  = new jsPDF({ unit: 'pt', format: 'a4' });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+
+      // ── Branded header bar
+      doc.setFillColor(15, 23, 42);
+      doc.rect(0, 0, pageW, 72, 'F');
+      try {
+        // Optional logo (assets/logo.jpg). Wrapped in try because addImage requires a loaded image.
+        const logoEl = document.querySelector('img[src*="logo"]');
+        if (logoEl && logoEl.complete && logoEl.naturalWidth > 0) {
+          doc.addImage(logoEl, 'JPEG', 28, 14, 44, 44, undefined, 'FAST');
+        }
+      } catch (_) { /* logo optional */ }
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.text('On Point Pro Doors', 84, 32);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.text('service@onpointprodoors.com  ·  (929) 429-2429', 84, 48);
+      doc.setFontSize(8);
+      doc.text(`Generated: ${new Date().toLocaleString()}`, pageW - 28, 32, { align: 'right' });
+
+      // ── Title + meta
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(20);
+      const reportTitle = type === 'overall' ? 'Overall Balance Report' : 'Tech Balance Report';
+      doc.text(reportTitle, 28, 110);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(80, 80, 80);
+      let y = 132;
+      const metaLines = [];
+      if (displaySource) metaLines.push(`Company: ${displaySource}`);
+      metaLines.push(`Period: ${dateRange.label}  (${formatDate(dateRange.start)} — ${formatDate(dateRange.end)})`);
+      metaLines.push(`Status: ${status === 'all' ? 'All Jobs' : status === 'paid' ? 'Paid Only' : 'Unpaid Only'}`);
+      metaLines.push(`Total Jobs: ${stats.totalJobs}`);
+      if (type === 'tech' && techId) {
+        const tech = settings.technicians?.find(t => t.id === techId);
+        if (tech) metaLines.push(`Tech: ${tech.name}`);
+      }
+      metaLines.forEach(line => { doc.text(line, 28, y); y += 14; });
+      y += 6;
+
+      // ── Big-number boxes (4 across)
+      const boxes = [
+        { label: 'TOTAL SALES', value: '$' + formatMoney(totalSales),  sub: '100%',           color: [37, 99, 235]  },
+        { label: 'TECH PAY',    value: '$' + formatMoney(techPay),     sub: pct(techPay),     color: [239, 68, 68]  },
+        { label: 'PARTS',       value: '$' + formatMoney(partsTotal),  sub: pct(partsTotal),  color: [245, 158, 11] },
+        { label: 'COMPANY CUT', value: '$' + formatMoney(companyCut),  sub: pct(companyCut),  color: [34, 197, 94]  },
+      ];
+      const boxGap = 10;
+      const boxW = (pageW - 56 - boxGap * 3) / 4;
+      const boxH = 78;
+      boxes.forEach((b, i) => {
+        const x = 28 + i * (boxW + boxGap);
+        doc.setFillColor(b.color[0], b.color[1], b.color[2]);
+        doc.roundedRect(x, y, boxW, boxH, 8, 8, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.text(b.label, x + 10, y + 18);
+        doc.setFontSize(18);
+        doc.text(b.value, x + 10, y + 46);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.text(b.sub, x + 10, y + 66);
+      });
+      y += boxH + 16;
+
+      // ── Per-job table
+      const sorted = [...jobs].sort((a, b) => {
+        const da = new Date(a.paidAt || a.scheduledDate || a.createdAt || 0).getTime();
+        const dbb = new Date(b.paidAt || b.scheduledDate || b.createdAt || 0).getTime();
+        return dbb - da;
+      });
+      const rows = sorted.map(j => {
+        const calc = (typeof PayoutEngine !== 'undefined') ? PayoutEngine.calculate({
+          jobTotal:      j.jobTotal      || 0,
+          partsCost:     j.partsCost     || 0,
+          techPercent:   j.techPercent   || 0,
+          contractorPct: j.contractorPct || 0,
+          taxOption:     j.taxOption     || 'none',
+          isSelfAssigned: j.isSelfAssigned || false,
+          taxRateNY:     settings.taxRateNY || 8.875,
+          taxRateNJ:     settings.taxRateNJ || 6.625,
+        }) : null;
+        const total    = parseFloat(j.jobTotal) || 0;
+        const partsAmt = parseFloat(j.partsCost) || 0;
+        const techPctVal = parseFloat(j.techPercent) || 0;
+        const techCut  = calc ? calc.techPayout : 0;
+        const compCut  = calc ? round2((calc.contractorFee || 0) + (calc.ownerPayout || 0)) : (total - techCut - partsAmt);
+        const compPct  = total > 0 ? ((compCut / total) * 100).toFixed(0) + '%' : '—';
+        const dateStr  = (j.paidAt || j.scheduledDate || j.createdAt || '').slice(0, 10);
+        return [
+          dateStr,
+          (j.customerName || '—').substring(0, 24),
+          (j.source === 'my_lead' ? 'My Lead' : (j.source || '—')).substring(0, 14),
+          (j.assignedTechName || '—').substring(0, 14),
+          '$' + formatMoney(total),
+          '$' + formatMoney(partsAmt),
+          techPctVal + '%',
+          '$' + formatMoney(techCut),
+          compPct,
+          '$' + formatMoney(compCut),
+          j.paidAt ? 'PAID' : 'OPEN'
+        ];
+      });
+
+      doc.autoTable({
+        startY: y,
+        head: [['Date', 'Customer', 'Company', 'Tech', 'Sale', 'Parts', 'Tech %', 'Tech $', 'Co %', 'Co $', 'Status']],
+        body: rows,
+        styles: { fontSize: 7, cellPadding: 3, overflow: 'linebreak' },
+        headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7, halign: 'center' },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        margin: { left: 28, right: 28 },
+        columnStyles: {
+          4:  { halign: 'right' },
+          5:  { halign: 'right' },
+          6:  { halign: 'right' },
+          7:  { halign: 'right' },
+          8:  { halign: 'right' },
+          9:  { halign: 'right' },
+          10: { halign: 'center' }
+        },
+        foot: [[
+          '',
+          'TOTALS',
+          '',
+          '',
+          '$' + formatMoney(totalSales),
+          '$' + formatMoney(partsTotal),
+          '',
+          '$' + formatMoney(techPay),
+          pct(companyCut),
+          '$' + formatMoney(companyCut),
+          ''
+        ]],
+        footStyles: { fillColor: [226, 232, 240], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8, halign: 'right' }
+      });
+
+      // ── Page numbers
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(120, 120, 120);
+        doc.text(`Page ${i} / ${pageCount}`, pageW - 28, pageH - 16, { align: 'right' });
+        doc.text('On Point Pro Doors CRM', 28, pageH - 16);
+      }
+
+      const slug = (dateRange.label || 'report').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+      const fname = `balance-${slug}-${new Date().toISOString().slice(0, 10)}.pdf`;
+      doc.save(fname);
+    } catch (err) {
+      console.error('[Balance] PDF export failed:', err);
+      alert('PDF export failed: ' + (err.message || err));
+    }
+  }
+
   return {
     init,
     showMenu,
@@ -921,6 +1104,7 @@ const Balance = (function() {
     toggleCustomDates,
     copyToClipboard,
     shareWhatsApp,
+    downloadPDF,
     populateLeadSourceSelector  // Export so app.js can refresh after settings sync
   };
 })();
