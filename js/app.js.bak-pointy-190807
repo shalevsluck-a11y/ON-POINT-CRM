@@ -466,7 +466,6 @@ const App = (() => {
     'balance':    'Reports',
     'settings':   'Settings',
     'job-detail': 'Job Detail',
-    'pointy':     'Pointy',
   };
 
   function navigate(viewName, opts = {}) {
@@ -5727,171 +5726,6 @@ const App = (() => {
     console.log('[App] Reconnection complete');
   }
 
-  // ══════════════════════════════════════════════════════════════
-  // POINTY — On Point AI assistant (chat). One Haiku call per message.
-  // Proposes actions; NOTHING writes to the DB until the operator taps Confirm.
-  // ══════════════════════════════════════════════════════════════
-  let _pointyPending = {};
-  let _pointySeq = 0;
-
-  function _pointyEl() { return document.getElementById('pointy-messages'); }
-
-  function _pointyAppend(role, html) {
-    const box = _pointyEl(); if (!box) return null;
-    const wrap = document.createElement('div');
-    wrap.className = 'pointy-msg ' + (role === 'user' ? 'pointy-user' : 'pointy-bot');
-    wrap.innerHTML = role === 'user'
-      ? `<div class="pointy-bubble">${_esc(html)}</div>`
-      : `<div class="pointy-avatar">&#10022;</div><div class="pointy-bubble">${html}</div>`;
-    box.appendChild(wrap);
-    box.scrollTop = box.scrollHeight;
-    return wrap;
-  }
-
-  async function pointySend() {
-    const input = document.getElementById('pointy-input');
-    const msg = input?.value?.trim();
-    if (!msg) return;
-    input.value = ''; input.style.height = 'auto';
-    _pointyAppend('user', msg);
-    const typing = _pointyAppend('bot', '<span class="pointy-typing">Pointy is thinking&hellip;</span>');
-
-    try {
-      const session = await SupabaseClient.auth.getSession();
-      const token = session?.data?.session?.access_token;
-      if (!token) throw new Error('Please sign in again');
-
-      // send a compact list of current jobs so Pointy can match by name
-      const jobs = (DB.getJobs() || [])
-        .filter(j => j.status !== 'lost')
-        .slice(0, 120)
-        .map(j => ({ jobId: j.jobId, customerName: j.customerName, status: j.status, phone: j.phone }));
-
-      const res = await fetch('/api/ai-assistant', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-        body: JSON.stringify({ message: msg, jobs })
-      });
-      const data = await res.json().catch(() => ({}));
-      typing?.remove();
-      if (!res.ok) throw new Error(data.error || 'Pointy had a problem');
-      _pointyRenderAction(data);
-    } catch (e) {
-      typing?.remove();
-      _pointyAppend('bot', _esc(e.message || 'Something went wrong'));
-    }
-  }
-
-  function _pointyRenderAction(data) {
-    const a = data.action, p = data.params || {};
-    if (a === 'chat' || !a) { _pointyAppend('bot', _esc(data.reply || "I can add, close, or mark a job lost.")); return; }
-
-    const id = ++_pointySeq;
-    _pointyPending[id] = { action: a, params: p };
-    let title = '', body = '';
-
-    if (a === 'add_job') {
-      title = 'Add job';
-      body = `<b>${_esc(p.customerName||'?')}</b>` +
-        (p.phone ? ' · ' + _esc(p.phone) : '') +
-        (p.address ? `<br>${_esc([p.address, p.city, p.state, p.zip].filter(Boolean).join(', '))}` : '') +
-        (p.scheduledDate ? `<br>${_esc(p.scheduledDate)} ${_esc(p.scheduledTime||'')}` : '') +
-        (p.description ? `<br><i>${_esc(p.description)}</i>` : '');
-    } else if (a === 'close_job') {
-      const job = p.jobId ? DB.getJobById(p.jobId) : null;
-      title = 'Close job';
-      body = `<b>${_esc(p.customerName || (job&&job.customerName) || '?')}</b><br>` +
-        `Total <b>$${Number(p.jobTotal||0).toFixed(2)}</b>` +
-        (p.partsCost ? ` · Parts $${Number(p.partsCost).toFixed(2)}` : '') +
-        ` · ${_esc(p.paymentMethod || 'cash')}` +
-        (!p.jobId ? `<br><span class="pointy-warn">&#9888; I couldn't find that job — pick it in Jobs, or retype the exact name.</span>` : '');
-    } else if (a === 'mark_lost') {
-      title = 'Mark lost';
-      body = `<b>${_esc(p.customerName||'?')}</b>` + (p.reason ? `<br><i>${_esc(p.reason)}</i>` : '') +
-        (!p.jobId ? `<br><span class="pointy-warn">&#9888; Couldn't find that job — retype the exact name.</span>` : '');
-    } else if (a === 'bulk_action') {
-      const filter = p.filter || 'open';
-      const match = (DB.getJobs()||[]).filter(j => {
-        if (filter === 'all') return j.status !== 'lost' && j.status !== 'paid';
-        if (filter === 'open') return ['new','scheduled','in_progress','follow_up'].includes(j.status);
-        return j.status === filter;
-      });
-      title = '&#9888; Bulk action';
-      _pointyPending[id].bulkJobs = match.map(j => j.jobId);
-      body = `You asked to <b>${p.op==='mark_lost'?'mark LOST':'close'}</b> <b>${match.length}</b> ${filter} job(s):<br>` +
-        match.slice(0,15).map(j => '· ' + _esc(j.customerName)).join('<br>') +
-        (match.length>15 ? `<br>…and ${match.length-15} more` : '') +
-        `<br><span class="pointy-warn">This changes ${match.length} jobs at once. Are you sure?</span>`;
-    }
-
-    const canDo = (a === 'add_job') || ((a === 'close_job' || a === 'mark_lost') && p.jobId) || (a === 'bulk_action');
-    const card = `<div class="pointy-card"><div class="pointy-card-t">${title}</div><div class="pointy-card-b">${body}</div>` +
-      (canDo ? `<div class="pointy-card-actions"><button class="pointy-btn-cancel" onclick="App.pointyCancel(${id})">Cancel</button><button class="pointy-btn-do" onclick="App.pointyDo(${id})">${a==='bulk_action'?'Yes, do it':'Confirm'}</button></div>` : '') +
-      `</div>`;
-    _pointyAppend('bot', card);
-  }
-
-  function pointyCancel(id) { delete _pointyPending[id]; _pointyAppend('bot', 'Okay, cancelled.'); }
-
-  async function pointyDo(id) {
-    const pend = _pointyPending[id]; if (!pend) return;
-    delete _pointyPending[id];
-    const { action: a, params: p } = pend;
-    try {
-      if (a === 'add_job') {
-        const settings = DB.getSettings();
-        const owner = (settings.technicians||[]).find(t => t.isOwner);
-        const job = {
-          jobId: DB.generateId(), status: p.scheduledDate ? 'scheduled' : 'new',
-          createdBy: Auth.getUser()?.id || null,
-          customerName: p.customerName || '', phone: p.phone ? LeadParser.formatPhone(p.phone) : '',
-          address: p.address||'', city: p.city||'', state: p.state || settings.defaultState || 'NY', zip: p.zip||'',
-          scheduledDate: p.scheduledDate||'', scheduledTime: p.scheduledTime||'',
-          description: p.description||'', notes: p.reference ? ('Ref: '+p.reference) : '',
-          rawLead: '', source: 'my_lead',
-          assignedTechId: owner?.id || '', assignedTechName: owner?.name || '', isSelfAssigned: !!owner,
-          techPercent: owner?.percent || 0, contractorName: '', contractorPct: 0, ownerPct: 100,
-          estimatedTotal: 0, jobTotal: 0, partsCost: 0, taxAmount: 0, techPayout: 0, ownerPayout: 0, contractorFee: 0,
-          paymentMethod: 'cash', photos: [], syncStatus: 'pending'
-        };
-        await DB.saveJob(job);
-        try { SyncManager.queueJob(job.jobId); } catch(e){}
-        _pointyAppend('bot', `&#9989; Added <b>${_esc(job.customerName)}</b>.`);
-      } else if (a === 'mark_lost') {
-        const job = DB.getJobById(p.jobId); if (!job) throw new Error('Job not found');
-        job.status = 'lost'; if (p.reason) job.notes = ((job.notes||'') + ' | Lost: ' + p.reason).trim();
-        await DB.saveJob(job);
-        _pointyAppend('bot', `&#9989; Marked <b>${_esc(job.customerName)}</b> as lost.`);
-      } else if (a === 'close_job') {
-        const job = DB.getJobById(p.jobId); if (!job) throw new Error('Job not found');
-        const settings = DB.getSettings();
-        const calc = PayoutEngine.calculate({
-          jobTotal: Number(p.jobTotal)||0, partsCost: Number(p.partsCost)||0,
-          techPercent: parseFloat(job.techPercent)||0, contractorPct: parseFloat(job.contractorPct)||0,
-          taxOption: 'none', isSelfAssigned: job.isSelfAssigned,
-          taxRateNY: settings.taxRateNY, taxRateNJ: settings.taxRateNJ
-        });
-        job.jobTotal = calc.jobTotal; job.partsCost = calc.partsCost;
-        job.techPayout = calc.techPayout; job.ownerPayout = calc.ownerPayout; job.contractorFee = calc.contractorFee;
-        job.paymentMethod = p.paymentMethod || 'cash'; job.status = 'paid';
-        job.paidAt = new Date().toISOString(); job.closedBy = Auth.getUser()?.id || null;
-        await DB.saveJob(job);
-        try { SyncManager.queueJob(job.jobId); } catch(e){}
-        _pointyAppend('bot', `&#9989; Closed <b>${_esc(job.customerName)}</b> — you keep <b>$${calc.ownerPayout.toFixed(2)}</b>, tech $${calc.techPayout.toFixed(2)}.`);
-      } else if (a === 'bulk_action') {
-        const ids = pend.bulkJobs || []; let n = 0;
-        for (const jid of ids) {
-          const job = DB.getJobById(jid); if (!job) continue;
-          if (p.op === 'mark_lost') { job.status = 'lost'; await DB.saveJob(job); n++; }
-        }
-        _pointyAppend('bot', `&#9989; Updated <b>${n}</b> job(s).`);
-      }
-      if (_state.currentView === 'dashboard') renderDashboard();
-    } catch (e) {
-      _pointyAppend('bot', _esc('Could not do that: ' + (e.message||'error')));
-    }
-  }
-
   return {
     init,
 
@@ -5926,9 +5760,6 @@ const App = (() => {
     selectPayMethod,
     updatePayoutPreview,
     saveNewJob,
-    pointySend,
-    pointyDo,
-    pointyCancel,
     _selectTech,
 
     // Job Detail
