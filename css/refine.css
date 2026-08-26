@@ -366,3 +366,42 @@ h1, .page-title { letter-spacing: -0.03em; font-weight: 800; }
 .rd-pipeline { padding:9px !important; }
 .balance-card { padding:8px 14px !important; }
 .rd-tile { padding:9px 12px !important; }
+
+/* status color tokens (for filter chips + status buttons) */
+:root { --st-open:#2f6fed; --st-open-bg:rgba(47,111,237,.12); --st-estimate:#f59e0b; --st-estimate-bg:rgba(245,158,11,.16); --st-closed:#16a34a; --st-closed-bg:rgba(22,163,74,.12); --st-lost:#e11d48; --st-lost-bg:rgba(225,29,72,.12); }
+
+/* Jobs filter chips: 4 big bold colored buttons, all fit — NO sliding */
+#filter-chips { display:flex !important; gap:6px !important; overflow:visible !important; padding:4px 12px 10px !important; }
+#filter-chips .chip { flex:1 1 0 !important; min-width:0 !important; padding:11px 3px !important; border-radius:14px !important; font-weight:800 !important; font-size:13px !important; display:flex !important; flex-direction:column; align-items:center; gap:1px; border:none !important; box-shadow:none !important; white-space:nowrap; }
+#filter-chips .chip .chip-count { font-size:12px; font-weight:700; }
+#filter-chips .chip[data-filter="open"]     { background:var(--st-open-bg) !important;     color:var(--st-open) !important; }
+#filter-chips .chip[data-filter="estimate"] { background:var(--st-estimate-bg) !important; color:var(--st-estimate) !important; }
+#filter-chips .chip[data-filter="closed"]   { background:var(--st-closed-bg) !important;   color:var(--st-closed) !important; }
+#filter-chips .chip[data-filter="lost"]     { background:var(--st-lost-bg) !important;     color:var(--st-lost) !important; }
+#filter-chips .chip.active[data-filter="open"]     { background:var(--st-open) !important;     color:#fff !important; }
+#filter-chips .chip.active[data-filter="estimate"] { background:var(--st-estimate) !important; color:#fff !important; }
+#filter-chips .chip.active[data-filter="closed"]   { background:var(--st-closed) !important;   color:#fff !important; }
+#filter-chips .chip.active[data-filter="lost"]     { background:var(--st-lost) !important;     color:#fff !important; }
+#filter-chips .chip.active .chip-count { color:rgba(255,255,255,.85) !important; }
+
+/* Job detail: Estimate / Lost buttons — big, bold, colored */
+.status-action-row { display:flex !important; gap:10px !important; margin:0 0 12px !important; }
+.status-action-btn.sab-est, .status-action-btn.sab-lst { flex:1 !important; padding:13px !important; border-radius:14px !important; font-weight:800 !important; font-size:15px !important; border:none !important; }
+.sab-est { background:var(--st-estimate-bg) !important; color:var(--st-estimate) !important; }
+.sab-lst { background:var(--st-lost-bg) !important; color:var(--st-lost) !important; }
+.sab-est.current { background:var(--st-estimate) !important; color:#fff !important; }
+.sab-lst.current { background:var(--st-lost) !important; color:#fff !important; }
+
+/* Dispatch 100/50 choice bottom sheet */
+.dispatch-choice-overlay { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.45); display:flex; align-items:flex-end; }
+.dispatch-choice-sheet { width:100%; background:var(--color-surface); border-radius:22px 22px 0 0; padding:10px 18px calc(22px + var(--safe-bottom)); box-shadow:0 -8px 30px rgba(0,0,0,.25); }
+.dispatch-choice-handle { width:38px; height:5px; border-radius:3px; background:var(--color-border-2); margin:4px auto 14px; }
+.dispatch-choice-title { font-weight:800; font-size:19px; letter-spacing:-.02em; }
+.dispatch-choice-sub { color:var(--color-text-muted); font-size:14px; margin:2px 0 14px; }
+.dispatch-choice-btn { width:100%; text-align:left; border:0.5px solid var(--color-border-2); background:var(--color-surface-2); border-radius:16px; padding:14px 16px; margin-bottom:10px; cursor:pointer; display:flex; flex-direction:column; gap:2px; }
+.dispatch-choice-btn b { font-size:22px; }
+.dispatch-choice-btn span { color:var(--color-text-muted); font-size:13px; }
+.dispatch-choice-btn:active { transform:scale(.985); }
+.dispatch-choice-btn#dc-full { background:var(--color-primary); color:#fff; border-color:transparent; }
+.dispatch-choice-btn#dc-full span { color:rgba(255,255,255,.82); }
+.dispatch-choice-cancel { width:100%; padding:13px; border:none; background:none; color:var(--color-text-muted); font-weight:700; font-size:16px; cursor:pointer; }

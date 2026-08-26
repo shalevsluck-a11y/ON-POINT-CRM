@@ -1146,7 +1146,7 @@ const App = (() => {
       : '';
 
     const waBtn = Auth.isAdminOrDisp()
-      ? `<button class="wa-btn" onclick="event.stopPropagation();App.openDispatchModal('${job.jobId}')" title="Dispatch to Tech">&#128172;</button>`
+      ? `<button class="wa-btn" onclick="event.stopPropagation();App.openWhatsApp('${job.jobId}')" title="Dispatch to Tech">&#128172;</button>`
       : '';
 
     // Summary preview: description first, fall back to notes, then closingDetails
@@ -2315,7 +2315,7 @@ const App = (() => {
     // Dispatch — primary action, one tap, fires the same WhatsApp message every
     // job detail used to require Call+Text+Dispatch to approximate.
     const dispatchBtn = Auth.isAdminOrDisp()
-      ? `<button class="detail-action-primary-btn dab-primary-dispatch" onclick="event.stopPropagation();App.openDispatchModal('${job.jobId}')">
+      ? `<button class="detail-action-primary-btn dab-primary-dispatch" onclick="event.stopPropagation();App.openWhatsApp('${job.jobId}')">
            <span class="dab-primary-icon">&#128172;</span><span class="dab-primary-label">Dispatch</span>
          </button>`
       : '';
@@ -2502,11 +2502,32 @@ const App = (() => {
   }
 
   function _buildStatusActions(job) {
-    if (job.status === 'paid' || job.status === 'closed') return '';
-    return `<div class="status-action-row">
-      <button class="status-action-btn sab-est ${job.status==='follow_up'?'current':''}" onclick="App.setJobStatus('${job.jobId}','follow_up')">Estimate</button>
-      <button class="status-action-btn sab-lst ${job.status==='lost'?'current':''}" onclick="App.setJobStatus('${job.jobId}','lost')">Mark Lost</button>
-    </div>`;
+    const allStatuses = [
+      { val:'new',        label:'New',         cls:'sab-new' },
+      { val:'scheduled',  label:'Scheduled',   cls:'sab-scheduled' },
+      { val:'in_progress',label:'In Progress', cls:'sab-inprogress' },
+      { val:'follow_up',  label:'Estimate',   cls:'sab-follow_up' },
+      { val:'closed',     label:'Closed',      cls:'sab-closed' },
+      { val:'paid',       label:'Paid',        cls:'sab-paid' },
+    ];
+
+    // Techs can only transition to In Progress or Closed
+    const techStatuses = [
+      { val:'in_progress',label:'In Progress', cls:'sab-inprogress' },
+      { val:'closed',     label:'Closed',      cls:'sab-closed' },
+    ];
+
+    const statuses = Auth.isTechOrContractor() ? techStatuses : allStatuses;
+
+    const btns = statuses.map(s => `
+      <button class="status-action-btn ${s.cls} ${job.status === s.val ? 'current' : ''}"
+              onclick="App.setJobStatus('${job.jobId}', '${s.val}')"
+              ${job.status === 'paid' && s.val !== 'paid' ? 'disabled style="opacity:0.4"' : ''}>
+        ${s.label}
+      </button>
+    `).join('');
+
+    return `<div class="status-action-row">${btns}</div>`;
   }
 
   function _buildPhotoGrid(jobId, photos) {
@@ -5332,7 +5353,7 @@ const App = (() => {
 
     lines.push('*Customer*');
     lines.push(job.customerName || '—');
-    if (!half && job.phone) lines.push(job.phone);
+    if (job.phone) lines.push(job.phone);
     if (address) {
       lines.push('');
       lines.push('*Address*');
@@ -5403,9 +5424,8 @@ const App = (() => {
   // Tech dispatch message — sent to assigned technician's WhatsApp.
   // Clean, professional layout: no brand header, no divider art, no emoji
   // clutter. Section labels in bold, content underneath, blank line gaps.
-  function _buildWhatsAppTechDispatchMsg(job, mode) {
-    const half = (mode === 'half');
-    const fullAddress = (half ? [job.city, job.state, job.zip] : [job.address, job.city, job.state, job.zip]).filter(Boolean).join(', ') || 'See job details';
+  function _buildWhatsAppTechDispatchMsg(job) {
+    const fullAddress = [job.address, job.city, job.state, job.zip].filter(Boolean).join(', ') || 'See job details';
     const dateLine = job.scheduledDate ? _formatDate(job.scheduledDate) : 'TBD';
     const timeLine = job.scheduledTime ? _formatTime(job.scheduledTime) : 'TBD';
     const ref = (job.jobId || '').slice(-6).toUpperCase();
@@ -5453,39 +5473,7 @@ const App = (() => {
   }
 
   // Open WhatsApp with job details (user chooses recipient)
-  // Dispatch choice: 100% (full) vs 50% (city+zip only, no phone) — for subcontractors
-  function openDispatchModal(jobId) {
-    if (!Auth.isAdminOrDisp()) return;
-    const job = DB.getJobById(jobId);
-    if (!job) { showToast('Job not found', 'error'); return; }
-    const ex = document.getElementById('dispatch-choice-overlay');
-    if (ex) ex.remove();
-    const ov = document.createElement('div');
-    ov.id = 'dispatch-choice-overlay';
-    ov.className = 'dispatch-choice-overlay';
-    ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
-    const sheet = document.createElement('div');
-    sheet.className = 'dispatch-choice-sheet';
-    sheet.innerHTML =
-      '<div class="dispatch-choice-handle"></div>' +
-      '<div class="dispatch-choice-title">Dispatch ' + _esc(job.customerName || '') + '</div>' +
-      '<div class="dispatch-choice-sub">How much detail to send?</div>' +
-      '<button class="dispatch-choice-btn" id="dc-full"><b>100%</b><span>Full details — address &amp; phone</span></button>' +
-      '<button class="dispatch-choice-btn" id="dc-half"><b>50%</b><span>City &amp; ZIP only — no street, no phone</span></button>' +
-      '<button class="dispatch-choice-cancel" id="dc-cancel">Cancel</button>';
-    ov.appendChild(sheet);
-    document.body.appendChild(ov);
-    sheet.querySelector('#dc-full').addEventListener('click', () => _doDispatch(jobId, 'full'));
-    sheet.querySelector('#dc-half').addEventListener('click', () => _doDispatch(jobId, 'half'));
-    sheet.querySelector('#dc-cancel').addEventListener('click', () => ov.remove());
-  }
-  function _doDispatch(jobId, mode) {
-    const o = document.getElementById('dispatch-choice-overlay');
-    if (o) o.remove();
-    openWhatsApp(jobId, mode);
-  }
-
-  function openWhatsApp(jobId, mode) {
+  function openWhatsApp(jobId) {
     if (!Auth.isAdminOrDisp()) return;
     const job = DB.getJobById(jobId);
     if (!job) { showToast('Job not found', 'error'); return; }
@@ -5494,7 +5482,7 @@ const App = (() => {
     // For paid jobs, use full breakdown; otherwise use tech dispatch message
     const msg = job.status === 'paid'
       ? _buildWhatsAppJobText(job)
-      : _buildWhatsAppTechDispatchMsg(job, mode);
+      : _buildWhatsAppTechDispatchMsg(job);
 
     // Open WhatsApp with pre-filled message (user chooses recipient)
     const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
@@ -6031,8 +6019,6 @@ const App = (() => {
 
     // WhatsApp
     openWhatsApp,
-    openDispatchModal,
-    _doDispatch,
     copyJobDetails,
 
     // Settings
