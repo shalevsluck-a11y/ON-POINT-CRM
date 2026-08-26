@@ -479,63 +479,6 @@ app.post('/admin/apply-migration-027', async (req, res) => {
   }
 });
 
-// Fix endpoint: add magic tokens to all users who don't have one
-app.post('/admin/fix-magic-tokens', async (req, res) => {
-  try {
-    console.log('[FIX] Adding magic tokens to users...');
-
-    // Get all profiles
-    const { data: profiles, error } = await supabaseAdmin
-      .from('profiles')
-      .select('id, name, magic_token');
-
-    if (error) {
-      return res.status(500).json({ error: error.message });
-    }
-
-    let updated = 0;
-    let skipped = 0;
-    const results = [];
-
-    for (const profile of profiles) {
-      if (profile.magic_token) {
-        skipped++;
-        continue;
-      }
-
-      // Generate magic token
-      const magicToken = Math.random().toString(36).substring(2) +
-                        Math.random().toString(36).substring(2) +
-                        Date.now().toString(36);
-
-      // Update profile
-      const { error: updateError } = await supabaseAdmin
-        .from('profiles')
-        .update({ magic_token: magicToken })
-        .eq('id', profile.id);
-
-      if (updateError) {
-        results.push({ name: profile.name, status: 'failed', error: updateError.message });
-      } else {
-        results.push({ name: profile.name, status: 'updated', token: magicToken.substring(0, 10) + '...' });
-        updated++;
-      }
-    }
-
-    console.log(`[FIX] Updated: ${updated}, Skipped: ${skipped}`);
-
-    res.json({
-      success: true,
-      total: profiles.length,
-      updated,
-      skipped,
-      results
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Debug endpoint: check for duplicate magic tokens
 app.get('/admin/debug-tokens', async (req, res) => {
   try {
@@ -753,7 +696,7 @@ app.post('/api/save-job', rateLimit({ max: 120, windowMs: 60_000 }), async (req,
     // Get user role from profiles
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('role')
+      .select('role, allowed_lead_sources')
       .eq('id', user.id)
       .single();
 
@@ -771,6 +714,18 @@ app.post('/api/save-job', rateLimit({ max: 120, windowMs: 60_000 }), async (req,
 
     const role = profile.role;
     const isTechOrContractor = role === 'tech' || role === 'contractor';
+
+    // Dispatcher writes use supabaseDirectAdmin below (service role - bypasses
+    // RLS entirely), so this endpoint is the ONLY thing scoping a dispatcher's
+    // write to their allowed_lead_sources. Reject up front, same deny-by-default
+    // rule as migration 046 (dispatcher_can_access_job) and /api/load-jobs.
+    if (role === 'dispatcher') {
+      const allowedSources = Array.isArray(profile.allowed_lead_sources) ? profile.allowed_lead_sources : [];
+      if (!allowedSources.length || !allowedSources.includes(job.source)) {
+        console.warn('[SAVE JOB] Dispatcher blocked - source not allowed:', { userId: user.id, jobSource: job.source, allowedSources });
+        return res.status(403).json({ error: 'Not allowed to save a job for this source' });
+      }
+    }
 
     // Tech/contractor: partial update only (status field)
     if (isTechOrContractor) {
@@ -924,7 +879,7 @@ app.get('/api/load-jobs', async (req, res) => {
     // Get user role from profiles (same project as auth)
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .select('role, assigned_lead_source')
+      .select('role, assigned_lead_source, allowed_lead_sources')
       .eq('id', user.id)
       .single();
 
@@ -958,14 +913,21 @@ app.get('/api/load-jobs', async (req, res) => {
         return res.json({ jobs: [], zelleMap: {} });
       }
     } else if (role === 'dispatcher') {
-      // Dispatcher: filter by assigned lead source only if they have one
-      const assignedLeadSource = profile.assigned_lead_source;
-      console.log('[LOAD JOBS] Dispatcher assigned_lead_source:', assignedLeadSource);
-      if (assignedLeadSource) {
-        console.log('[LOAD JOBS] Filtering dispatcher jobs by source:', assignedLeadSource);
-        query = query.eq('source', assignedLeadSource);
+      // Dispatcher: scope to allowed_lead_sources (the array field RLS actually
+      // enforces - see dispatcher_can_access_job(), migration 046). Previously
+      // this branch filtered by the separate, independently-set
+      // assigned_lead_source singular field and defaulted to SHOWING ALL JOBS
+      // when unset - the same fail-open bug fixed at the database layer in
+      // migration 046, duplicated here at the API layer. Fixed: use the real
+      // scoping field, and default to zero jobs (not all jobs) when unset.
+      const allowedSources = Array.isArray(profile.allowed_lead_sources) ? profile.allowed_lead_sources : [];
+      console.log('[LOAD JOBS] Dispatcher allowed_lead_sources:', allowedSources);
+      if (allowedSources.length > 0) {
+        console.log('[LOAD JOBS] Filtering dispatcher jobs by sources:', allowedSources);
+        query = query.in('source', allowedSources);
       } else {
-        console.log('[LOAD JOBS] Dispatcher has no assigned source - showing all jobs');
+        console.log('[LOAD JOBS] Dispatcher has no allowed_lead_sources - showing zero jobs (fail closed)');
+        return res.json({ jobs: [], zelleMap: {}, role });
       }
     }
 
