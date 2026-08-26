@@ -324,3 +324,18 @@ h1, .page-title { letter-spacing: -0.03em; font-weight: 800; }
 /* Logo acts as Home */
 #header-brand { cursor:pointer; }
 .brand-home-label { font-size:10px; font-weight:700; letter-spacing:.02em; color:var(--color-text-muted); line-height:1; margin-top:1px; }
+
+/* ── Balance: monochrome + compact (fit one screen) + sleek ── */
+.rd-tile-today::before, .rd-tile-week::before, .rd-tile-month::before, .rd-tile-conv::before { background: var(--color-text) !important; opacity:.9; }
+.balance-card-icon { color: var(--color-text) !important; }
+.balance-card-icon svg { display:block; margin:0 auto; }
+#view-balance { padding-top:6px !important; }
+#view-balance > *:first-child, #view-balance .page-title { margin-top:2px !important; margin-bottom:8px !important; }
+.rd-tiles { gap:8px !important; margin-bottom:10px !important; }
+.rd-tile { padding:12px !important; }
+.rd-pipeline { padding:12px !important; margin-bottom:10px !important; }
+.balance-card { padding:14px !important; }
+.balance-card-icon { width:44px !important; height:44px !important; margin-bottom:6px !important; }
+
+/* ── Bottom nav: fill the safe area (kills the white strip on every page) ── */
+.bottom-nav { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px) !important; background: var(--color-surface) !important; }

@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
   <link rel="stylesheet" href="css/polish.css?v=20260430-2">
-  <link rel="stylesheet" href="css/refine.css?v=20260826-r">
+  <link rel="stylesheet" href="css/refine.css?v=20260826-q">
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/logo.jpg">
@@ -651,7 +651,7 @@
         <!-- Main menu -->
         <div id="balance-menu" class="balance-container">
           <div class="balance-card" onclick="Balance.showReportOptions('tech')">
-            <div class="balance-card-icon"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+            <div class="balance-card-icon">👤</div>
             <div class="balance-card-title">Balance by Tech</div>
             <div class="balance-card-desc">What each tech owes you, and why</div>
           </div>
