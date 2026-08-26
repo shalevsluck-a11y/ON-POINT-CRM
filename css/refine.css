@@ -280,3 +280,17 @@ main, .app-main, #app { background: var(--color-bg); }
 .calendar-nav { flex-wrap: wrap; row-gap: 12px; align-items: center; }
 .calendar-nav .calendar-date-label { flex: 1 1 auto; font-size: 16px !important; font-weight: 800; line-height: 1.2; white-space: nowrap; text-align: center; }
 .calendar-nav .balance-select { flex: 1 0 100%; border-radius: var(--radius-sm) !important; }
+
+/* ── Dashboard: clearer hierarchy, revenue as the hero ── */
+#view-dashboard { padding-top: 10px; }
+#view-dashboard .notification-banner { padding: 11px 13px !important; border-radius: var(--radius-md) !important; margin-bottom: 4px; }
+#view-dashboard .notification-banner span[style*="24px"] { font-size: 18px !important; }
+#view-dashboard .notification-banner div[style*="font-weight:600"] { font-size: 14px !important; }
+.revenue-hero-main { padding: 22px 20px !important; }
+.rev-amount-hero { font-size: 42px !important; font-weight: 800 !important; letter-spacing: -0.03em; line-height: 1; }
+.rev-amount-side { font-size: 27px !important; font-weight: 800 !important; letter-spacing: -0.02em; }
+.rev-label { text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px !important; font-weight: 700 !important; opacity: 0.6; }
+.rev-count { opacity: 0.6; font-size: 12px; }
+#view-dashboard .section-title { margin-top: 26px; margin-bottom: 12px; }
+.status-strip { gap: 10px; }
+.status-stat { padding: 20px 10px !important; }
