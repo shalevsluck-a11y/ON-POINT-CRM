@@ -1,7 +1,7 @@
 ﻿// On Point Pro Doors CRM ג€” Service Worker
 // CACHE_VERSION is stamped by the deploy script on every push so the
 // browser always sees a changed sw.js file and installs the new version.
-const CACHE_VERSION = 'v20260826-scroll';
+const CACHE_VERSION = 'v20260826-reports';
 const CACHE_NAME = `onpoint-${CACHE_VERSION}`;
 
 // ג”€ג”€ CURRENT USER ID ג€” used to suppress self-pushes ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€

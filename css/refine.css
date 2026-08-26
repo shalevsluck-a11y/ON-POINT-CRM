@@ -247,8 +247,7 @@ main, .app-main, #app { background: var(--color-bg); }
 [onclick="App.bulkAddLeads()"] { display: none !important; }
 
 /* ── Pointy AI chat tab ── */
-#view-pointy { padding:0 !important; }
-#view-pointy.active { display:flex; flex-direction:column; }
+#view-pointy { display:flex; flex-direction:column; height:100%; padding:0 !important; }
 .pointy-messages { flex:1; overflow-y:auto; padding:16px 14px 8px; display:flex; flex-direction:column; gap:12px; -webkit-overflow-scrolling:touch; }
 .pointy-msg { display:flex; gap:8px; max-width:90%; }
 .pointy-user { align-self:flex-end; }
@@ -270,3 +269,9 @@ main, .app-main, #app { background: var(--color-bg); }
 .pointy-input { flex:1; resize:none; border:0.5px solid var(--color-border-2) !important; border-radius:20px !important; padding:10px 14px; font-size:16px !important; font-family:var(--font); background:var(--color-bg) !important; max-height:120px; }
 .pointy-send { flex:0 0 40px; width:40px; height:40px; border-radius:50%; background:var(--color-primary); color:#fff; border:none; font-size:20px; font-weight:700; cursor:pointer; }
 .pointy-send:active { transform:scale(0.92); }
+
+/* tighter 6-item bottom nav so it doesn't look packed */
+.bottom-nav .nav-item { padding-left:0 !important; padding-right:0 !important; gap:3px; min-width:0; }
+.bottom-nav .nav-label { font-size:10px !important; letter-spacing:-0.02em; }
+.bottom-nav .nav-icon { width:22px !important; height:22px !important; }
+.pointy-bubble { font-size:14.5px; }

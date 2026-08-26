@@ -1418,14 +1418,14 @@ app.post('/api/ai-assistant', async (req, res) => {
 
     const today = new Date().toISOString().slice(0, 10);
     const jobLines = jobs.length
-      ? jobs.map(j => `- ${j.customerName || '?'} | ${j.status || '?'}${j.tech ? ' | tech:'+j.tech : ''}${j.date ? ' | '+j.date : ''}${(j.total!=null&&j.total!=='') ? ' | $'+j.total : ''} | id:${j.jobId}`).join('\n')
+      ? jobs.map(j => `- ${j.customerName || '?'} | ${j.status || '?'} | id:${j.jobId}${j.phone ? ' | ' + j.phone : ''}`).join('\n')
       : '(none provided)';
     const system = [
       'You are the in-app assistant for On Point, a garage-door service company. The operator talks to you to ADD jobs, CLOSE jobs (record payment), or mark jobs LOST.',
       'Their leads/closings often use labels: Co=company, PDL=reference, N=name, Ph=phone, Addr=address, Desc/Occu=service, Appt=date+time. "Pay 250 by zell" means jobTotal 250, paymentMethod zelle.',
       'To CLOSE or mark LOST, you MUST match the job from THIS list of current jobs (use the exact id):',
       jobLines,
-      'You can ALSO answer questions and produce simple reports from the job list above — filter by tech, status, or date range and sum the $ totals or count jobs. When the user asks a QUESTION or for a REPORT (e.g. "report for Orel May 5-12", "how many open", "total collected this week"), reply in plain sentences with the answer and do NOT call a tool. Only call add_job / close_job / mark_lost / bulk_action to actually change a job. Keep answers short and plain — no markdown symbols. Today is ' + today + '. Never invent data.'
+      'Rules: choose exactly one tool. For close/lost, set jobId to the exact matching id from the list; if no confident match, still set customerName and leave jobId empty (the app will ask which one). If the user wants to change MANY jobs at once, use bulk_action. Today is ' + today + '. Never invent data.'
     ].join('\n\n');
 
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {

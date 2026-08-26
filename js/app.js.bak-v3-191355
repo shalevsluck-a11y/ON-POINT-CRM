@@ -5736,8 +5736,6 @@ const App = (() => {
 
   function _pointyEl() { return document.getElementById('pointy-messages'); }
 
-  function _pointyFmt(t){ return _esc(String(t||'')).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/(^|<br>|\n)\s*[\-\u2022]\s*/g,'$1&bull; ').replace(/\n/g,'<br>'); }
-
   function _pointyAppend(role, html) {
     const box = _pointyEl(); if (!box) return null;
     const wrap = document.createElement('div');
@@ -5765,9 +5763,9 @@ const App = (() => {
 
       // send a compact list of current jobs so Pointy can match by name
       const jobs = (DB.getJobs() || [])
-        .filter(j => j.status !== 'archived')
-        .slice(0, 140)
-        .map(j => { const o = { jobId:j.jobId, customerName:j.customerName, status:j.status, tech:j.assignedTechName, date:j.scheduledDate, phone:j.phone }; if (Auth.isAdmin() && (j.status==='paid'||j.status==='closed')) o.total = j.jobTotal; return o; });
+        .filter(j => j.status !== 'lost')
+        .slice(0, 120)
+        .map(j => ({ jobId: j.jobId, customerName: j.customerName, status: j.status, phone: j.phone }));
 
       const res = await fetch('/api/ai-assistant', {
         method: 'POST',
@@ -5786,7 +5784,7 @@ const App = (() => {
 
   function _pointyRenderAction(data) {
     const a = data.action, p = data.params || {};
-    if (a === 'chat' || !a) { _pointyAppend('bot', _pointyFmt(data.reply || "I can add a job, close one, mark it lost, or answer questions about your jobs.")); return; }
+    if (a === 'chat' || !a) { _pointyAppend('bot', _esc(data.reply || "I can add, close, or mark a job lost.")); return; }
 
     const id = ++_pointySeq;
     _pointyPending[id] = { action: a, params: p };
