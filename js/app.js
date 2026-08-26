@@ -3904,14 +3904,19 @@ const App = (() => {
     const isAdmin = Auth.isAdmin();
 
     // MY INFO — non-admin sees their own profile; admin sees business settings
+    let _myInfoName = '';
     if (isAdmin) {
       _setVal('s-owner-name',  s.ownerName);
       _setVal('s-owner-phone', s.ownerPhone);
       _setVal('s-owner-zelle', s.ownerZelle);
+      _myInfoName = s.ownerName || '';
     } else {
       _setVal('s-owner-name',  user?.name  || '');
       _setVal('s-owner-phone', user?.phone || '');
+      _myInfoName = user?.name || '';
     }
+    const myInfoAvatarEl = document.getElementById('myinfo-avatar');
+    if (myInfoAvatarEl) myInfoAvatarEl.textContent = (_myInfoName || '?').trim().charAt(0).toUpperCase() || '?';
 
     // Admin-only settings
     _setVal('s-tax-ny',          s.taxRateNY);
@@ -4539,6 +4544,9 @@ const App = (() => {
     const list = document.getElementById('tech-list');
     if (!list) return;
 
+    const techCountEl = document.getElementById('tech-count');
+    if (techCountEl) techCountEl.textContent = (techs || []).length;
+
     if (!techs || techs.length === 0) {
       list.innerHTML = '<div class="empty-state-sm">No technicians yet. Add your first one above.</div>';
       return;
@@ -4717,11 +4725,23 @@ const App = (() => {
     });
   }
 
+  // ── SETTINGS ACCORDION — Technicians / Companies collapse by default ──
+  function toggleSettingsList(key) {
+    const wrap    = document.getElementById(`${key}-list-wrap`);
+    const chevron = document.getElementById(`${key}-list-chevron`);
+    if (!wrap) return;
+    const isOpen = wrap.classList.toggle('open');
+    if (chevron) chevron.classList.toggle('open', isOpen);
+  }
+
   // ── LEAD SOURCES ─────────────────────────────────────
 
   async function _renderSourceList(sources = []) {
     const list = document.getElementById('source-list');
     if (!list) return;
+
+    const sourceCountEl = document.getElementById('source-count');
+    if (sourceCountEl) sourceCountEl.textContent = (sources || []).length;
 
     if (!sources || sources.length === 0) {
       list.innerHTML = '<div class="empty-state-sm">No custom sources. "My Lead" is always available.</div>';
@@ -5825,6 +5845,7 @@ const App = (() => {
     testNotificationSound,
     requestPushPermission,
     showTechModal,
+    toggleSettingsList,
     saveTech,
     deleteTech,
     showSourceModal,

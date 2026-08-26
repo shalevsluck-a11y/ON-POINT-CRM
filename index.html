@@ -15,7 +15,7 @@
   <link rel="dns-prefetch" href="https://api.onpointprodoors.com">
   <link rel="preconnect" href="https://cdn.jsdelivr.net">
   <link rel="stylesheet" href="css/app.css?v=20260427-1">
-  <link rel="stylesheet" href="css/components.css?v=20260826-1">
+  <link rel="stylesheet" href="css/components.css?v=20260826-2">
   <link rel="stylesheet" href="css/auth.css?v=20260427-1">
   <link rel="stylesheet" href="css/notification-settings.css?v=20260427-1">
   <link rel="stylesheet" href="css/balance.css?v=20260511-1">
@@ -791,20 +791,20 @@
       <!-- My Info -->
       <div class="settings-card" id="settings-myinfo-card">
         <div class="settings-section-title">My Info</div>
-        <div class="field-group">
-          <label class="field-label">My Name</label>
-          <input type="text" id="s-owner-name" class="field-input" placeholder="Your name">
+        <div class="myinfo-identity">
+          <div class="myinfo-avatar" id="myinfo-avatar">?</div>
+          <div class="myinfo-identity-fields">
+            <input type="text" id="s-owner-name" class="field-input myinfo-name-input" placeholder="Your name">
+            <input type="tel" id="s-owner-phone" class="field-input myinfo-phone-input" placeholder="Your phone number">
+          </div>
         </div>
-        <div class="field-group">
-          <label class="field-label">My Phone</label>
-          <input type="tel" id="s-owner-phone" class="field-input" placeholder="Your phone number">
-        </div>
+        <div class="myinfo-divider"></div>
         <div class="field-group" id="s-zelle-group">
           <label class="field-label">My Zelle Handle</label>
           <input type="text" id="s-owner-zelle" class="field-input" placeholder="Phone or email for Zelle">
         </div>
         <div class="field-group" id="settings-defaultstate-group">
-          <label class="field-label">Default State</label>
+          <label class="field-label">Default State <span class="field-hint">(used to pre-fill new jobs)</span></label>
           <select id="s-default-state" class="field-input">
             <option value="ME">Maine (ME)</option>
             <option value="NH">New Hampshire (NH)</option>
@@ -833,40 +833,35 @@
         </div>
       </div>
 
-      <!-- Tax Settings (admin only) -->
-      <div class="settings-card" id="settings-tax-card">
-        <div class="settings-section-title">Tax Rates (Applied only when YOU are the tech)</div>
-        <div class="field-row">
-          <div class="field-group" style="flex:1">
-            <label class="field-label">NY Tax %</label>
-            <input type="number" id="s-tax-ny" class="field-input" placeholder="8.875" step="0.001" min="0" max="20">
-          </div>
-          <div class="field-group" style="flex:1">
-            <label class="field-label">NJ Tax %</label>
-            <input type="number" id="s-tax-nj" class="field-input" placeholder="6.625" step="0.001" min="0" max="20">
-          </div>
-        </div>
-      </div>
-
-      <!-- Technicians (admin only) -->
+      <!-- Technicians (admin only) — collapsed accordion, default closed -->
       <div class="settings-card" id="settings-tech-card">
-        <div class="settings-section-title-row">
-          <div class="settings-section-title">Technicians</div>
-          <button class="btn-link" onclick="App.showTechModal()">+ Add</button>
+        <div class="settings-section-title-row settings-accordion-header" onclick="App.toggleSettingsList('tech')">
+          <div class="settings-section-title">Technicians <span class="settings-count-badge" id="tech-count">0</span></div>
+          <div class="settings-accordion-controls">
+            <button class="btn-link" onclick="event.stopPropagation();App.showTechModal()">+ Add</button>
+            <span class="settings-chevron" id="tech-list-chevron">&#8250;</span>
+          </div>
         </div>
-        <div id="tech-list" class="settings-list">
-          <div class="empty-state-sm">No technicians yet</div>
+        <div id="tech-list-wrap" class="settings-list-wrap">
+          <div id="tech-list" class="settings-list">
+            <div class="empty-state-sm">No technicians yet</div>
+          </div>
         </div>
       </div>
 
-      <!-- Companies (admin only) -->
+      <!-- Companies (admin only) — collapsed accordion, default closed -->
       <div class="settings-card" id="settings-sources-card">
-        <div class="settings-section-title-row">
-          <div class="settings-section-title">Companies</div>
-          <button class="btn-link" onclick="App.showSourceModal()">+ Add</button>
+        <div class="settings-section-title-row settings-accordion-header" onclick="App.toggleSettingsList('source')">
+          <div class="settings-section-title">Companies <span class="settings-count-badge" id="source-count">0</span></div>
+          <div class="settings-accordion-controls">
+            <button class="btn-link" onclick="event.stopPropagation();App.showSourceModal()">+ Add</button>
+            <span class="settings-chevron" id="source-list-chevron">&#8250;</span>
+          </div>
         </div>
-        <div id="source-list" class="settings-list">
-          <div class="empty-state-sm">No companies yet</div>
+        <div id="source-list-wrap" class="settings-list-wrap">
+          <div id="source-list" class="settings-list">
+            <div class="empty-state-sm">No companies yet</div>
+          </div>
         </div>
       </div>
 
@@ -1257,7 +1252,7 @@
 <script defer src="js/offline-queue.js?v=20260427"></script>
 <script defer src="js/optimistic-ui.js?v=20260427"></script>
 <script defer src="js/balance.js?v=20260511-1"></script>
-<script defer src="js/app.js?v=20260826-1"></script>
+<script defer src="js/app.js?v=20260826-2"></script>
 
 <!-- PWA: Service Worker + Install Prompt -->
 <script>

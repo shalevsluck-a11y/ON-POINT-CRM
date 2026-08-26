@@ -1118,6 +1118,66 @@
 .settings-item-sub    { font-size: var(--font-xs); color: var(--color-text-muted); margin-top: 1px; }
 .settings-item-actions { display: flex; gap: var(--sp-xs); }
 
+/* ── MY INFO — identity card treatment ─────────────────────── */
+.myinfo-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-md);
+  margin-bottom: var(--sp-md);
+}
+.myinfo-avatar {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 800;
+}
+.myinfo-identity-fields { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.myinfo-name-input  { font-size: 17px; font-weight: 700; }
+.myinfo-phone-input { font-size: var(--font-sm); }
+.myinfo-divider { height: 1px; background: var(--color-border); margin: 4px 0 var(--sp-md); }
+.field-hint { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--color-text-faint); font-size: 11px; }
+
+/* ── SETTINGS ACCORDION — Technicians / Companies ───────────── */
+.settings-accordion-header { cursor: pointer; margin-bottom: 0; -webkit-tap-highlight-color: transparent; }
+.settings-accordion-controls { display: flex; align-items: center; gap: var(--sp-sm); }
+.settings-count-badge {
+  display: inline-block;
+  min-width: 20px;
+  padding: 1px 7px;
+  margin-left: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-3);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+.settings-chevron {
+  display: inline-flex;
+  font-size: 20px;
+  color: var(--color-text-faint);
+  transition: transform 180ms cubic-bezier(.16,1,.3,1);
+  transform: rotate(90deg);
+}
+.settings-chevron.open { transform: rotate(-90deg); }
+.settings-list-wrap {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 220ms cubic-bezier(.16,1,.3,1);
+}
+.settings-list-wrap.open {
+  max-height: 420px;
+  overflow-y: auto;
+  margin-top: var(--sp-md);
+}
+
 /* ══════════════════════════════════════════════════════════
    KANBAN PIPELINE BOARD
    ══════════════════════════════════════════════════════════ */
