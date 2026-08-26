@@ -18,7 +18,7 @@ const App = (() => {
     currentJobId:   null,   // job detail view
     calendarDate:   new Date(),
     calendarTechFilter: '',  // filter calendar by tech
-    jobFilter:      'unpaid',
+    jobFilter:      'open',
     jobSearch:      '',
     jobFilterTech:    (function(){try{return localStorage.getItem('op_jobFilterTech') || '';}catch(_){return '';}})(),
     jobFilterSource:  (function(){try{return localStorage.getItem('op_jobFilterSource') || '';}catch(_){return '';}})(),
@@ -641,15 +641,12 @@ const App = (() => {
     _setText('rev-day-count', `${paidToday.length} paid job${paidToday.length !== 1 ? 's' : ''}`);
     _setText('rev-week-count',  `${paidWeek.length} paid job${paidWeek.length !== 1 ? 's' : ''}`);
 
-    // Status counts
-    const counts = { new:0, scheduled:0, in_progress:0, closed:0, paid:0, follow_up:0 };
-    jobs.forEach(j => { if (counts[j.status] !== undefined) counts[j.status]++; });
-    _setText('count-new',        counts.new);
-    _setText('count-scheduled',  counts.scheduled);
-    _setText('count-inprogress', counts.in_progress);
-    _setText('count-closed',     counts.closed);
-    _setText('count-paid',       counts.paid);
-    _setText('count-followup',   counts.follow_up);
+    // Status counts — 3-bucket model, see _statusBucket()
+    const counts = { open:0, closed:0, lost:0 };
+    jobs.forEach(j => { counts[_statusBucket(j.status)]++; });
+    _setText('count-open',   counts.open);
+    _setText('count-closed', counts.closed);
+    _setText('count-lost',   counts.lost);
 
     // Tech performance (admin/dispatcher only)
     if (Auth.canSeeFinancials()) _renderTechPerformance(jobs);
@@ -908,18 +905,21 @@ const App = (() => {
   // JOB LIST
   // ══════════════════════════════════════════════════════════
 
+  // Collapsed 3-bucket status model for display/filtering. The underlying
+  // job.status column is untouched (still new/scheduled/in_progress/follow_up/
+  // closed/paid/lost) — this only decides which bucket a status renders into.
+  // 'paid' folds into 'closed' for display; Balance and the job-detail Paid/
+  // Close button still read the real paidAt-driven distinction unchanged.
+  function _statusBucket(status) {
+    if (status === 'lost') return 'lost';
+    if (status === 'closed' || status === 'paid') return 'closed';
+    return 'open'; // new, scheduled, in_progress, follow_up
+  }
+
   function _updateChipCounts() {
     const all = DB.getJobs();
-    const counts = {
-      all:        all.length,
-      unpaid:     all.filter(j => j.status !== 'paid' && j.status !== 'lost').length,
-      new:        all.filter(j => j.status === 'new').length,
-      scheduled:  all.filter(j => j.status === 'scheduled').length,
-      in_progress:all.filter(j => j.status === 'in_progress').length,
-      follow_up:  all.filter(j => j.status === 'follow_up').length,
-      paid:       all.filter(j => j.status === 'paid').length,
-      lost:       all.filter(j => j.status === 'lost').length,
-    };
+    const counts = { open: 0, closed: 0, lost: 0 };
+    all.forEach(j => { counts[_statusBucket(j.status)]++; });
     document.querySelectorAll('.chip-count').forEach(el => {
       const k = el.dataset.count;
       if (counts[k] !== undefined) el.textContent = counts[k] > 0 ? `(${counts[k]})` : '';
@@ -938,13 +938,9 @@ const App = (() => {
     const container = document.getElementById('jobs-list-container');
     let jobs = DB.searchJobs(_state.jobSearch);
 
-    // Apply status filter
+    // Apply status filter — bucketed (open/closed/lost), see _statusBucket()
     if (_state.jobFilter && _state.jobFilter !== 'all') {
-      if (_state.jobFilter === 'unpaid') {
-        jobs = jobs.filter(j => j.status !== 'paid' && j.status !== 'lost');
-      } else {
-        jobs = jobs.filter(j => j.status === _state.jobFilter);
-      }
+      jobs = jobs.filter(j => _statusBucket(j.status) === _state.jobFilter);
     }
 
     // Apply tech filter
@@ -1537,11 +1533,11 @@ const App = (() => {
       ` : ''}
 
       <div class="rd-pipeline">
-        <div class="rd-pipeline-cell" onclick="App.navigate('jobs',{filter:'new'})"><b>${pipeline.new}</b><span>New</span></div>
-        <div class="rd-pipeline-cell" onclick="App.navigate('jobs',{filter:'scheduled'})"><b>${pipeline.scheduled}</b><span>Scheduled</span></div>
-        <div class="rd-pipeline-cell" onclick="App.navigate('jobs',{filter:'in_progress'})"><b>${pipeline.inProgress}</b><span>In Progress</span></div>
-        <div class="rd-pipeline-cell" onclick="App.navigate('jobs',{filter:'follow_up'})"><b>${pipeline.followUp}</b><span>Follow-Up</span></div>
-        <div class="rd-pipeline-cell rd-cell-good" onclick="App.navigate('jobs',{filter:'paid'})"><b>${pipeline.paid}</b><span>Paid</span></div>
+        <div class="rd-pipeline-cell" onclick="App.navigate('jobs',{filter:'open'})"><b>${pipeline.new}</b><span>New</span></div>
+        <div class="rd-pipeline-cell" onclick="App.navigate('jobs',{filter:'open'})"><b>${pipeline.scheduled}</b><span>Scheduled</span></div>
+        <div class="rd-pipeline-cell" onclick="App.navigate('jobs',{filter:'open'})"><b>${pipeline.inProgress}</b><span>In Progress</span></div>
+        <div class="rd-pipeline-cell" onclick="App.navigate('jobs',{filter:'open'})"><b>${pipeline.followUp}</b><span>Follow-Up</span></div>
+        <div class="rd-pipeline-cell rd-cell-good" onclick="App.navigate('jobs',{filter:'closed'})"><b>${pipeline.paid}</b><span>Paid</span></div>
         <div class="rd-pipeline-cell rd-cell-bad" onclick="App.navigate('jobs',{filter:'lost'})"><b>${pipeline.lost}</b><span>Lost</span></div>
       </div>
 
@@ -2323,23 +2319,20 @@ const App = (() => {
            </div>`;
     }
 
-    // WhatsApp — dispatch job details to assigned technician
-    const waLink = Auth.isAdminOrDisp()
-      ? `<button class="detail-action-btn" onclick="event.stopPropagation();App.openWhatsApp('${job.jobId}')">
-      <span class="dab-icon">&#128172;</span><span class="dab-label">Dispatch</span>
-    </button>`
+    // Dispatch — primary action, one tap, fires the same WhatsApp message every
+    // job detail used to require Call+Text+Dispatch to approximate.
+    const dispatchBtn = Auth.isAdminOrDisp()
+      ? `<button class="detail-action-primary-btn dab-primary-dispatch" onclick="event.stopPropagation();App.openWhatsApp('${job.jobId}')">
+           <span class="dab-primary-icon">&#128172;</span><span class="dab-primary-label">Dispatch</span>
+         </button>`
       : '';
 
-    const callLink = job.phone
-      ? `<a href="tel:${job.phone.replace(/\D/g,'')}" class="detail-action-btn dab-green">
-           <span class="dab-icon">&#128222;</span><span class="dab-label">Call</span>
-         </a>`
-      : '';
-
-    const smsLink = job.phone
-      ? `<a href="sms:${job.phone.replace(/\D/g,'')}" class="detail-action-btn">
-           <span class="dab-icon">&#128241;</span><span class="dab-label">Text</span>
-         </a>`
+    // Copy Details — identical message body as Dispatch, delivered via clipboard
+    // instead of WhatsApp so it can be pasted into SMS/iMessage/anywhere else.
+    const copyBtn = Auth.isAdminOrDisp()
+      ? `<button class="detail-action-primary-btn dab-primary-copy" onclick="event.stopPropagation();App.copyJobDetails('${job.jobId}')">
+           <span class="dab-primary-icon">&#128203;</span><span class="dab-primary-label">Copy Details</span>
+         </button>`
       : '';
 
     const followUpBtn = job.status === 'follow_up' && Auth.isAdminOrDisp() && job.phone
@@ -2363,11 +2356,11 @@ const App = (() => {
         </div>
       </div>
 
-      <!-- Action Bar -->
+      <!-- Primary Action Row — Dispatch + Copy Details, same message, two delivery paths -->
+      ${(dispatchBtn || copyBtn) ? `<div class="detail-action-primary">${dispatchBtn}${copyBtn}</div>` : ''}
+
+      <!-- Secondary Action Bar -->
       <div class="detail-action-bar">
-        ${callLink}
-        ${smsLink}
-        ${waLink}
         ${followUpBtn}
         ${job.address ? `<button class="detail-action-btn" onclick="App.navigateToJob('${job.jobId}')"><span class="dab-icon">&#128205;</span><span class="dab-label">Navigate</span></button>` : ''}
         ${Auth.isAdmin() && (parseFloat(job.jobTotal) || parseFloat(job.estimatedTotal)) ? `<button class="detail-action-btn dab-green" onclick="App.openZelleRequest('${job.jobId}')"><span class="dab-icon">&#128178;</span><span class="dab-label">Zelle</span></button>` : ''}
@@ -3126,10 +3119,8 @@ const App = (() => {
     const refreshed = DB.getJobById(jobId);
     if (container && refreshed) container.innerHTML = _buildJobDetailHTML(refreshed);
 
-    // Offer Zelle memo to admin only
-    if (Auth.canSeeZelleMemo() && tech && calc.techPayout > 0) {
-      setTimeout(() => showZelleMemo(jobId), 600);
-    }
+    // (Zelle memo auto-popup removed per user request — admin can still open
+    // it manually from the job detail view if they want to send to the tech.)
   }
 
   function markJobLost(jobId) {
@@ -5341,36 +5332,70 @@ const App = (() => {
     const tech      = job.assignedTechId ? settings.technicians.find(t => t.id === job.assignedTechId) : null;
     const total     = parseFloat(job.jobTotal) || parseFloat(job.estimatedTotal) || 0;
     const address   = [job.address, job.city, job.state, job.zip].filter(Boolean).join(', ');
+    const ref       = (job.jobId || '').slice(-6).toUpperCase();
 
-    const lines = [
-      '*ON POINT HOME SERVICES*',
-      `Ref: #${(job.jobId || '').slice(-6).toUpperCase()}`,
-      '',
-      `*Customer:* ${_esc(job.customerName || '—')}`,
-      job.phone   ? `*Phone:* ${_esc(job.phone)}` : '',
-      address     ? `*Address:* ${_esc(address)}` : '',
-      '',
-      job.scheduledDate ? `*Date:* ${_formatDate(job.scheduledDate)}${job.scheduledTime ? ' @ ' + _formatTime(job.scheduledTime) : ''}` : '',
-      job.description   ? `*Job:* ${_esc(job.description)}` : '',
-      job.notes         ? `*Notes:* ${_esc(job.notes)}` : '',
-      job.closingDetails ? `*Details:* ${_esc(job.closingDetails)}` : '',
-    ];
+    const lines = ['*JOB DETAILS*'];
+    if (ref) lines.push(`Ref #${ref}`);
+    lines.push('');
 
-    // For paid jobs, show job total and parts only
+    lines.push('*Customer*');
+    lines.push(job.customerName || '—');
+    if (job.phone) lines.push(job.phone);
+    if (address) {
+      lines.push('');
+      lines.push('*Address*');
+      lines.push(address);
+    }
+
+    if (job.scheduledDate) {
+      lines.push('');
+      lines.push('*Schedule*');
+      lines.push(`${_formatDate(job.scheduledDate)}${job.scheduledTime ? '  ·  ' + _formatTime(job.scheduledTime) : ''}`);
+    }
+
+    if (job.description) {
+      lines.push('');
+      lines.push('*Job*');
+      lines.push(job.description);
+    }
+    if (job.notes) {
+      lines.push('');
+      lines.push('*Notes*');
+      lines.push(job.notes);
+    }
+    if (job.closingDetails) {
+      lines.push('');
+      lines.push('*Details*');
+      lines.push(job.closingDetails);
+    }
+
     if (job.status === 'paid') {
       const jobTotal = parseFloat(job.jobTotal) || 0;
       const parts = parseFloat(job.partsCost) || 0;
-
       lines.push('');
-      if (jobTotal > 0) lines.push(`*Job Total:* $${jobTotal.toFixed(2)}`);
-      if (parts > 0)    lines.push(`*Parts:* $${parts.toFixed(2)}`);
+      if (jobTotal > 0) {
+        lines.push('*Job Total*');
+        lines.push(`$${jobTotal.toFixed(2)}`);
+      }
+      if (parts > 0) {
+        lines.push('');
+        lines.push('*Parts*');
+        lines.push(`$${parts.toFixed(2)}`);
+      }
     } else {
-      lines.push('');
-      if (total > 0)  lines.push(`*Est. Total:* $${total.toFixed(2)}`);
-      if (tech)       lines.push(`*Tech:* ${tech.name}`);
+      if (total > 0) {
+        lines.push('');
+        lines.push('*Est. Total*');
+        lines.push(`$${total.toFixed(2)}`);
+      }
+      if (tech) {
+        lines.push('');
+        lines.push('*Tech*');
+        lines.push(tech.name);
+      }
     }
 
-    return lines.filter(l => l !== undefined).join('\n');
+    return lines.join('\n');
   }
 
   // Clean a phone number to E.164-style digits for wa.me URLs
@@ -5383,42 +5408,43 @@ const App = (() => {
     return null;
   }
 
-  // Tech dispatch message — sent to assigned technician's WhatsApp
+  // Tech dispatch message — sent to assigned technician's WhatsApp.
+  // Clean, professional layout: no brand header, no divider art, no emoji
+  // clutter. Section labels in bold, content underneath, blank line gaps.
   function _buildWhatsAppTechDispatchMsg(job) {
-    const settings = DB.getSettings();
     const fullAddress = [job.address, job.city, job.state, job.zip].filter(Boolean).join(', ') || 'See job details';
     const dateLine = job.scheduledDate ? _formatDate(job.scheduledDate) : 'TBD';
     const timeLine = job.scheduledTime ? _formatTime(job.scheduledTime) : 'TBD';
-    const ownerPhone = settings.ownerPhone || '(929) 429-2429';
+    const ref = (job.jobId || '').slice(-6).toUpperCase();
 
     const lines = [
-      '*🏢 ON POINT PRO DOORS*',
-      '*━━━━━━━━━━━━━━━━━━━━━━━*',
-      '*🔔 NEW JOB ASSIGNMENT*',
-      '*━━━━━━━━━━━━━━━━━━━━━━━*',
-      '',
-      '*👤 CUSTOMER*',
-      `  • ${job.customerName || 'N/A'}`,
-      `  • ${job.phone || 'N/A'}`,
-      '',
-      '*📍 LOCATION*',
-      `  ${fullAddress}`,
-      '',
-      '*📅 SCHEDULE*',
-      `  • Date: ${dateLine}`,
-      `  • Time: ${timeLine}`,
+      '*NEW JOB ASSIGNMENT*',
     ];
+    if (ref) lines.push(`Ref #${ref}`);
+    lines.push('');
+
+    lines.push('*Customer*');
+    lines.push(job.customerName || '—');
+    if (job.phone) lines.push(job.phone);
+    lines.push('');
+
+    lines.push('*Address*');
+    lines.push(fullAddress);
+    lines.push('');
+
+    lines.push('*Schedule*');
+    lines.push(`${dateLine}${timeLine && timeLine !== 'TBD' ? '  ·  ' + timeLine : ''}`);
 
     if (job.description) {
       lines.push('');
-      lines.push('*🛠️ DESCRIPTION*');
-      lines.push(`  ${job.description}`);
+      lines.push('*Description*');
+      lines.push(job.description);
     }
 
     if (job.notes) {
       lines.push('');
-      lines.push('*📝 NOTES*');
-      lines.push(`  ${job.notes}`);
+      lines.push('*Notes*');
+      lines.push(job.notes);
     }
 
     // Always recompute so tech sees the correct cut even if storage has stale split
@@ -5426,8 +5452,8 @@ const App = (() => {
     const techPayout = _calcTd ? (_calcTd.techPayout || _calcTd.contractorFee) : 0;
     if (techPayout > 0) {
       lines.push('');
-      lines.push('*💰 YOUR PAYOUT*');
-      lines.push(`  *$${techPayout.toFixed(2)}*`);
+      lines.push('*Your Payout*');
+      lines.push(`$${techPayout.toFixed(2)}`);
     }
 
     return lines.join('\n');
@@ -5448,6 +5474,28 @@ const App = (() => {
     // Open WhatsApp with pre-filled message (user chooses recipient)
     const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
+  }
+
+  // Copy the identical dispatch message to the clipboard — same text openWhatsApp()
+  // sends, just delivered by paste-into-SMS instead of WhatsApp. Two delivery
+  // paths, one message body, so the tech never gets inconsistent details.
+  function copyJobDetails(jobId) {
+    if (!Auth.isAdminOrDisp()) return;
+    const job = DB.getJobById(jobId);
+    if (!job) { showToast('Job not found', 'error'); return; }
+
+    const msg = job.status === 'paid'
+      ? _buildWhatsAppJobText(job)
+      : _buildWhatsAppTechDispatchMsg(job);
+
+    if (!navigator.clipboard || !navigator.clipboard.writeText) {
+      showToast('Clipboard not available on this browser', 'error');
+      return;
+    }
+
+    navigator.clipboard.writeText(msg)
+      .then(() => showToast('Copied — paste into a text message', 'success'))
+      .catch(() => showToast('Copy failed', 'error'));
   }
 
   function _esc(str) {
@@ -5769,6 +5817,7 @@ const App = (() => {
 
     // WhatsApp
     openWhatsApp,
+    copyJobDetails,
 
     // Settings
     saveSettings,
