@@ -1,2 +1,4 @@
 .vercel
 docs/VAPID_KEYS.txt
+.secrets/
+.anthropic*

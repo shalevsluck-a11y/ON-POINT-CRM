@@ -1252,8 +1252,6 @@ app.get('*', (req, res) => {
 
 // ── AI add-job: parse a messy pasted lead into a structured job via Haiku ──
 // Parse-only: returns fields for the operator to confirm. Never writes to the DB.
-// ── AI add-job: parse a messy or labelled lead into a structured job via Haiku ──
-// Parse-only: returns fields for the operator to confirm. Never writes to the DB.
 app.post('/api/ai-parse-job', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -1283,35 +1281,21 @@ app.post('/api/ai-parse-job', async (req, res) => {
       input_schema: {
         type: 'object',
         properties: {
-          customerName:  { type: 'string', description: 'Customer full name (the "N:" field)' },
-          phone:         { type: 'string', description: 'Phone number, digits only (the "Ph:" field)' },
-          address:       { type: 'string', description: 'Street address ONLY - no city/state/zip (from "Addr:")' },
-          city:          { type: 'string', description: 'Town/city (from "Addr:")' },
-          state:         { type: 'string', description: '2-letter US state code (from "Addr:")' },
-          zip:           { type: 'string', description: '5-digit ZIP (from "Addr:")' },
-          scheduledDate: { type: 'string', description: 'ISO date YYYY-MM-DD from "Appt:", else empty' },
-          scheduledTime: { type: 'string', description: 'Time window as written, e.g. "12:00 PM - 2:00 PM" (from "Appt:"), else empty' },
-          description:   { type: 'string', description: 'Short summary of the service, combining "Desc:" and "Occu:"' },
-          company:       { type: 'string', description: 'Company / lead source (the "Co:" field), else empty' },
-          reference:     { type: 'string', description: 'Lead reference code (the "PDL:" field), else empty' }
+          customerName:  { type: 'string', description: 'Customer full name' },
+          phone:         { type: 'string', description: 'Phone number, digits only' },
+          address:       { type: 'string', description: 'Street address only (no city/state/zip)' },
+          city:          { type: 'string' },
+          state:         { type: 'string', description: '2-letter US state code, e.g. NJ or NY' },
+          zip:           { type: 'string', description: '5-digit ZIP if present' },
+          scheduledDate: { type: 'string', description: 'ISO date YYYY-MM-DD only if a specific date is given, else empty string' },
+          scheduledTime: { type: 'string', description: 'Time or window exactly as written, e.g. "12-2 PM", else empty string' },
+          description:   { type: 'string', description: 'What the customer needs / the problem, in a short phrase' }
         },
         required: ['customerName']
       }
     };
 
-    const today = new Date().toISOString().slice(0, 10);
-    const system = [
-      'You extract ONE structured garage-door service job from a pasted lead for On Point garage-door CRM.',
-      'The lead is either free text (a customer message) OR a labelled block using these labels:',
-      '"Co:"=company/lead source, "PDL:"=lead reference code, "N:"=customer name, "Ph:"=phone,',
-      '"Addr:"=full address (street, city, state, zip), "Desc:"=service description, "Occu:"=specific item/service,',
-      '"Appt:"=appointment date and time window.',
-      'Mapping: N->customerName; Ph->phone (digits only); Addr-> split into address (street only), city, state (2-letter), zip;',
-      'Desc + Occu -> a short description; Appt-> scheduledDate (ISO YYYY-MM-DD) and scheduledTime (the window as written);',
-      'Co->company; PDL->reference.',
-      'Today is ' + today + '. Interpret dates like "08/26" as that month/day in the current year.',
-      'Call create_job exactly once. NEVER invent data - use an empty string for anything not clearly present.'
-    ].join(' ');
+    const system = 'You extract a structured garage-door service job from a messy pasted lead (a text message, note, or dictation). Call the create_job tool exactly once. Rules: never invent data - if a field is not clearly present, use an empty string. Phone as digits only. Put only the street in address and the town in city. Use a 2-letter state code; if none is stated, leave state empty. Keep description to a short phrase.';
 
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',

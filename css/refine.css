@@ -234,3 +234,14 @@ main, .app-main, #app { background: var(--color-bg); }
   border-radius: var(--radius-sm) !important;
   color: var(--color-text-muted) !important;
 }
+
+/* Add-job: top back button + hide legacy bulk (regex) button */
+.btn-back-top {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--color-surface); border: 0.5px solid var(--color-border-2);
+  color: var(--color-text); font-weight: 600; font-size: 15px;
+  padding: 8px 16px; border-radius: var(--radius-full);
+  box-shadow: var(--shadow-xs); margin-bottom: 14px; cursor: pointer;
+}
+.btn-back-top:active { transform: scale(0.96); background: var(--color-surface-2); }
+[onclick="App.bulkAddLeads()"] { display: none !important; }
