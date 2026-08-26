@@ -405,3 +405,9 @@ h1, .page-title { letter-spacing: -0.03em; font-weight: 800; }
 .dispatch-choice-btn#dc-full { background:var(--color-primary); color:#fff; border-color:transparent; }
 .dispatch-choice-btn#dc-full span { color:rgba(255,255,255,.82); }
 .dispatch-choice-cancel { width:100%; padding:13px; border:none; background:none; color:var(--color-text-muted); font-weight:700; font-size:16px; cursor:pointer; }
+
+/* Tech form: only Name + Payout % + Card Color (hide phone/Zelle/ZIP/tax toggle) */
+.field-group:has(#m-tech-phone),
+.field-group:has(#m-tech-zelle),
+.field-group:has(#m-tech-zips),
+.field-group:has(#m-tech-is-owner) { display:none !important; }
