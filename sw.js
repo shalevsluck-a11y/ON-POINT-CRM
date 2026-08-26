@@ -1,10 +1,10 @@
-// On Point Pro Doors CRM — Service Worker
+﻿// On Point Pro Doors CRM ג€” Service Worker
 // CACHE_VERSION is stamped by the deploy script on every push so the
 // browser always sees a changed sw.js file and installs the new version.
-const CACHE_VERSION = 'v20260505-phone-balance-selfpush';
+const CACHE_VERSION = 'v20260519-dispatch-clean';
 const CACHE_NAME = `onpoint-${CACHE_VERSION}`;
 
-// ── CURRENT USER ID — used to suppress self-pushes ────────
+// ג”€ג”€ CURRENT USER ID ג€” used to suppress self-pushes ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
 // The page writes the user id to IndexedDB on login (auth.js).
 // SW reads it before showing a push to filter out actions the user took themselves.
 async function getCurrentUserId() {
@@ -37,7 +37,7 @@ async function getCurrentUserId() {
 // Import remote debug logger
 importScripts('/js/remote-debug.js');
 
-// Inline offline HTML — guaranteed fallback even with empty cache
+// Inline offline HTML ג€” guaranteed fallback even with empty cache
 const OFFLINE_HTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -61,7 +61,7 @@ const OFFLINE_HTML = `<!DOCTYPE html>
 </head>
 <body>
   <div class="card">
-    <div class="icon">📶</div>
+    <div class="icon">נ“¶</div>
     <h2>You're offline</h2>
     <p>Please check your internet connection and tap Retry to reload On Point Pro Doors CRM.</p>
     <button onclick="location.reload()">Retry</button>
@@ -69,8 +69,8 @@ const OFFLINE_HTML = `<!DOCTYPE html>
 </body>
 </html>`;
 
-// ── INSTALL ───────────────────────────────────────────────
-// Only cache the offline fallback — no pre-caching of app shell.
+// ג”€ג”€ INSTALL ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
+// Only cache the offline fallback ג€” no pre-caching of app shell.
 // This prevents a single failing asset from breaking the entire install.
 self.addEventListener('install', (event) => {
   RemoteDebug.logServiceWorkerEvent('sw_install', 'Service worker installing', { cacheVersion: CACHE_VERSION });
@@ -91,7 +91,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// ── ACTIVATE ──────────────────────────────────────────────
+// ג”€ג”€ ACTIVATE ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
 // Delete every old cache bucket and claim all clients immediately.
 // Then force all clients to reload to pick up new code.
 self.addEventListener('activate', (event) => {
@@ -116,7 +116,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// ── FETCH ─────────────────────────────────────────────────
+// ג”€ג”€ FETCH ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -130,9 +130,9 @@ self.addEventListener('fetch', (event) => {
   // Pass through: cross-origin requests
   if (url.origin !== self.location.origin) return;
 
-  // ── HTML navigation (PWA launch, bookmarks, SPA routes) ──
-  // Always network-first. If offline: serve cached page → offline fallback → inline HTML.
-  // NEVER return undefined — a blank page is never acceptable.
+  // ג”€ג”€ HTML navigation (PWA launch, bookmarks, SPA routes) ג”€ג”€
+  // Always network-first. If offline: serve cached page ג†’ offline fallback ג†’ inline HTML.
+  // NEVER return undefined ג€” a blank page is never acceptable.
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
@@ -155,7 +155,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ── JavaScript and CSS ────────────────────────────────────
+  // ג”€ג”€ JavaScript and CSS ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
   // Network-first, cache: 'no-cache' so the HTTP cache is bypassed and
   // every deploy's new files are picked up immediately.
   if (url.pathname.match(/\.(js|css)$/)) {
@@ -173,7 +173,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ── Images and icons ─────────────────────────────────────
+  // ג”€ג”€ Images and icons ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
   // Cache-first: stable assets, save bandwidth.
   if (url.pathname.match(/\.(png|jpg|jpeg|svg|ico|webp|woff2?)$/)) {
     event.respondWith(
@@ -191,7 +191,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ── Everything else ───────────────────────────────────────
+  // ג”€ג”€ Everything else ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
   // Network-first with cache fallback.
   event.respondWith(
     fetch(request)
@@ -199,7 +199,7 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// ── DURABLE PUSH EVENT LOGGING (IndexedDB) ────────────────
+// ג”€ג”€ DURABLE PUSH EVENT LOGGING (IndexedDB) ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
 async function logPushEvent(logEntry) {
   try {
     const db = await new Promise((resolve, reject) => {
@@ -230,7 +230,7 @@ async function logPushEvent(logEntry) {
   }
 }
 
-// ── PUSH NOTIFICATION ─────────────────────────────────────
+// ג”€ג”€ PUSH NOTIFICATION ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
 self.addEventListener('push', (event) => {
   const timestamp = new Date().toISOString();
   console.log('[SW Push] ========== PUSH EVENT RECEIVED ==========');
@@ -239,7 +239,7 @@ self.addEventListener('push', (event) => {
   console.log('[SW Push] Raw data:', event.data);
   console.log('[SW Push] Has data:', !!event.data);
 
-  // 🔍 REMOTE DEBUG: Push received
+  // נ” REMOTE DEBUG: Push received
   RemoteDebug.logPushEvent('push_received', 'Push event received in service worker', {
     timestamp: timestamp,
     hasData: !!event.data,
@@ -252,20 +252,20 @@ self.addEventListener('push', (event) => {
   try {
     if (event.data) {
       data = event.data.json();
-      console.log('[SW Push] ✅ Parsed JSON data:', data);
-      // 🔍 REMOTE DEBUG: JSON parsed successfully
+      console.log('[SW Push] ג… Parsed JSON data:', data);
+      // נ” REMOTE DEBUG: JSON parsed successfully
       RemoteDebug.logPushEvent('push_data_parsed', 'Push data parsed successfully', data);
     } else {
-      console.warn('[SW Push] ⚠️ No data in push event, using defaults');
-      // 🔍 REMOTE DEBUG: No data
+      console.warn('[SW Push] ג ן¸ No data in push event, using defaults');
+      // נ” REMOTE DEBUG: No data
       RemoteDebug.logPushEvent('push_no_data', 'Push event had no data, using defaults', null);
     }
   } catch (_e) {
     parseError = _e.message;
-    console.error('[SW Push] ❌ Failed to parse JSON:', _e.message);
+    console.error('[SW Push] ג Failed to parse JSON:', _e.message);
     data.body = event.data ? event.data.text() : data.body;
     console.log('[SW Push] Fallback text data:', data.body);
-    // 🔍 REMOTE DEBUG: Parse error
+    // נ” REMOTE DEBUG: Parse error
     RemoteDebug.logPushEvent('push_parse_error', 'Failed to parse push data as JSON', { fallbackText: data.body }, _e);
   }
 
@@ -279,7 +279,7 @@ self.addEventListener('push', (event) => {
       try {
         execLog.push({ step: 'START', time: new Date().toISOString() });
 
-        // ✅ DURABLE LOG: Push event received
+        // ג… DURABLE LOG: Push event received
         await logPushEvent({
           timestamp: timestamp,
           event: 'PUSH_RECEIVED',
@@ -288,15 +288,15 @@ self.addEventListener('push', (event) => {
           step: 'START'
         });
 
-        // ── SELF-SUPPRESSION ─────────────────────────────
+        // ג”€ג”€ SELF-SUPPRESSION ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
         // If this push was triggered by the current user (creatorUserId
-        // matches the stored user id), don't show — the actor doesn't need
+        // matches the stored user id), don't show ג€” the actor doesn't need
         // to be told about their own action. Defends against stale
         // push_subscriptions rows that bypass server-side excludedUserId.
         if (data.creatorUserId) {
           const myUserId = await getCurrentUserId();
           if (myUserId && myUserId === data.creatorUserId) {
-            console.log('[SW Push] 🔕 Suppressing self-push (creator =', myUserId, ')');
+            console.log('[SW Push] נ”• Suppressing self-push (creator =', myUserId, ')');
             await logPushEvent({
               timestamp: new Date().toISOString(),
               event: 'PUSH_SUPPRESSED_SELF',
@@ -309,7 +309,7 @@ self.addEventListener('push', (event) => {
 
         // Show notification
         console.log('[SW Push] Calling showNotification...');
-        // 🔍 REMOTE DEBUG: About to show notification
+        // נ” REMOTE DEBUG: About to show notification
         RemoteDebug.logPushEvent('notification_showing', 'Calling showNotification', { title: data.title, body: data.body, jobId: data.jobId });
 
         await self.registration.showNotification(data.title || 'On Point CRM', {
@@ -325,17 +325,17 @@ self.addEventListener('push', (event) => {
         });
 
         execLog.push({ step: 'NOTIFICATION_SHOWN', time: new Date().toISOString() });
-        console.log('[SW Push] ✅ showNotification completed successfully');
+        console.log('[SW Push] ג… showNotification completed successfully');
 
-        // 🔍 REMOTE DEBUG: Notification shown successfully
-        RemoteDebug.logPushEvent('notification_shown', '✅ Notification displayed successfully', {
+        // נ” REMOTE DEBUG: Notification shown successfully
+        RemoteDebug.logPushEvent('notification_shown', 'ג… Notification displayed successfully', {
           title: data.title,
           body: data.body,
           jobId: data.jobId,
           tag: data.jobId ? `job-${data.jobId}` : 'onpoint-notif'
         });
 
-        // ✅ DURABLE LOG: Notification shown
+        // ג… DURABLE LOG: Notification shown
         await logPushEvent({
           timestamp: new Date().toISOString(),
           event: 'NOTIFICATION_SHOWN',
@@ -363,19 +363,19 @@ self.addEventListener('push', (event) => {
         console.log('[SW Push] ========== PUSH EVENT COMPLETE ==========');
       } catch (error) {
         execLog.push({ step: 'ERROR', error: error.message, time: new Date().toISOString() });
-        console.error('[SW Push] ❌ Exception in push handler:', error);
+        console.error('[SW Push] ג Exception in push handler:', error);
         console.error('[SW Push] Error name:', error.name);
         console.error('[SW Push] Error message:', error.message);
 
-        // 🔍 REMOTE DEBUG: Push handler error
-        RemoteDebug.logPushEvent('push_error', '❌ Exception in push handler', {
+        // נ” REMOTE DEBUG: Push handler error
+        RemoteDebug.logPushEvent('push_error', 'ג Exception in push handler', {
           errorName: error.name,
           errorMessage: error.message,
           data: data,
           execLog: execLog
         }, error);
 
-        // ✅ DURABLE LOG: Error occurred
+        // ג… DURABLE LOG: Error occurred
         await logPushEvent({
           timestamp: new Date().toISOString(),
           event: 'PUSH_ERROR',
@@ -408,13 +408,13 @@ self.addEventListener('push', (event) => {
   );
 });
 
-// ── NOTIFICATION CLICK ────────────────────────────────────
+// ג”€ג”€ NOTIFICATION CLICK ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€ג”€
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const jobId = event.notification.data?.jobId;
   const targetUrl = jobId ? `/?job=${jobId}` : '/';
 
-  // 🔍 REMOTE DEBUG: Notification clicked
+  // נ” REMOTE DEBUG: Notification clicked
   RemoteDebug.logPushEvent('notification_click', 'User clicked notification', {
     jobId: jobId,
     targetUrl: targetUrl,
@@ -436,3 +436,4 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
+

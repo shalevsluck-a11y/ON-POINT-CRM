@@ -6,13 +6,41 @@
 const SUPABASE_URL  = 'https://api.onpointprodoors.com';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc2ODI5Mjg5LCJleHAiOjE5MzQ1MDkyODl9.E8NSAZFNAMAUvWpLLR3xBVmrwnTDwawMYIMy9V_pWyU';
 
-// Detect if running in PWA mode vs regular browser
+// Detect if running in PWA mode vs regular browser (logging / diagnostics only —
+// this MUST NOT affect where the session is stored, see below).
 const isPWA = window.navigator.standalone === true ||
               window.matchMedia('(display-mode: standalone)').matches ||
               window.matchMedia('(display-mode: fullscreen)').matches;
 
-// Use separate storage keys for PWA and browser to prevent conflicts
-const storageKey = isPWA ? 'onpoint-pwa-auth' : 'onpoint-web-auth';
+// ONE storage key for every launch mode.
+//
+// This used to be `isPWA ? 'onpoint-pwa-auth' : 'onpoint-web-auth'`, which created
+// two separate auth silos: signing in from the browser wrote the session under
+// -web-, then opening the installed icon read from -pwa-, found nothing, and threw
+// up the login screen. Every single launch. `isPWA` is also evaluated at script-parse
+// time, where the display-mode media query is not reliably settled yet, so the same
+// launch could land in either silo.
+const storageKey = 'onpoint-auth';
+
+// One-time migration: adopt whichever legacy silo still holds a session so this
+// change doesn't sign everyone out on the way in.
+(function migrateLegacyAuthStorage() {
+  try {
+    const legacy = ['onpoint-pwa-auth', 'onpoint-web-auth'];
+    for (const prefix of legacy) {
+      for (let i = 0; i < window.localStorage.length; i++) {
+        const k = window.localStorage.key(i);
+        if (!k || k.indexOf(prefix) !== 0) continue;
+        const target = storageKey + k.slice(prefix.length);
+        if (window.localStorage.getItem(target) === null) {
+          window.localStorage.setItem(target, window.localStorage.getItem(k));
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('[Auth] Legacy storage migration skipped:', e.message);
+  }
+})();
 
 console.log('Initializing Supabase client:', { isPWA, storageKey });
 

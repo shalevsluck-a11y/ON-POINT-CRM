@@ -133,18 +133,51 @@ const Auth = (() => {
       return _currentUser;
     })();
 
-    // Race between auth init and 3-second timeout
+    // Do we have anything on disk worth waiting for? If we do, bailing out to the
+    // login screen after 3s is just wrong: the magic-token exchange below uses a
+    // 10s fetch timeout, so on a cold launch over cellular the restore could never
+    // win a 3s race and the user got the login form every time.
+    const hasStoredCredential = (() => {
+      try {
+        if (localStorage.getItem('magic_token') ||
+            localStorage.getItem('onpoint-auth-magic_token') ||
+            localStorage.getItem('onpoint-pwa-auth-magic_token') ||
+            localStorage.getItem('onpoint-web-auth-magic_token') ||
+            sessionStorage.getItem('magic_token')) return true;
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.indexOf('onpoint-auth') === 0) return true;
+        }
+      } catch (e) { /* storage blocked — treat as no credential */ }
+      return false;
+    })();
+
+    // With a credential on disk we wait long enough for the 10s exchange to finish.
+    // With nothing stored there is nothing to restore, so fail fast to the login form.
+    const initTimeoutMs = hasStoredCredential ? 12000 : 3000;
+
     const timeoutPromise = new Promise((resolve) => {
       setTimeout(() => {
-        console.warn('[Auth] Init timeout after 3s - showing login screen');
+        console.warn(`[Auth] Init timeout after ${initTimeoutMs}ms - showing login screen`);
         resolve(null);
-      }, 3000);
+      }, initTimeoutMs);
     });
 
     try {
       await Promise.race([authInitPromise, timeoutPromise]);
     } catch (e) {
       console.error('[Auth] Init crashed:', e);
+    }
+
+    // If the timeout won anyway, keep the restore alive in the background and drop
+    // the user into the app when it lands, instead of stranding them on the login form.
+    if (!_currentUser) {
+      authInitPromise.then((user) => {
+        if (user && _onAuthChange) {
+          console.log('[Auth] Late session restore succeeded - user:', user.name);
+          _onAuthChange(user);
+        }
+      }).catch(() => { /* already logged by the init body */ });
     }
 
     // CRITICAL: Always call onAuthChange at end of init to show login screen if no user
