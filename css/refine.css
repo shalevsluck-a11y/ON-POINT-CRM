@@ -345,3 +345,11 @@ h1, .page-title { letter-spacing: -0.03em; font-weight: 800; }
 /* compact the balance-by-tech CTA so the page fits one screen */
 .balance-card { padding:12px 14px !important; }
 .balance-card-title, .balance-card h3 { font-size:17px !important; margin:4px 0 2px !important; }
+
+/* Balance: hide unwanted company filter + final compacting to fit one screen */
+.rd-source-filter { display:none !important; }
+.rd-tile-value { font-size:21px !important; }
+.rd-tile { padding:10px 12px !important; }
+.rd-tiles { gap:7px !important; margin-bottom:8px !important; }
+.rd-pipeline { padding:11px !important; margin-bottom:8px !important; }
+.balance-card { padding:10px 14px !important; }
