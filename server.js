@@ -7,8 +7,8 @@ const PORT = process.env.PORT || 3000;
 
 // Supabase admin client (custom domain for main operations)
 const supabaseAdmin = createClient(
-  process.env.SUPABASE_URL || 'https://api.onpointprodoors.com',
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  process.env.SUPABASE_DIRECT_URL || 'https://nmmpemjcnncjfpooytpv.supabase.co',
+  process.env.SUPABASE_DIRECT_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY,
   { auth: { persistSession: false } }
 );
 
