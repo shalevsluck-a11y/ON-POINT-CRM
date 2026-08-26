@@ -296,3 +296,47 @@ main, .app-main, #app { background: var(--color-bg); }
 #view-dashboard .section-title { margin-top: 26px; margin-bottom: 12px; }
 .status-strip { gap: 10px; }
 .status-stat { padding: 20px 10px !important; }
+
+/* ═══════════════════════════════════════════════════════
+   COLOR PASS — vibrant, professional status system
+   ═══════════════════════════════════════════════════════ */
+:root {
+  --st-open:#2f6fed;      --st-open-bg:rgba(47,111,237,.11);
+  --st-estimate:#f59e0b;  --st-estimate-bg:rgba(245,158,11,.14);
+  --st-closed:#16a34a;    --st-closed-bg:rgba(22,163,74,.11);
+  --st-lost:#e11d48;      --st-lost-bg:rgba(225,29,72,.11);
+}
+:root:not([data-theme="light"]) {
+  --st-open-bg:rgba(59,130,246,.16); --st-estimate-bg:rgba(245,158,11,.18);
+  --st-closed-bg:rgba(52,211,153,.16); --st-lost-bg:rgba(244,63,94,.16);
+}
+
+/* Jobs filter chips — colored per status, solid when active */
+.chip[data-filter="open"]     { color:var(--st-open) !important;     background:var(--st-open-bg) !important;     border:none !important; font-weight:700; }
+.chip[data-filter="estimate"] { color:var(--st-estimate) !important; background:var(--st-estimate-bg) !important; border:none !important; font-weight:700; }
+.chip[data-filter="closed"]   { color:var(--st-closed) !important;   background:var(--st-closed-bg) !important;   border:none !important; font-weight:700; }
+.chip[data-filter="lost"]     { color:var(--st-lost) !important;     background:var(--st-lost-bg) !important;     border:none !important; font-weight:700; }
+.chip[data-filter="open"].active     { background:var(--st-open) !important;     color:#fff !important; box-shadow:0 6px 16px -4px rgba(47,111,237,.6); }
+.chip[data-filter="estimate"].active { background:var(--st-estimate) !important; color:#fff !important; box-shadow:0 6px 16px -4px rgba(245,158,11,.6); }
+.chip[data-filter="closed"].active   { background:var(--st-closed) !important;   color:#fff !important; box-shadow:0 6px 16px -4px rgba(22,163,74,.6); }
+.chip[data-filter="lost"].active     { background:var(--st-lost) !important;     color:#fff !important; box-shadow:0 6px 16px -4px rgba(225,29,72,.6); }
+.chip.active .chip-count { color:rgba(255,255,255,.82) !important; }
+
+/* Home status tiles — tinted per status (not white) */
+.status-strip > *:nth-child(1) { background:var(--st-open-bg) !important;     border:none !important; }
+.status-strip > *:nth-child(2) { background:var(--st-estimate-bg) !important; border:none !important; }
+.status-strip > *:nth-child(3) { background:var(--st-closed-bg) !important;   border:none !important; }
+.status-strip > *:nth-child(4) { background:var(--st-lost-bg) !important;     border:none !important; }
+.status-strip > *:nth-child(1) .stat-count { color:var(--st-open) !important; }
+.status-strip > *:nth-child(2) .stat-count { color:var(--st-estimate) !important; }
+.status-strip > *:nth-child(3) .stat-count { color:var(--st-closed) !important; }
+.status-strip > *:nth-child(4) .stat-count { color:var(--st-lost) !important; }
+.status-strip .stat-label { color:var(--color-text-muted) !important; opacity:1; }
+
+/* Revenue TODAY — rich gradient hero */
+.revenue-hero-main { background:linear-gradient(135deg,#1d4ed8 0%,#3b82f6 52%,#6366f1 100%) !important; border:none !important; box-shadow:0 14px 34px -10px rgba(59,130,246,.55) !important; }
+.revenue-hero-main .rev-label, .revenue-hero-main .rev-count { color:rgba(255,255,255,.85) !important; }
+.revenue-hero-main .rev-amount-hero, .revenue-hero-main .rev-amount-side { color:#fff !important; }
+
+/* Job-card status badges — bold, vibrant pills */
+.status-badge, [class*="sb-"], [class*="sab-"] { font-weight:800 !important; letter-spacing:.02em; }
