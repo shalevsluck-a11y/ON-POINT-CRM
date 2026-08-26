@@ -62,7 +62,7 @@ main, .app-main, #app { background: var(--color-bg); }
 /* ---- 4. Cards: one consistent, calm treatment ---- */
 .card, .dash-card, .settings-section, .job-card, .report-card,
 .revenue-card, .stat-card, .balance-card, .needs-attention,
-.today-schedule, .kpi-card, [class*="-card"] {
+.today-schedule, .kpi-card {
   border-radius: var(--radius-lg) !important;
   box-shadow: var(--shadow-card) !important;
   border: 0.5px solid var(--color-border) !important;
