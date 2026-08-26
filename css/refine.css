@@ -208,8 +208,9 @@ main, .app-main, #app { background: var(--color-bg); }
 .stat-label { opacity: 1; color: var(--color-text-faint) !important; }
 /* colour each number by status: 1st=open(blue) 2nd=closed(green) 3rd=lost(muted) */
 .status-strip > *:nth-child(1) .stat-count { color: var(--s-new) !important; }
-.status-strip > *:nth-child(2) .stat-count { color: var(--s-closed) !important; }
-.status-strip > *:nth-child(3) .stat-count { color: var(--color-text-faint) !important; }
+.status-strip > *:nth-child(2) .stat-count { color: var(--s-follow-up) !important; }
+.status-strip > *:nth-child(3) .stat-count { color: var(--s-closed) !important; }
+.status-strip > *:nth-child(4) .stat-count { color: var(--color-text-faint) !important; }
 
 /* Jobs filter chips -> clean segmented pills */
 .chip {

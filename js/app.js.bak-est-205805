@@ -643,10 +643,9 @@ const App = (() => {
     _setText('rev-week-count',  `${paidWeek.length} paid job${paidWeek.length !== 1 ? 's' : ''}`);
 
     // Status counts — 3-bucket model, see _statusBucket()
-    const counts = { open:0, estimate:0, closed:0, lost:0 };
+    const counts = { open:0, closed:0, lost:0 };
     jobs.forEach(j => { counts[_statusBucket(j.status)]++; });
     _setText('count-open',   counts.open);
-    _setText('count-estimate', counts.estimate);
     _setText('count-closed', counts.closed);
     _setText('count-lost',   counts.lost);
 
@@ -915,13 +914,12 @@ const App = (() => {
   function _statusBucket(status) {
     if (status === 'lost') return 'lost';
     if (status === 'closed' || status === 'paid') return 'closed';
-    if (status === 'follow_up') return 'estimate';
-    return 'open'; // new, scheduled, in_progress
+    return 'open'; // new, scheduled, in_progress, follow_up
   }
 
   function _updateChipCounts() {
     const all = DB.getJobs();
-    const counts = { open: 0, estimate: 0, closed: 0, lost: 0 };
+    const counts = { open: 0, closed: 0, lost: 0 };
     all.forEach(j => { counts[_statusBucket(j.status)]++; });
     document.querySelectorAll('.chip-count').forEach(el => {
       const k = el.dataset.count;
@@ -2506,7 +2504,7 @@ const App = (() => {
       { val:'new',        label:'New',         cls:'sab-new' },
       { val:'scheduled',  label:'Scheduled',   cls:'sab-scheduled' },
       { val:'in_progress',label:'In Progress', cls:'sab-inprogress' },
-      { val:'follow_up',  label:'Estimate',   cls:'sab-follow_up' },
+      { val:'follow_up',  label:'Follow-Up',   cls:'sab-follow_up' },
       { val:'closed',     label:'Closed',      cls:'sab-closed' },
       { val:'paid',       label:'Paid',        cls:'sab-paid' },
     ];

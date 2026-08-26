@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
   <link rel="stylesheet" href="css/polish.css?v=20260430-2">
-  <link rel="stylesheet" href="css/refine.css?v=20260826-j">
+  <link rel="stylesheet" href="css/refine.css?v=20260826-i">
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/logo.jpg">
@@ -343,10 +343,6 @@
           <span class="stat-count" id="count-open">0</span>
           <span class="stat-label">Open</span>
         </div>
-        <div class="status-stat s-estimate" onclick="App.navigate('jobs',{filter:'estimate'})">
-          <span class="stat-count" id="count-estimate">0</span>
-          <span class="stat-label">Estimate</span>
-        </div>
         <div class="status-stat s-closed" onclick="App.navigate('jobs',{filter:'closed'})">
           <span class="stat-count" id="count-closed">0</span>
           <span class="stat-label">Closed</span>
@@ -406,7 +402,6 @@
 
       <div class="filter-chips" id="filter-chips">
         <button class="chip active" data-filter="open" onclick="App.setJobFilter('open',this)">Open <span class="chip-count" data-count="open"></span></button>
-        <button class="chip" data-filter="estimate" onclick="App.setJobFilter('estimate',this)">Estimate <span class="chip-count" data-count="estimate"></span></button>
         <button class="chip" data-filter="closed" onclick="App.setJobFilter('closed',this)">Closed <span class="chip-count" data-count="closed"></span></button>
         <button class="chip" data-filter="lost" onclick="App.setJobFilter('lost',this)">Lost <span class="chip-count" data-count="lost"></span></button>
       </div>
@@ -1263,7 +1258,7 @@
 <script defer src="js/offline-queue.js?v=20260427"></script>
 <script defer src="js/optimistic-ui.js?v=20260427"></script>
 <script defer src="js/balance.js?v=20260826-1"></script>
-<script defer src="js/app.js?v=20260826-j"></script>
+<script defer src="js/app.js?v=20260826-h"></script>
 
 <!-- PWA: Service Worker + Install Prompt -->
 <script>
