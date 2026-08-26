@@ -247,7 +247,8 @@ main, .app-main, #app { background: var(--color-bg); }
 [onclick="App.bulkAddLeads()"] { display: none !important; }
 
 /* ── Pointy AI chat tab ── */
-#view-pointy { display:flex; flex-direction:column; height:100%; padding:0 !important; }
+#view-pointy { padding:0 !important; }
+#view-pointy.active { display:flex; flex-direction:column; }
 .pointy-messages { flex:1; overflow-y:auto; padding:16px 14px 8px; display:flex; flex-direction:column; gap:12px; -webkit-overflow-scrolling:touch; }
 .pointy-msg { display:flex; gap:8px; max-width:90%; }
 .pointy-user { align-self:flex-end; }
