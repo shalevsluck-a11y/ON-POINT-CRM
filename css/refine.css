@@ -318,3 +318,9 @@ h1, .page-title { letter-spacing: -0.03em; font-weight: 800; }
 
 /* dark mode: more readable muted text */
 :root:not([data-theme="light"]) { --color-text-muted:#aeb6c2; --color-text-faint:#7c8593; }
+
+/* Home: compact — drop the long recent-jobs list (Jobs tab covers it) */
+#recent-jobs-wrap { display:none !important; }
+/* Logo acts as Home */
+#header-brand { cursor:pointer; }
+.brand-home-label { font-size:10px; font-weight:700; letter-spacing:.02em; color:var(--color-text-muted); line-height:1; margin-top:1px; }

@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
   <link rel="stylesheet" href="css/polish.css?v=20260430-2">
-  <link rel="stylesheet" href="css/refine.css?v=20260826-q">
+  <link rel="stylesheet" href="css/refine.css?v=20260826-p">
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/logo.jpg">
@@ -231,8 +231,8 @@
   <header id="app-header">
     <div class="header-left">
       <button id="btn-back" class="btn-icon hidden" onclick="App.goBack()">&#8592;</button>
-      <div id="header-brand" onclick="App.navigate('dashboard')" style="cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px">
-        <img src="assets/logo.jpg" alt="On Point Home Services" class="brand-logo"><span class="brand-home-label">Home</span>
+      <div id="header-brand">
+        <img src="assets/logo.jpg" alt="On Point Home Services" class="brand-logo">
       </div>
     </div>
     <div class="header-center">
@@ -998,11 +998,12 @@
   <!-- BOTTOM NAVIGATION                          -->
   <!-- ========================================== -->
   <nav id="bottom-nav">
-    <button class="nav-item" data-view="jobs" onclick="App.navigate('jobs')">
-      <svg class="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-      <span class="nav-label">Jobs</span>
+    <button class="nav-item active" data-view="dashboard" onclick="App.navigate('dashboard')">
+      <svg class="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+      </svg>
+      <span class="nav-label">Home</span>
     </button>
-    
     <button class="nav-item" data-view="pointy" onclick="App.navigate('pointy')">
       <svg class="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
       <span class="nav-label">Pointy</span>
@@ -1018,11 +1019,10 @@
       </svg>
       <span class="nav-label">Schedule</span>
     </button>
-    <button class="nav-item" data-view="balance" onclick="App.navigate('balance')">
-      <svg class="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-      <span class="nav-label">Balance</span>
+    <button class="nav-item" data-view="jobs" onclick="App.navigate('jobs')">
+      <svg class="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      <span class="nav-label">Jobs</span>
     </button>
-    
           </nav>
 
   <!-- More Menu (Balance + Settings) -->
