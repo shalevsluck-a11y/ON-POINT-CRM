@@ -353,3 +353,16 @@ h1, .page-title { letter-spacing: -0.03em; font-weight: 800; }
 .rd-tiles { gap:7px !important; margin-bottom:8px !important; }
 .rd-pipeline { padding:11px !important; margin-bottom:8px !important; }
 .balance-card { padding:10px 14px !important; }
+
+/* ── FIX: nav is #bottom-nav (id), not .bottom-nav — solid bar, no blur, fills safe area ── */
+#bottom-nav {
+  background: var(--color-surface) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border-top: 0.5px solid var(--color-border) !important;
+  box-shadow: 0 -1px 10px rgba(17,17,26,.05) !important;
+}
+/* balance: shave a little more so it never scrolls */
+.rd-pipeline { padding:9px !important; }
+.balance-card { padding:8px 14px !important; }
+.rd-tile { padding:9px 12px !important; }
