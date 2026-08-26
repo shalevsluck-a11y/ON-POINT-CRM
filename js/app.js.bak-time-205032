@@ -1391,9 +1391,7 @@ const App = (() => {
       set('f-city',        j.city);
       set('f-zip',         j.zip);
       set('f-date',        j.scheduledDate);
-      const _tw = _normTimeWindow(j.scheduledTime);
-      set('f-time', _tw);
-      if(_tw){ const _p=_tw.split('-'); const _ff=document.getElementById('f-time-from'), _tf=document.getElementById('f-time-to'); if(_ff)_ff.value=String(parseInt(_p[0],10)); if(_tf)_tf.value=String(parseInt(_p[1],10)); }
+      set('f-time',        j.scheduledTime);
       set('f-description', j.description);
       if (j.state) { const s = document.getElementById('f-state'); if (s) s.value = j.state; }
 
@@ -5736,25 +5734,6 @@ const App = (() => {
   let _pointyPending = {};
   let _pointySeq = 0;
 
-  // Normalize a free-text time (e.g. "8-9 am", "12:00 PM - 2 PM") into the app's
-  // canonical 24h window "HH-HH". Returns '' if no time is present.
-  function _normTimeWindow(str){
-    if(!str) return '';
-    const s = String(str).toLowerCase().replace(/[\u2013\u2014]/g,'-');
-    const re = /(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/g;
-    const toks = []; let m;
-    while((m = re.exec(s)) && toks.length < 2){ toks.push({ h: parseInt(m[1],10), ap: m[3]||null }); }
-    if(!toks.length) return '';
-    const ap = (toks.find(t=>t.ap)||{}).ap || null;
-    const conv = (t)=>{ let h=t.h; const a=t.ap||ap; if(a==='pm'&&h<12)h+=12; if(a==='am'&&h===12)h=0; return h; };
-    let x = conv(toks[0]);
-    let y = toks[1] ? conv(toks[1]) : x+2;
-    if(!Number.isFinite(x)) return '';
-    if(!Number.isFinite(y) || y<=x) y = x+2;
-    x=Math.max(0,Math.min(23,x)); y=Math.max(0,Math.min(23,y));
-    return String(x).padStart(2,'0')+'-'+String(y).padStart(2,'0');
-  }
-
   function _pointyEl() { return document.getElementById('pointy-messages'); }
 
   function _pointyFmt(t){ return _esc(String(t||'')).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/(^|<br>|\n)\s*[\-\u2022]\s*/g,'$1&bull; ').replace(/\n/g,'<br>'); }
@@ -5869,7 +5848,7 @@ const App = (() => {
           createdBy: Auth.getUser()?.id || null,
           customerName: p.customerName || '', phone: p.phone ? LeadParser.formatPhone(p.phone) : '',
           address: p.address||'', city: p.city||'', state: p.state || settings.defaultState || 'NY', zip: p.zip||'',
-          scheduledDate: p.scheduledDate||'', scheduledTime: _normTimeWindow(p.scheduledTime),
+          scheduledDate: p.scheduledDate||'', scheduledTime: p.scheduledTime||'',
           description: p.description||'', notes: p.reference ? ('Ref: '+p.reference) : '',
           rawLead: '', source: 'my_lead',
           assignedTechId: owner?.id || '', assignedTechName: owner?.name || '', isSelfAssigned: !!owner,
