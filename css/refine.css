@@ -207,10 +207,10 @@ main, .app-main, #app { background: var(--color-bg); }
 .stat-count { font-size: 34px !important; letter-spacing: -0.03em; }
 .stat-label { opacity: 1; color: var(--color-text-faint) !important; }
 /* colour each number by status: 1st=open(blue) 2nd=closed(green) 3rd=lost(muted) */
-.status-strip > *:nth-child(1) .stat-count { color: var(--s-new) !important; }
-.status-strip > *:nth-child(2) .stat-count { color: var(--s-follow-up) !important; }
-.status-strip > *:nth-child(3) .stat-count { color: var(--s-closed) !important; }
-.status-strip > *:nth-child(4) .stat-count { color: var(--color-text-faint) !important; }
+.status-strip > *:nth-child(1) .stat-count { color: var(--color-text) !important; }
+.status-strip > *:nth-child(2) .stat-count { color: var(--color-text) !important; }
+.status-strip > *:nth-child(3) .stat-count { color: var(--color-text) !important; }
+.status-strip > *:nth-child(4) .stat-count { color: var(--color-text-muted) !important; }
 
 /* Jobs filter chips -> clean segmented pills */
 .chip {
@@ -315,3 +315,6 @@ main, .app-main, #app { background: var(--color-bg); }
 /* Bolder numbers + headings */
 .stat-count, .rev-amount-hero, .rev-amount-side { font-weight: 800 !important; }
 h1, .page-title { letter-spacing: -0.03em; font-weight: 800; }
+
+/* dark mode: more readable muted text */
+:root:not([data-theme="light"]) { --color-text-muted:#aeb6c2; --color-text-faint:#7c8593; }
