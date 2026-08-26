@@ -1356,66 +1356,54 @@ const App = (() => {
 
   // ── PARSE LEAD ──────────────────────────────────────────
 
-  function parseLead() {
+  async function parseLead() {
     const raw = document.getElementById('raw-lead-input')?.value?.trim();
     if (!raw) {
       showToast('Paste some lead text first', 'warning');
       return;
     }
 
-    const parsed = LeadParser.parse(raw);
-    _state.parsedLead  = parsed;
-    _state.newJobDraft.rawLead = raw;
+    const btn = document.querySelector('[onclick="App.parseLead()"]');
+    const origHtml = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.innerHTML = '&#10024; Reading&hellip;'; }
 
-    // Fill form fields
-    _fillField('f-name',        parsed.customerName);
-    _fillField('f-phone',       parsed.phone);
-    _fillField('f-address',     parsed.address);
-    _fillField('f-city',        parsed.city);
-    _fillField('f-zip',         parsed.zip);
-    _fillField('f-date',        parsed.scheduledDate);
-    _fillField('f-time',        parsed.scheduledTime);
-    _fillField('f-description', parsed.description);
+    try {
+      const session = await SupabaseClient.auth.getSession();
+      const token = session?.data?.session?.access_token;
+      if (!token) throw new Error('Please sign in again');
 
-    // Map parsed time (HH:MM or HH-HH) into the From/To dropdowns
-    const parsedTimeVal = parsed.scheduledTime?.value || '';
-    if (parsedTimeVal) {
-      let fromHour = null, toHour = null;
-      if (parsedTimeVal.includes('-')) {
-        const [s, e] = parsedTimeVal.split('-').map(n => parseInt(n, 10));
-        fromHour = s; toHour = e;
-      } else if (parsedTimeVal.includes(':')) {
-        fromHour = parseInt(parsedTimeVal.split(':')[0], 10);
-      }
-      const fromEl = document.getElementById('f-time-from');
-      const toEl   = document.getElementById('f-time-to');
-      if (fromEl && Number.isFinite(fromHour)) fromEl.value = String(fromHour);
-      if (toEl && Number.isFinite(toHour))     toEl.value = String(toHour);
-      _newSyncTimeWindow();
+      const res = await fetch('/api/ai-parse-job', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ text: raw })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.job) throw new Error(data.error || 'AI could not read that lead');
+
+      const j = data.job;
+      _state.newJobDraft.rawLead = raw;
+
+      const set = (id, v) => { const el = document.getElementById(id); if (el && v != null && v !== '') el.value = v; };
+      set('f-name',        j.customerName);
+      set('f-phone',       j.phone ? (window.LeadParser ? LeadParser.formatPhone(j.phone) : j.phone) : '');
+      set('f-address',     j.address);
+      set('f-city',        j.city);
+      set('f-zip',         j.zip);
+      set('f-date',        j.scheduledDate);
+      set('f-time',        j.scheduledTime);
+      set('f-description', j.description);
+      if (j.state) { const s = document.getElementById('f-state'); if (s) s.value = j.state; }
+
+      try { checkReturningCustomer(); } catch (e) {}
+      try { _suggestTechByZip(j.zip || ''); } catch (e) {}
+
+      goToStep(2);
+      showToast('✨ Read by AI — review & save', 'success');
+    } catch (e) {
+      showToast(e.message || 'AI could not read that lead', 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = origHtml; }
     }
-
-    // State dropdown
-    if (parsed.state?.value) {
-      const stateEl = document.getElementById('f-state');
-      if (stateEl) stateEl.value = parsed.state.value;
-    }
-
-    // Update confidence badges
-    _setConf('conf-name',    parsed.customerName);
-    _setConf('conf-phone',   parsed.phone);
-    _setConf('conf-address', parsed.address);
-    _setConf('conf-zip',     parsed.zip);
-    _setConf('conf-date',    parsed.scheduledDate);
-    _setConf('conf-time',    parsed.scheduledTime);
-    _setConf('conf-desc',    parsed.description);
-
-    // Check returning customer
-    checkReturningCustomer();
-
-    // Suggest technician by ZIP
-    _suggestTechByZip(parsed.zip?.value || '');
-
-    goToStep(2);
   }
 
   // ════════════════════════════════════════════════════════════════
