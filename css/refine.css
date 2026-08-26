@@ -1,0 +1,162 @@
+/* ============================================================
+   REFINE.CSS — cohesive native-iOS refinement layer.
+   Loaded LAST so it wins the cascade. Fully reversible: remove
+   the <link> to revert. Retunes tokens + polishes components for
+   a clean, calm, App-Store-grade look. Motion kept subtle on
+   purpose — heavy blur/entrance animation broke touch on iOS
+   (see polish.css history), so nothing here blurs or shifts
+   tappable elements.
+   ============================================================ */
+
+/* ---- 1. Native font everywhere (kills the generic Inter look) ---- */
+:root,
+[data-theme="light"],
+[data-theme="dark"] {
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Segoe UI', system-ui, sans-serif !important;
+}
+body, input, textarea, select, button {
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ---- 2. Retuned LIGHT palette + depth tokens (what the operator uses) ---- */
+[data-theme="light"] {
+  --color-bg:        #F5F5F7;   /* calm grouped-background grey */
+  --color-surface:   #FFFFFF;
+  --color-surface-2: #F0F0F3;
+  --color-surface-3: #E8E8ED;
+  --color-border:    rgba(0,0,0,0.06);
+  --color-border-2:  rgba(0,0,0,0.10);
+
+  --color-primary:      #0A0A0A;   /* confident near-black accent */
+  --color-primary-dark: #000000;
+  --color-text:       #0B0B0F;
+  --color-text-muted: #6B6B72;
+  --color-text-faint: #A9A9B2;
+
+  /* softer, more expensive shadows */
+  --shadow-xs:   0 1px 2px rgba(17,17,26,0.05);
+  --shadow-sm:   0 2px 6px rgba(17,17,26,0.06);
+  --shadow-md:   0 6px 18px rgba(17,17,26,0.08);
+  --shadow-lg:   0 12px 32px rgba(17,17,26,0.12);
+  --shadow-card: 0 1px 2px rgba(17,17,26,0.04), 0 4px 16px rgba(17,17,26,0.06);
+
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+  --radius-xl: 26px;
+}
+
+/* ---- 3. Base surface + rhythm ---- */
+body { background: var(--color-bg); letter-spacing: -0.01em; }
+main, .app-main, #app { background: var(--color-bg); }
+
+/* tabular, tightly-tracked numerals wherever money/counts live */
+.stat-num, .revenue-value, .balance-num, .chip-count, .tile-num,
+.dashboard-revenue-value, .job-count, [class*="-num"], [class*="count"] {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* ---- 4. Cards: one consistent, calm treatment ---- */
+.card, .dash-card, .settings-section, .job-card, .report-card,
+.revenue-card, .stat-card, .balance-card, .needs-attention,
+.today-schedule, .kpi-card, [class*="-card"] {
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-card) !important;
+  border: 0.5px solid var(--color-border) !important;
+  background: var(--color-surface);
+}
+
+/* iOS-style small caps section labels */
+.section-label, .settings-section-title, .dash-section-title,
+.card-label, .revenue-label, .report-section-label {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-faint);
+}
+
+/* ---- 5. Header: clean, hairline separation ---- */
+.app-header, header.app-header, .header {
+  background: rgba(245,245,247,0.82) !important;
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 0.5px solid var(--color-border) !important;
+  box-shadow: none !important;
+}
+.app-header h1, .header-title, .page-title { letter-spacing: -0.03em; font-weight: 800; }
+
+/* ---- 6. Bottom nav + FAB: crisp, floating ---- */
+.bottom-nav, nav.bottom-nav, .app-nav {
+  background: rgba(255,255,255,0.86) !important;
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-top: 0.5px solid var(--color-border) !important;
+  box-shadow: 0 -1px 12px rgba(17,17,26,0.04) !important;
+}
+.nav-add, .nav-fab {
+  box-shadow: 0 6px 18px rgba(0,0,0,0.28), 0 0 0 5px rgba(255,255,255,0.9) !important;
+}
+
+/* ---- 7. Job-card action buttons: kill the green gradient circles ---- */
+.call-btn, .wa-btn {
+  background: var(--color-surface-2) !important;
+  border: 0.5px solid var(--color-border-2) !important;
+  color: var(--color-text) !important;
+  width: 42px; height: 42px;
+  border-radius: var(--radius-full) !important;
+  box-shadow: var(--shadow-xs) !important;
+  transition: transform .12s ease, background .15s ease;
+}
+.call-btn:active, .wa-btn:active { transform: scale(0.92); background: var(--color-surface-3) !important; }
+/* the WhatsApp/dispatch one gets the single confident accent */
+.wa-btn { background: var(--color-primary) !important; color: #fff !important; border-color: transparent !important; }
+
+/* ---- 8. Status pills: quiet, legible, colour + weight (not loud fills) ---- */
+.status-badge, .job-status, [class*="status-"] {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border-radius: var(--radius-full);
+}
+
+/* ---- 9. Stat tiles (Open/Closed/Lost) + KPI tiles: unified white cards ---- */
+.chip, .stat-tile, .job-stat, .status-strip > * {
+  border-radius: var(--radius-md) !important;
+}
+
+/* ---- 10. Inputs, selects, dropdowns: tidy iOS field ---- */
+.field-input, select.field-input, input, textarea, select {
+  border-radius: var(--radius-sm) !important;
+  border: 0.5px solid var(--color-border-2) !important;
+  background: var(--color-surface) !important;
+  font-size: 16px; /* prevents iOS zoom-on-focus */
+}
+
+/* ---- 11. Primary action buttons: solid, tactile ---- */
+.btn-primary, .generate-report-btn, .btn-generate, button.primary {
+  border-radius: var(--radius-md) !important;
+  background: var(--color-primary) !important;
+  color: #fff !important;
+  font-weight: 700; letter-spacing: -0.01em;
+  box-shadow: var(--shadow-sm) !important;
+}
+.btn-primary:active, .generate-report-btn:active { transform: scale(0.985); }
+
+/* ---- 12. Replace the ugly grey silhouette on "Balance by Tech" ---- */
+.report-avatar img, .balance-avatar img, .tech-report-icon img { display: none !important; }
+.report-avatar, .balance-avatar, .tech-report-icon {
+  width: 56px; height: 56px; border-radius: var(--radius-full);
+  background: var(--color-primary);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 12px;
+}
+.report-avatar::after, .balance-avatar::after, .tech-report-icon::after {
+  content: "\1F4B5"; font-size: 26px;  /* 💵 — reads as "what techs owe" */
+}
+
+/* ---- 13. Theme toggle: crisp segmented control ---- */
+.theme-toggle-pill { border-radius: var(--radius-full) !important; box-shadow: var(--shadow-xs) inset; }
+.theme-toggle-opt { font-weight: 600; }
