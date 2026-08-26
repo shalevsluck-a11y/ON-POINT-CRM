@@ -275,3 +275,8 @@ main, .app-main, #app { background: var(--color-bg); }
 .bottom-nav .nav-label { font-size:10px !important; letter-spacing:-0.02em; }
 .bottom-nav .nav-icon { width:22px !important; height:22px !important; }
 .pointy-bubble { font-size:14.5px; }
+
+/* Schedule header: date on its own clean line, tech filter below */
+.calendar-nav { flex-wrap: wrap; row-gap: 12px; align-items: center; }
+.calendar-nav .calendar-date-label { flex: 1 1 auto; font-size: 16px !important; font-weight: 800; line-height: 1.2; white-space: nowrap; text-align: center; }
+.calendar-nav .balance-select { flex: 1 0 100%; border-radius: var(--radius-sm) !important; }
