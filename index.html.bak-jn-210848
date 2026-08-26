@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
   <link rel="stylesheet" href="css/polish.css?v=20260430-2">
-  <link rel="stylesheet" href="css/refine.css?v=20260826-o">
+  <link rel="stylesheet" href="css/refine.css?v=20260826-n">
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/logo.jpg">
@@ -272,7 +272,6 @@
         <div id="user-menu-name" class="user-menu-name"></div>
         <div id="user-menu-role" class="user-menu-role"></div>
         <hr class="user-menu-divider">
-        <button class="user-menu-item" onclick="App.navigate('balance');App.closeUserMenu()">Balance</button>
         <button id="nav-settings" class="user-menu-item" onclick="App.navigate('settings');App.closeUserMenu()">Settings</button>
         <button class="user-menu-item user-menu-danger" onclick="App.logout()">Sign Out</button>
       </div>
@@ -1019,9 +1018,9 @@
       </svg>
       <span class="nav-label">Schedule</span>
     </button>
-    <button class="nav-item" data-view="jobs" onclick="App.navigate('jobs')">
-      <svg class="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-      <span class="nav-label">Jobs</span>
+    <button class="nav-item" data-view="balance" onclick="App.navigate('balance')">
+      <svg class="nav-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      <span class="nav-label">Balance</span>
     </button>
           </nav>
 
@@ -1264,7 +1263,7 @@
 <script defer src="js/offline-queue.js?v=20260427"></script>
 <script defer src="js/optimistic-ui.js?v=20260427"></script>
 <script defer src="js/balance.js?v=20260826-1"></script>
-<script defer src="js/app.js?v=20260826-o"></script>
+<script defer src="js/app.js?v=20260826-j"></script>
 
 <!-- PWA: Service Worker + Install Prompt -->
 <script>
