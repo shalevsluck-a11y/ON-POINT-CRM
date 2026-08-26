@@ -339,3 +339,9 @@ h1, .page-title { letter-spacing: -0.03em; font-weight: 800; }
 
 /* ── Bottom nav: fill the safe area (kills the white strip on every page) ── */
 .bottom-nav { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px) !important; background: var(--color-surface) !important; }
+
+/* Balance pipeline: monochrome paid/lost numbers */
+.rd-cell-good, .rd-cell-good b, .rd-cell-bad, .rd-cell-bad b { color: var(--color-text) !important; }
+/* compact the balance-by-tech CTA so the page fits one screen */
+.balance-card { padding:12px 14px !important; }
+.balance-card-title, .balance-card h3 { font-size:17px !important; margin:4px 0 2px !important; }
