@@ -168,7 +168,7 @@ main, .app-main, #app { background: var(--color-bg); }
    ============================================================ */
 
 /* Section headers -> quiet iOS grouped-list labels */
-.section-title {
+[data-theme="light"] .section-title {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-size: 12px;
@@ -178,7 +178,7 @@ main, .app-main, #app { background: var(--color-bg); }
 }
 
 /* Push-notification banner: was a heavy dark slab. Make it a calm, light card. */
-.notification-banner {
+[data-theme="light"] .notification-banner {
   background: var(--color-surface) !important;
   border: 0.5px solid var(--color-border) !important;
   border-left: 3px solid var(--color-primary) !important;
@@ -186,8 +186,8 @@ main, .app-main, #app { background: var(--color-bg); }
   box-shadow: var(--shadow-card) !important;
   color: var(--color-text) !important;
 }
-.notification-banner * { color: var(--color-text) !important; }
-.notification-banner button {
+[data-theme="light"] .notification-banner * { color: var(--color-text) !important; }
+[data-theme="light"] .notification-banner button {
   background: var(--color-primary) !important;
   color: #fff !important;
   border-radius: var(--radius-full) !important;
@@ -196,39 +196,39 @@ main, .app-main, #app { background: var(--color-bg); }
 }
 
 /* Status strip (Open / Closed / Lost) -> crisp white cards, big coloured numbers */
-.status-strip { gap: 10px; }
-.status-strip > * {
+[data-theme="light"] .status-strip { gap: 10px; }
+[data-theme="light"] .status-strip > * {
   background: var(--color-surface) !important;
   border: 0.5px solid var(--color-border) !important;
   box-shadow: var(--shadow-card) !important;
   border-radius: var(--radius-md) !important;
   padding: 18px 10px !important;
 }
-.stat-count { font-size: 34px !important; letter-spacing: -0.03em; }
-.stat-label { opacity: 1; color: var(--color-text-faint) !important; }
+[data-theme="light"] .stat-count { font-size: 34px !important; letter-spacing: -0.03em; }
+[data-theme="light"] .stat-label { opacity: 1; color: var(--color-text-faint) !important; }
 /* colour each number by status: 1st=open(blue) 2nd=closed(green) 3rd=lost(muted) */
-.status-strip > *:nth-child(1) .stat-count { color: var(--s-new) !important; }
-.status-strip > *:nth-child(2) .stat-count { color: var(--s-closed) !important; }
-.status-strip > *:nth-child(3) .stat-count { color: var(--color-text-faint) !important; }
+[data-theme="light"] .status-strip > *:nth-child(1) .stat-count { color: var(--s-new) !important; }
+[data-theme="light"] .status-strip > *:nth-child(2) .stat-count { color: var(--s-closed) !important; }
+[data-theme="light"] .status-strip > *:nth-child(3) .stat-count { color: var(--color-text-faint) !important; }
 
 /* Jobs filter chips -> clean segmented pills */
-.chip {
+[data-theme="light"] .chip {
   border-radius: var(--radius-full) !important;
   border: 0.5px solid var(--color-border-2) !important;
   background: var(--color-surface) !important;
   font-weight: 600;
   box-shadow: var(--shadow-xs) !important;
 }
-.chip.active {
+[data-theme="light"] .chip.active {
   background: var(--color-primary) !important;
   color: #fff !important;
   border-color: transparent !important;
 }
-.chip.active .chip-count { color: rgba(255,255,255,0.7) !important; }
+[data-theme="light"] .chip.active .chip-count { color: rgba(255,255,255,0.7) !important; }
 
 /* Job card left accent + description box: quieter, cleaner */
-.job-card { border-left: 3px solid var(--color-border-2) !important; }
-.job-desc, .job-card-desc {
+[data-theme="light"] .job-card { border-left: 3px solid var(--color-border-2) !important; }
+[data-theme="light"] .job-desc, [data-theme="light"] .job-card-desc {
   background: var(--color-surface-2) !important;
   border: none !important;
   border-radius: var(--radius-sm) !important;
