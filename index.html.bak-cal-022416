@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
   <link rel="stylesheet" href="css/polish.css?v=20260430-2">
-  <link rel="stylesheet" href="css/refine.css?v=20260827-j">
+  <link rel="stylesheet" href="css/refine.css?v=20260827-h">
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/logo.jpg">
@@ -617,7 +617,7 @@
 
       <div class="calendar-nav">
         <button class="btn-icon cal-nav-btn" onclick="App.calendarShift(-1)">&#8249;</button>
-        <button class="calendar-date-label" id="cal-date-label" onclick="App.openCalendarPicker()">
+        <button class="calendar-date-label" id="cal-date-label" onclick="App.calendarToday()">
           Today
         </button>
         <button class="btn-icon cal-nav-btn" onclick="App.calendarShift(1)">&#8250;</button>
@@ -1263,7 +1263,7 @@
 <script defer src="js/offline-queue.js?v=20260427"></script>
 <script defer src="js/optimistic-ui.js?v=20260427"></script>
 <script defer src="js/balance.js?v=20260826-1"></script>
-<script defer src="js/app.js?v=20260827-j"></script>
+<script defer src="js/app.js?v=20260827-g"></script>
 
 <!-- PWA: Service Worker + Install Prompt -->
 <script>

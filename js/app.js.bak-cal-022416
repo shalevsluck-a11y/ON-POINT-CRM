@@ -3571,86 +3571,6 @@ const App = (() => {
   // CALENDAR
   // ══════════════════════════════════════════════════════════
 
-  // ── Month picker: tap the date → grid with job counts → tap a day to jump ──
-  let _calPickerMonth = null;
-
-  function openCalendarPicker() {
-    _calPickerMonth = new Date(_state.calendarDate.getFullYear(), _state.calendarDate.getMonth(), 1);
-    const ex = document.getElementById('cal-picker-overlay');
-    if (ex) ex.remove();
-    const ov = document.createElement('div');
-    ov.id = 'cal-picker-overlay';
-    ov.className = 'cal-picker-overlay';
-    ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
-    ov.innerHTML = '<div class="cal-picker-sheet" id="cal-picker-sheet"></div>';
-    document.body.appendChild(ov);
-    _renderCalendarPicker();
-  }
-
-  function calendarPickerShiftMonth(delta) {
-    if (!_calPickerMonth) return;
-    _calPickerMonth = new Date(_calPickerMonth.getFullYear(), _calPickerMonth.getMonth() + delta, 1);
-    _renderCalendarPicker();
-  }
-
-  function _renderCalendarPicker() {
-    const sheet = document.getElementById('cal-picker-sheet');
-    if (!sheet || !_calPickerMonth) return;
-    const y = _calPickerMonth.getFullYear();
-    const m = _calPickerMonth.getMonth();
-    const first = new Date(y, m, 1);
-    const startDow = first.getDay();
-    const daysInMonth = new Date(y, m + 1, 0).getDate();
-    const todayStr = _todayStr();
-    const selD = _state.calendarDate;
-    const selStr = `${selD.getFullYear()}-${String(selD.getMonth()+1).padStart(2,'0')}-${String(selD.getDate()).padStart(2,'0')}`;
-
-    // count jobs per day for this month
-    const counts = {};
-    (DB.getJobs() || []).forEach(j => {
-      if (!j.scheduledDate) return;
-      if (_state.calendarTechFilter && j.assignedTechId !== _state.calendarTechFilter) return;
-      if (j.status === 'lost') return;
-      counts[j.scheduledDate] = (counts[j.scheduledDate] || 0) + 1;
-    });
-
-    const monthName = first.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-    let cells = '';
-    for (let i = 0; i < startDow; i++) cells += '<div class="cal-cell cal-cell-empty"></div>';
-    for (let d = 1; d <= daysInMonth; d++) {
-      const ds = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-      const n = counts[ds] || 0;
-      const cls = ['cal-cell'];
-      if (ds === todayStr) cls.push('cal-today');
-      if (ds === selStr) cls.push('cal-selected');
-      cells += `<button class="${cls.join(' ')}" onclick="App.calendarPickDay('${ds}')">`
-             + `<span class="cal-day-num">${d}</span>`
-             + (n ? `<span class="cal-day-count">${n}</span>` : '<span class="cal-day-count cal-day-count-empty"></span>')
-             + `</button>`;
-    }
-
-    sheet.innerHTML =
-      '<div class="cal-picker-handle"></div>'
-      + '<div class="cal-picker-head">'
-      +   '<button class="cal-picker-arrow" onclick="App.calendarPickerShiftMonth(-1)">&#8249;</button>'
-      +   '<div class="cal-picker-month">' + monthName + '</div>'
-      +   '<button class="cal-picker-arrow" onclick="App.calendarPickerShiftMonth(1)">&#8250;</button>'
-      + '</div>'
-      + '<div class="cal-dow">' + ['S','M','T','W','T','F','S'].map(x => '<div>' + x + '</div>').join('') + '</div>'
-      + '<div class="cal-grid">' + cells + '</div>'
-      + '<button class="cal-picker-today" onclick="App.calendarPickDay(\'' + todayStr + '\')">Jump to Today</button>';
-  }
-
-  function calendarPickDay(dateStr) {
-    const parts = String(dateStr).split('-').map(Number);
-    if (parts.length === 3) {
-      _state.calendarDate = new Date(parts[0], parts[1] - 1, parts[2]);
-      renderCalendar();
-    }
-    const ov = document.getElementById('cal-picker-overlay');
-    if (ov) ov.remove();
-  }
-
   function renderCalendar() {
     const d = _state.calendarDate;
     const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -6178,9 +6098,6 @@ const App = (() => {
     selectPayMethod,
     updatePayoutPreview,
     saveNewJob,
-    openCalendarPicker,
-    calendarPickDay,
-    calendarPickerShiftMonth,
     pointySend,
     pointyDo,
     pointyCancel,
