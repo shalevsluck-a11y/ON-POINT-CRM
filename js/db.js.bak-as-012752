@@ -248,15 +248,6 @@ const DB = (() => {
           showToast(`Save failed: ${e.message || 'unknown error'}`, 'error', 6000);
         }
       });
-
-    // AUTO-SYNC to Google Sheets on every change (create / close / lost / edit).
-    // Fire-and-forget: never block or fail the save if the sheet is unreachable.
-    try {
-      if (typeof SyncManager !== 'undefined' && SyncManager.syncJob) {
-        Promise.resolve(SyncManager.syncJob(job.jobId)).catch(() => {});
-      }
-    } catch (e) { /* sheets sync is best-effort */ }
-
     return job;
   }
 
