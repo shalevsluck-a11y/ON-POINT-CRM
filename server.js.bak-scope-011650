@@ -1299,6 +1299,17 @@ app.post('/api/ai-parse-job', async (req, res) => {
       }
     };
 
+    // ── ROLE GATE ──────────────────────────────────────────────
+    // Owner-only powers. A dispatcher is never offered these tools, so the
+    // model cannot propose them and the client can never be handed one.
+    const isAdmin = profile.role === 'admin';
+    const ADMIN_ONLY_TOOLS = ['add_tech', 'add_company', 'delete_job', 'bulk_action'];
+    const allowedTools = isAdmin ? tools : tools.filter(t => !ADMIN_ONLY_TOOLS.includes(t.name));
+
+    // Dispatchers must not see job money either (defence in depth: the client
+    // already omits it, but never trust the client with someone else's cut).
+    const safeJobs = jobs; // dispatchers may see balances too (operator rule)
+
     const today = new Date().toISOString().slice(0, 10);
     const system = [
       'You extract ONE structured garage-door service job from a pasted lead for On Point garage-door CRM.',
@@ -1421,17 +1432,6 @@ app.post('/api/ai-assistant', async (req, res) => {
       { name: 'sync_sheets', description: 'Push all jobs to the connected Google Sheet.',
         input_schema: { type:'object', properties:{}, } }
     ];
-
-    // ── ROLE GATE ──────────────────────────────────────────────
-    // Owner-only powers. A dispatcher is never offered these tools, so the
-    // model cannot propose them and the client can never be handed one.
-    const isAdmin = profile.role === 'admin';
-    const ADMIN_ONLY_TOOLS = ['add_tech', 'add_company', 'delete_job', 'bulk_action'];
-    const allowedTools = isAdmin ? tools : tools.filter(t => !ADMIN_ONLY_TOOLS.includes(t.name));
-
-    // Dispatchers must not see job money either (defence in depth: the client
-    // already omits it, but never trust the client with someone else's cut).
-    const safeJobs = jobs; // dispatchers may see balances too (operator rule)
 
     const today = new Date().toISOString().slice(0, 10);
     const jobLines = safeJobs.length
