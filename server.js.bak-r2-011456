@@ -1303,12 +1303,12 @@ app.post('/api/ai-parse-job', async (req, res) => {
     // Owner-only powers. A dispatcher is never offered these tools, so the
     // model cannot propose them and the client can never be handed one.
     const isAdmin = profile.role === 'admin';
-    const ADMIN_ONLY_TOOLS = ['add_tech', 'add_company', 'delete_job', 'bulk_action'];
+    const ADMIN_ONLY_TOOLS = ['add_tech', 'add_company', 'delete_job', 'bulk_action', 'close_job'];
     const allowedTools = isAdmin ? tools : tools.filter(t => !ADMIN_ONLY_TOOLS.includes(t.name));
 
     // Dispatchers must not see job money either (defence in depth: the client
     // already omits it, but never trust the client with someone else's cut).
-    const safeJobs = jobs; // dispatchers may see balances too (operator rule)
+    const safeJobs = isAdmin ? jobs : jobs.map(j => { const c = Object.assign({}, j); delete c.total; return c; });
 
     const today = new Date().toISOString().slice(0, 10);
     const system = [
@@ -1444,7 +1444,7 @@ app.post('/api/ai-assistant', async (req, res) => {
       'You CANNOT add or manage dispatchers or users — only the owner can, in Settings.',
       (isAdmin
         ? 'The person you are talking to is the OWNER (admin) and may use every tool you have.'
-        : 'The person you are talking to is a DISPATCHER. They may add/update jobs, assign techs, dispatch, add notes, and mark lost/estimate. They MAY close jobs and see balances/reports. They may NOT delete jobs, run bulk actions, add technicians, add companies, or add dispatchers. If they ask for those, say it is owner-only and stop.'),
+        : 'The person you are talking to is a DISPATCHER. They may add/update jobs, assign techs, dispatch, add notes, and mark lost/estimate. They may NOT close jobs, delete jobs, run bulk actions, add technicians, or add companies, and they must never be told job money/payout figures. If they ask for any of those, say it is owner-only and stop.'),
       'Status buckets: Open (new/scheduled/in_progress), Estimate (follow_up = quoted, awaiting decision), Closed (closed/paid), Lost.',
       'Lead formats often use labels: Co=company, PDL=reference, N=name, Ph=phone, Addr=address, Desc/Occu=service, Appt=date+time. "Pay 250 by zell" = jobTotal 250, paymentMethod zelle.',
       'DEFAULTS when adding: if no company is named it is On Point (their own); if no tech is named it is the owner himself.',

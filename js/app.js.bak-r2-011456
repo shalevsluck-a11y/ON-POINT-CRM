@@ -5926,7 +5926,7 @@ const App = (() => {
 
   function pointyCancel(id) { delete _pointyPending[id]; _pointyAppend('bot', 'Okay, cancelled.'); }
 
-  const _POINTY_ADMIN_ONLY = ['add_tech','add_company','delete_job','bulk_action'];
+  const _POINTY_ADMIN_ONLY = ['add_tech','add_company','delete_job','bulk_action','close_job'];
 
   async function pointyDo(id) {
     const pend = _pointyPending[id]; if (!pend) return;
