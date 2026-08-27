@@ -5855,34 +5855,6 @@ const App = (() => {
       title = 'Mark lost';
       body = `<b>${_esc(p.customerName||'?')}</b>` + (p.reason ? `<br><i>${_esc(p.reason)}</i>` : '') +
         (!p.jobId ? `<br><span class="pointy-warn">&#9888; Couldn't find that job — retype the exact name.</span>` : '');
-    } else if (a === 'dispatch_job') {
-      const d = (p.detail == 50) ? 50 : 100;
-      title = 'Dispatch ' + d + '%';
-      body = '<b>' + _esc(p.customerName||'?') + '</b><br>' +
-        (d === 50 ? 'City &amp; ZIP only — no street, no phone' : 'Full details — address &amp; phone') +
-        (!p.jobId ? '<br><span class="pointy-warn">&#9888; Couldn\'t find that job.</span>' : '');
-    } else if (a === 'assign_tech') {
-      title = 'Assign tech';
-      body = '<b>' + _esc(p.customerName||'?') + '</b> &rarr; ' + _esc(p.techName||'?') +
-        (!p.jobId ? '<br><span class="pointy-warn">&#9888; Couldn\'t find that job.</span>' : '');
-    } else if (a === 'reopen_job') {
-      title = 'Reopen job';
-      body = '<b>' + _esc(p.customerName||'?') + '</b><br>Back to Open.' +
-        (!p.jobId ? '<br><span class="pointy-warn">&#9888; Couldn\'t find that job.</span>' : '');
-    } else if (a === 'delete_job') {
-      title = '&#9888; Delete job';
-      body = '<b>' + _esc(p.customerName||'?') + '</b><br><span class="pointy-warn">This permanently deletes the job.</span>' +
-        (!p.jobId ? '<br><span class="pointy-warn">&#9888; Couldn\'t find that job.</span>' : '');
-    } else if (a === 'add_note') {
-      title = 'Add note';
-      body = '<b>' + _esc(p.customerName||'?') + '</b><br><i>' + _esc(p.note||'') + '</i>' +
-        (!p.jobId ? '<br><span class="pointy-warn">&#9888; Couldn\'t find that job.</span>' : '');
-    } else if (a === 'add_tech') {
-      title = 'Add technician';
-      body = '<b>' + _esc(p.name||'?') + '</b>' + (p.percent!=null ? ' &middot; ' + Number(p.percent) + '% payout' : '');
-    } else if (a === 'add_company') {
-      title = 'Add company';
-      body = '<b>' + _esc(p.name||'?') + '</b>' + (p.contractorPercent!=null ? ' &middot; takes ' + Number(p.contractorPercent) + '%' : '');
     } else if (a === 'mark_estimate') {
       title = 'Mark as Estimate';
       body = '<b>' + _esc(p.customerName||'?') + '</b><br>Moves to the Estimate list for follow-up.' +
@@ -5916,8 +5888,7 @@ const App = (() => {
         `<br><span class="pointy-warn">This changes ${match.length} jobs at once. Are you sure?</span>`;
     }
 
-    const NEEDS_ID = ['close_job','mark_lost','mark_estimate','update_job','dispatch_job','assign_tech','reopen_job','delete_job','add_note'];
-    const canDo = (a === 'add_job') || (a === 'bulk_action') || (a === 'sync_sheets') || (a === 'add_tech') || (a === 'add_company') || (NEEDS_ID.includes(a) && p.jobId);
+    const canDo = (a === 'add_job') || ((a === 'close_job' || a === 'mark_lost') && p.jobId) || (a === 'bulk_action');
     const card = `<div class="pointy-card"><div class="pointy-card-t">${title}</div><div class="pointy-card-b">${body}</div>` +
       (canDo ? `<div class="pointy-card-actions"><button class="pointy-btn-cancel" onclick="App.pointyCancel(${id})">Cancel</button><button class="pointy-btn-do" onclick="App.pointyDo(${id})">${a==='bulk_action'?'Yes, do it':'Confirm'}</button></div>` : '') +
       `</div>`;
@@ -5971,54 +5942,6 @@ const App = (() => {
         await DB.saveJob(job);
         try { SyncManager.queueJob(job.jobId); } catch(e){}
         _pointyAppend('bot', `&#9989; Closed <b>${_esc(job.customerName)}</b> — you keep <b>$${calc.ownerPayout.toFixed(2)}</b>, tech $${calc.techPayout.toFixed(2)}.`);
-      } else if (a === 'dispatch_job') {
-        openWhatsApp(p.jobId, (p.detail == 50) ? 'half' : 'full');
-        _pointyAppend('bot', '&#9989; Opened WhatsApp (' + ((p.detail==50)?'50%':'100%') + ').');
-      } else if (a === 'assign_tech') {
-        const job = DB.getJobById(p.jobId); if (!job) throw new Error('Job not found');
-        const st = DB.getSettings();
-        const want = String(p.techName||'').toLowerCase();
-        const t = (st.technicians||[]).find(x => (x.name||'').toLowerCase().includes(want));
-        if (!t) throw new Error('No technician named ' + (p.techName||''));
-        job.assignedTechId = t.id; job.assignedTechName = t.name;
-        job.isSelfAssigned = !!t.isOwner; job.techPercent = t.percent || 0;
-        await DB.saveJob(job);
-        try { SyncManager.queueJob(job.jobId); } catch(e){}
-        _pointyAppend('bot', '&#9989; <b>' + _esc(job.customerName) + '</b> assigned to ' + _esc(t.name) + '.');
-      } else if (a === 'reopen_job') {
-        const job = DB.getJobById(p.jobId); if (!job) throw new Error('Job not found');
-        job.status = job.scheduledDate ? 'scheduled' : 'new';
-        job.paidAt = null;
-        await DB.saveJob(job);
-        _pointyAppend('bot', '&#9989; <b>' + _esc(job.customerName) + '</b> reopened.');
-      } else if (a === 'delete_job') {
-        const job = DB.getJobById(p.jobId); if (!job) throw new Error('Job not found');
-        const nm = job.customerName;
-        await DB.deleteJob(p.jobId);
-        _pointyAppend('bot', '&#9989; Deleted <b>' + _esc(nm) + '</b>.');
-      } else if (a === 'add_note') {
-        const job = DB.getJobById(p.jobId); if (!job) throw new Error('Job not found');
-        job.notes = ((job.notes||'') + (job.notes ? ' | ' : '') + p.note).trim();
-        await DB.saveJob(job);
-        _pointyAppend('bot', '&#9989; Note added to <b>' + _esc(job.customerName) + '</b>.');
-      } else if (a === 'add_tech') {
-        const st = DB.getSettings();
-        const techs = [...(st.technicians||[])];
-        techs.push({ id: DB.generateId(), name: p.name, phone:'', color:'#3B82F6',
-          percent: Number(p.percent)||0, zelle:'', zipCodes:[], isOwner:false, isUserAccount:false });
-        DB.updateSettingsCache({ ...st, technicians: techs });
-        const sess = await SupabaseClient.auth.getSession();
-        const r = await fetch('/api/save-technicians', { method:'POST',
-          headers:{'Content-Type':'application/json','Authorization':'Bearer '+sess.data.session.access_token},
-          body: JSON.stringify({ technicians: techs.filter(t=>!t.isUserAccount) }) });
-        if (!r.ok) throw new Error('Save failed');
-        _pointyAppend('bot', '&#9989; Added technician <b>' + _esc(p.name) + '</b>.');
-      } else if (a === 'add_company') {
-        const st = DB.getSettings();
-        const ls = [...(st.leadSources||[])];
-        ls.push({ id: DB.generateId(), name: p.name, contractorPercent: Number(p.contractorPercent)||0 });
-        await DB.saveSettings({ ...st, leadSources: ls });
-        _pointyAppend('bot', '&#9989; Added company <b>' + _esc(p.name) + '</b>.');
       } else if (a === 'mark_estimate') {
         const job = DB.getJobById(p.jobId); if (!job) throw new Error('Job not found');
         job.status = 'follow_up'; await DB.saveJob(job);

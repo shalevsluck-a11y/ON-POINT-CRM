@@ -1404,20 +1404,6 @@ app.post('/api/ai-assistant', async (req, res) => {
           excludeNames:{type:'array',items:{type:'string'},description:'customer names to LEAVE ALONE'},
           includeJobIds:{type:'array',items:{type:'string'},description:'optional explicit jobIds to act on instead of a filter'} },
           required:['op'] } },
-      { name: 'dispatch_job', description: 'Send a job to a tech/sub via WhatsApp. detail 100 = full address+phone; detail 50 = city+ZIP only, no street, no phone.',
-        input_schema: { type:'object', properties:{ jobId:{type:'string'}, customerName:{type:'string'}, detail:{type:'number',enum:[100,50],description:'100 or 50'} }, required:['customerName'] } },
-      { name: 'assign_tech', description: 'Assign or change which technician is on a job.',
-        input_schema: { type:'object', properties:{ jobId:{type:'string'}, customerName:{type:'string'}, techName:{type:'string'} }, required:['customerName','techName'] } },
-      { name: 'reopen_job', description: 'Reopen a job that was closed or marked lost by mistake (back to Open).',
-        input_schema: { type:'object', properties:{ jobId:{type:'string'}, customerName:{type:'string'} }, required:['customerName'] } },
-      { name: 'delete_job', description: 'Permanently delete a job. Use only when clearly asked to delete/remove a job.',
-        input_schema: { type:'object', properties:{ jobId:{type:'string'}, customerName:{type:'string'} }, required:['customerName'] } },
-      { name: 'add_note', description: 'Append a note or reminder to a job (e.g. follow up Friday, customer will call back).',
-        input_schema: { type:'object', properties:{ jobId:{type:'string'}, customerName:{type:'string'}, note:{type:'string'} }, required:['customerName','note'] } },
-      { name: 'add_tech', description: 'Add a technician with a payout percentage.',
-        input_schema: { type:'object', properties:{ name:{type:'string'}, percent:{type:'number',description:'payout % 0-100'} }, required:['name'] } },
-      { name: 'add_company', description: 'Add a company / lead source with the cut they take.',
-        input_schema: { type:'object', properties:{ name:{type:'string'}, contractorPercent:{type:'number'} }, required:['name'] } },
       { name: 'sync_sheets', description: 'Push all jobs to the connected Google Sheet.',
         input_schema: { type:'object', properties:{}, } }
     ];
@@ -1429,14 +1415,13 @@ app.post('/api/ai-assistant', async (req, res) => {
 
     const system = [
       'You are Pointy, the in-app assistant for On Point, a garage-door service company. You help the owner run the whole business by chat.',
-      'You can: add jobs, close jobs (record payment), mark lost, mark Estimate, update job details, assign a tech, dispatch a job to a tech (100% full details or 50% city+ZIP only with no phone), add notes/reminders, reopen a job, delete a job, add technicians, add companies, run bulk actions (with exclusions), sync to Google Sheets, and ANSWER QUESTIONS / BUILD REPORTS (totals, per-tech balances, what to follow up).',
+      'You can: add jobs, close jobs (record payment), mark jobs lost, mark jobs as Estimate, update job details, do bulk actions, sync to Google Sheets, and ANSWER QUESTIONS / BUILD REPORTS from the job list.',
       'You CANNOT add or manage dispatchers or users — if asked, say only the owner can do that in Settings.',
       'Status buckets: Open (new/scheduled/in_progress), Estimate (follow_up = quoted, awaiting decision), Closed (closed/paid), Lost.',
       'Lead formats often use labels: Co=company, PDL=reference, N=name, Ph=phone, Addr=address, Desc/Occu=service, Appt=date+time. "Pay 250 by zell" = jobTotal 250, paymentMethod zelle.',
       'DEFAULTS when adding: if no company is named it is On Point (their own); if no tech is named it is the owner himself.',
       'CURRENT JOBS (use these exact ids):',
       jobLines,
-      'For balance/report questions (what a tech owes, revenue, conversion), compute from the job list: closed/paid jobs have $totals, and each line shows the tech. Show short plain numbers.',
       'RULES: Use exactly one tool when the user wants to CHANGE something. For selective bulk requests like "mark all open lost except Natalie and Brett", call bulk_action with filter and excludeNames — never refuse this, it is supported. For QUESTIONS or REPORTS (totals, counts, per-tech balances, what to follow up), do NOT call a tool: answer directly in short plain sentences using the job list. Money answers: only totals present in the list. Today is ' + today + '. Never invent data. No markdown symbols like ** in replies.'
     ].join('\n\n');
 
