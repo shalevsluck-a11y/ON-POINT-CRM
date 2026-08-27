@@ -1350,7 +1350,6 @@ app.post('/api/ai-parse-job', async (req, res) => {
 // ── AI ASSISTANT: understands add / close / lost from natural language ──
 // One Haiku call per message. Returns a PROPOSED action for the client to
 // confirm — it never writes to the DB itself. Cheap + safe.
-// ── AI ASSISTANT (Pointy) — full job control with confirm-before-write ──
 app.post('/api/ai-assistant', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
@@ -1367,8 +1366,8 @@ app.post('/api/ai-assistant', async (req, res) => {
     const message = (req.body && req.body.message ? String(req.body.message) : '').trim();
     if (!message) return res.status(400).json({ error: 'No message provided' });
     if (message.length > 4000) return res.status(400).json({ error: 'Message too long' });
-    const jobs = Array.isArray(req.body.jobs) ? req.body.jobs.slice(0, 150) : [];
-    const history = Array.isArray(req.body.history) ? req.body.history.slice(-6) : [];
+    // Compact candidate jobs the client passes in (open/recent) for name matching.
+    const jobs = Array.isArray(req.body.jobs) ? req.body.jobs.slice(0, 120) : [];
 
     let apiKey;
     try { apiKey = require('fs').readFileSync(__dirname + '/.secrets/anthropic.key', 'utf8').trim(); }
@@ -1376,67 +1375,69 @@ app.post('/api/ai-assistant', async (req, res) => {
     if (!apiKey) return res.status(500).json({ error: 'AI not configured' });
 
     const tools = [
-      { name: 'add_job', description: 'Create a new job from a pasted lead or description.',
-        input_schema: { type:'object', properties:{
+      {
+        name: 'add_job',
+        description: 'Create a new job from a pasted lead or description.',
+        input_schema: { type: 'object', properties: {
           customerName:{type:'string'}, phone:{type:'string',description:'digits only'},
-          address:{type:'string',description:'street only'}, city:{type:'string'}, state:{type:'string'}, zip:{type:'string'},
-          scheduledDate:{type:'string',description:'ISO YYYY-MM-DD or empty'}, scheduledTime:{type:'string'},
-          description:{type:'string'}, company:{type:'string'}, reference:{type:'string'} }, required:['customerName'] } },
-      { name: 'close_job', description: 'Close a job and record payment.',
-        input_schema: { type:'object', properties:{
-          jobId:{type:'string',description:'EXACT jobId from the list; empty if unsure'}, customerName:{type:'string'},
-          jobTotal:{type:'number'}, partsCost:{type:'number'}, paymentMethod:{type:'string',enum:['cash','zelle','card','check']} },
-          required:['customerName','jobTotal'] } },
-      { name: 'mark_lost', description: 'Mark ONE job as lost.',
-        input_schema: { type:'object', properties:{ jobId:{type:'string'}, customerName:{type:'string'}, reason:{type:'string'} }, required:['customerName'] } },
-      { name: 'mark_estimate', description: 'Mark ONE job as an Estimate (quoted, awaiting decision — needs follow-up).',
-        input_schema: { type:'object', properties:{ jobId:{type:'string'}, customerName:{type:'string'} }, required:['customerName'] } },
-      { name: 'update_job', description: 'Update fields on ONE existing job (schedule, address, description, notes, tech).',
-        input_schema: { type:'object', properties:{
-          jobId:{type:'string'}, customerName:{type:'string'},
-          scheduledDate:{type:'string'}, scheduledTime:{type:'string'}, address:{type:'string'}, city:{type:'string'},
-          state:{type:'string'}, zip:{type:'string'}, description:{type:'string'}, notes:{type:'string'}, phone:{type:'string'} },
-          required:['customerName'] } },
-      { name: 'bulk_action', description: 'Apply an action to MANY jobs at once. Supports excluding specific customers (e.g. "mark all open lost except Natalie and Brett") and explicit lists of jobIds.',
-        input_schema: { type:'object', properties:{
-          op:{type:'string',enum:['mark_lost','mark_estimate']},
-          filter:{type:'string',enum:['open','estimate','new','scheduled','all'],description:'which group of jobs'},
-          excludeNames:{type:'array',items:{type:'string'},description:'customer names to LEAVE ALONE'},
-          includeJobIds:{type:'array',items:{type:'string'},description:'optional explicit jobIds to act on instead of a filter'} },
-          required:['op'] } },
-      { name: 'sync_sheets', description: 'Push all jobs to the connected Google Sheet.',
-        input_schema: { type:'object', properties:{}, } }
+          address:{type:'string',description:'street only'}, city:{type:'string'},
+          state:{type:'string',description:'2-letter'}, zip:{type:'string'},
+          scheduledDate:{type:'string',description:'ISO YYYY-MM-DD or empty'},
+          scheduledTime:{type:'string',description:'time window as written or empty'},
+          description:{type:'string'}, company:{type:'string'}, reference:{type:'string'}
+        }, required:['customerName'] }
+      },
+      {
+        name: 'close_job',
+        description: 'Close/complete a job that was done, recording payment. Match the job from the provided job list.',
+        input_schema: { type: 'object', properties: {
+          jobId:{type:'string',description:'EXACT jobId from the provided job list; empty if unsure'},
+          customerName:{type:'string',description:'the customer name being closed'},
+          jobTotal:{type:'number',description:'total amount collected in dollars'},
+          partsCost:{type:'number',description:'parts/materials cost in dollars, 0 if none'},
+          paymentMethod:{type:'string',enum:['cash','zelle','card','check'],description:'how they paid'}
+        }, required:['customerName','jobTotal'] }
+      },
+      {
+        name: 'mark_lost',
+        description: 'Mark a job as lost (customer declined / did not book). Match from the provided job list.',
+        input_schema: { type: 'object', properties: {
+          jobId:{type:'string',description:'EXACT jobId from the provided list; empty if unsure'},
+          customerName:{type:'string'}, reason:{type:'string',description:'short reason if given'}
+        }, required:['customerName'] }
+      },
+      {
+        name: 'bulk_action',
+        description: 'Use ONLY when the user asks to change MANY jobs at once (e.g. "mark all open jobs lost"). Returns the request for the app to list every affected job and force explicit confirmation.',
+        input_schema: { type: 'object', properties: {
+          op:{type:'string',enum:['mark_lost','close'],description:'what to do to the group'},
+          filter:{type:'string',enum:['open','new','scheduled','all'],description:'which jobs'}
+        }, required:['op','filter'] }
+      }
     ];
 
     const today = new Date().toISOString().slice(0, 10);
     const jobLines = jobs.length
       ? jobs.map(j => `- ${j.customerName || '?'} | ${j.status || '?'}${j.tech ? ' | tech:'+j.tech : ''}${j.date ? ' | '+j.date : ''}${(j.total!=null&&j.total!=='') ? ' | $'+j.total : ''} | id:${j.jobId}`).join('\n')
-      : '(none)';
-
+      : '(none provided)';
     const system = [
-      'You are Pointy, the in-app assistant for On Point, a garage-door service company. You help the owner run the whole business by chat.',
-      'You can: add jobs, close jobs (record payment), mark jobs lost, mark jobs as Estimate, update job details, do bulk actions, sync to Google Sheets, and ANSWER QUESTIONS / BUILD REPORTS from the job list.',
-      'You CANNOT add or manage dispatchers or users — if asked, say only the owner can do that in Settings.',
-      'Status buckets: Open (new/scheduled/in_progress), Estimate (follow_up = quoted, awaiting decision), Closed (closed/paid), Lost.',
-      'Lead formats often use labels: Co=company, PDL=reference, N=name, Ph=phone, Addr=address, Desc/Occu=service, Appt=date+time. "Pay 250 by zell" = jobTotal 250, paymentMethod zelle.',
-      'DEFAULTS when adding: if no company is named it is On Point (their own); if no tech is named it is the owner himself.',
-      'CURRENT JOBS (use these exact ids):',
+      'You are the in-app assistant for On Point, a garage-door service company. The operator talks to you to ADD jobs, CLOSE jobs (record payment), or mark jobs LOST.',
+      'Their leads/closings often use labels: Co=company, PDL=reference, N=name, Ph=phone, Addr=address, Desc/Occu=service, Appt=date+time. "Pay 250 by zell" means jobTotal 250, paymentMethod zelle.',
+      'To CLOSE or mark LOST, you MUST match the job from THIS list of current jobs (use the exact id):',
       jobLines,
-      'RULES: Use exactly one tool when the user wants to CHANGE something. For selective bulk requests like "mark all open lost except Natalie and Brett", call bulk_action with filter and excludeNames — never refuse this, it is supported. For QUESTIONS or REPORTS (totals, counts, per-tech balances, what to follow up), do NOT call a tool: answer directly in short plain sentences using the job list. Money answers: only totals present in the list. Today is ' + today + '. Never invent data. No markdown symbols like ** in replies.'
+      'You can ALSO answer questions and produce simple reports from the job list above — filter by tech, status, or date range and sum the $ totals or count jobs. When the user asks a QUESTION or for a REPORT (e.g. "report for Orel May 5-12", "how many open", "total collected this week"), reply in plain sentences with the answer and do NOT call a tool. Only call add_job / close_job / mark_lost / bulk_action to actually change a job. Keep answers short and plain — no markdown symbols. Today is ' + today + '. Never invent data.'
     ].join('\n\n');
-
-    const msgs = [];
-    for (const h of history) {
-      if (h && (h.role === 'user' || h.role === 'assistant') && typeof h.text === 'string' && h.text.trim()) {
-        msgs.push({ role: h.role, content: h.text.slice(0, 1500) });
-      }
-    }
-    msgs.push({ role: 'user', content: message });
 
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 900, system, tools, messages: msgs })
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 800,
+        system,
+        tools,
+        messages: [{ role: 'user', content: message }]
+      })
     });
     if (!anthropicRes.ok) {
       const t = await anthropicRes.text().catch(() => '');
@@ -1447,7 +1448,7 @@ app.post('/api/ai-assistant', async (req, res) => {
     const toolUse = (data.content || []).find(b => b.type === 'tool_use');
     const textBlock = (data.content || []).find(b => b.type === 'text');
     if (!toolUse) {
-      return res.json({ action: 'chat', reply: (textBlock && textBlock.text) || 'I can add, close, update, mark lost/estimate, run reports, or sync to Sheets.', usage: data.usage || null });
+      return res.json({ action: 'chat', reply: (textBlock && textBlock.text) || "I can add a job, close one, or mark it lost — try: \"close Zachary, 250 zelle\".", usage: data.usage || null });
     }
     return res.json({ action: toolUse.name, params: toolUse.input, reply: textBlock ? textBlock.text : '', usage: data.usage || null });
   } catch (e) {

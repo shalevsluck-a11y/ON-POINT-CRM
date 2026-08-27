@@ -264,10 +264,6 @@
       <button id="btn-sync" class="btn-icon" onclick="App.syncAll()" title="Sync to Sheets">
         <span id="sync-icon">&#8635;</span>
       </button>
-      <!-- Settings -->
-      <button id="btn-settings-top" class="btn-icon" onclick="App.navigate('settings')" title="Settings" aria-label="Settings">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v3M12 20v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M1 12h3M20 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
-      </button>
       <!-- User Menu -->
       <button id="btn-user" class="btn-icon user-avatar-btn" onclick="App.toggleUserMenu()" aria-label="User menu">
         <span id="user-avatar-initials">?</span>
@@ -276,6 +272,7 @@
         <div id="user-menu-name" class="user-menu-name"></div>
         <div id="user-menu-role" class="user-menu-role"></div>
         <hr class="user-menu-divider">
+        <button class="user-menu-item" onclick="App.navigate('balance');App.closeUserMenu()">Balance</button>
         <button id="nav-settings" class="user-menu-item" onclick="App.navigate('settings');App.closeUserMenu()">Settings</button>
         <button class="user-menu-item user-menu-danger" onclick="App.logout()">Sign Out</button>
       </div>
@@ -1267,7 +1264,7 @@
 <script defer src="js/offline-queue.js?v=20260427"></script>
 <script defer src="js/optimistic-ui.js?v=20260427"></script>
 <script defer src="js/balance.js?v=20260826-1"></script>
-<script defer src="js/app.js?v=20260827-a"></script>
+<script defer src="js/app.js?v=20260826-y"></script>
 
 <!-- PWA: Service Worker + Install Prompt -->
 <script>

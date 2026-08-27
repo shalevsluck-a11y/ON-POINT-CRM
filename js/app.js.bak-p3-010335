@@ -267,7 +267,7 @@ const App = (() => {
         showToast('Your permissions have been updated', 'info');
 
         // Re-render current view to reflect new permissions
-        try { if (_state.currentView === 'dashboard') renderDashboard(); else if (_state.currentView === 'jobs') renderJobList(); } catch(e){}
+        if (_state.currentView === 'dashboard') renderDashboard();
         if (_state.currentView === 'jobs') renderJobList();
       }
 
@@ -5753,7 +5753,6 @@ const App = (() => {
   // Proposes actions; NOTHING writes to the DB until the operator taps Confirm.
   // ══════════════════════════════════════════════════════════════
   let _pointyPending = {};
-  let _pointyHistory = [];
   let _pointySeq = 0;
 
   // Normalize a free-text time (e.g. "8-9 am", "12:00 PM - 2 PM") into the app's
@@ -5797,7 +5796,6 @@ const App = (() => {
     if (!msg) return;
     input.value = ''; input.style.height = 'auto';
     _pointyAppend('user', msg);
-    _pointyHistory.push({ role:'user', text: msg });
     const typing = _pointyAppend('bot', '<span class="pointy-typing">Pointy is thinking&hellip;</span>');
 
     try {
@@ -5814,7 +5812,7 @@ const App = (() => {
       const res = await fetch('/api/ai-assistant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-        body: JSON.stringify({ message: msg, jobs, history: _pointyHistory.slice(-6) })
+        body: JSON.stringify({ message: msg, jobs })
       });
       const data = await res.json().catch(() => ({}));
       typing?.remove();
@@ -5828,8 +5826,7 @@ const App = (() => {
 
   function _pointyRenderAction(data) {
     const a = data.action, p = data.params || {};
-    if (a === 'chat' || !a) { _pointyHistory.push({ role:'assistant', text: (data.reply||'') });
-      _pointyAppend('bot', _pointyFmt(data.reply || "I can add a job, close one, mark it lost, or answer questions about your jobs.")); return; }
+    if (a === 'chat' || !a) { _pointyAppend('bot', _pointyFmt(data.reply || "I can add a job, close one, mark it lost, or answer questions about your jobs.")); return; }
 
     const id = ++_pointySeq;
     _pointyPending[id] = { action: a, params: p };
@@ -5854,34 +5851,16 @@ const App = (() => {
       title = 'Mark lost';
       body = `<b>${_esc(p.customerName||'?')}</b>` + (p.reason ? `<br><i>${_esc(p.reason)}</i>` : '') +
         (!p.jobId ? `<br><span class="pointy-warn">&#9888; Couldn't find that job — retype the exact name.</span>` : '');
-    } else if (a === 'mark_estimate') {
-      title = 'Mark as Estimate';
-      body = '<b>' + _esc(p.customerName||'?') + '</b><br>Moves to the Estimate list for follow-up.' +
-        (!p.jobId ? '<br><span class="pointy-warn">&#9888; Couldn\'t find that job.</span>' : '');
-    } else if (a === 'update_job') {
-      const F = ['scheduledDate','scheduledTime','address','city','state','zip','description','notes','phone'];
-      const ch = F.filter(k => p[k]).map(k => k.replace('scheduled','') + ': ' + _esc(p[k])).join('<br>');
-      title = 'Update job';
-      body = '<b>' + _esc(p.customerName||'?') + '</b><br>' + (ch || 'No changes detected') +
-        (!p.jobId ? '<br><span class="pointy-warn">&#9888; Couldn\'t find that job.</span>' : '');
-    } else if (a === 'sync_sheets') {
-      title = 'Sync to Google Sheets';
-      body = 'Push all jobs to your connected sheet.';
     } else if (a === 'bulk_action') {
       const filter = p.filter || 'open';
-      const ex = (p.excludeNames||[]).map(n => String(n).toLowerCase().trim()).filter(Boolean);
-      const ids = p.includeJobIds||[];
-      let match = (DB.getJobs()||[]).filter(j => {
-        if (ids.length) return ids.includes(j.jobId);
+      const match = (DB.getJobs()||[]).filter(j => {
         if (filter === 'all') return j.status !== 'lost' && j.status !== 'paid';
-        if (filter === 'open') return ['new','scheduled','in_progress'].includes(j.status);
-        if (filter === 'estimate') return j.status === 'follow_up';
+        if (filter === 'open') return ['new','scheduled','in_progress','follow_up'].includes(j.status);
         return j.status === filter;
       });
-      if (ex.length) match = match.filter(j => !ex.some(n => (j.customerName||'').toLowerCase().includes(n)));
       title = '&#9888; Bulk action';
       _pointyPending[id].bulkJobs = match.map(j => j.jobId);
-      body = `You asked to <b>${p.op==='mark_estimate'?'mark ESTIMATE':'mark LOST'}</b> <b>${match.length}</b> job(s)${ex.length?' (excluding '+_esc((p.excludeNames||[]).join(', '))+')':''}:<br>` +
+      body = `You asked to <b>${p.op==='mark_lost'?'mark LOST':'close'}</b> <b>${match.length}</b> ${filter} job(s):<br>` +
         match.slice(0,15).map(j => '· ' + _esc(j.customerName)).join('<br>') +
         (match.length>15 ? `<br>…and ${match.length-15} more` : '') +
         `<br><span class="pointy-warn">This changes ${match.length} jobs at once. Are you sure?</span>`;
@@ -5941,35 +5920,11 @@ const App = (() => {
         await DB.saveJob(job);
         try { SyncManager.queueJob(job.jobId); } catch(e){}
         _pointyAppend('bot', `&#9989; Closed <b>${_esc(job.customerName)}</b> — you keep <b>$${calc.ownerPayout.toFixed(2)}</b>, tech $${calc.techPayout.toFixed(2)}.`);
-      } else if (a === 'mark_estimate') {
-        const job = DB.getJobById(p.jobId); if (!job) throw new Error('Job not found');
-        job.status = 'follow_up'; await DB.saveJob(job);
-        _pointyAppend('bot', '&#9989; <b>' + _esc(job.customerName) + '</b> moved to Estimates.');
-      } else if (a === 'update_job') {
-        const job = DB.getJobById(p.jobId); if (!job) throw new Error('Job not found');
-        if (p.scheduledDate) job.scheduledDate = p.scheduledDate;
-        if (p.scheduledTime) job.scheduledTime = _normTimeWindow(p.scheduledTime);
-        if (p.address) job.address = p.address;
-        if (p.city) job.city = p.city;
-        if (p.state) job.state = p.state;
-        if (p.zip) job.zip = p.zip;
-        if (p.phone) job.phone = LeadParser.formatPhone(p.phone);
-        if (p.description) job.description = p.description;
-        if (p.notes) job.notes = p.notes;
-        if (job.scheduledDate && job.status === 'new') job.status = 'scheduled';
-        await DB.saveJob(job);
-        try { SyncManager.queueJob(job.jobId); } catch(e){}
-        _pointyAppend('bot', '&#9989; Updated <b>' + _esc(job.customerName) + '</b>.');
-      } else if (a === 'sync_sheets') {
-        _pointyAppend('bot', 'Syncing to Google Sheets&hellip;');
-        try { await App.syncAll(); _pointyAppend('bot', '&#9989; Synced.'); }
-        catch(e) { _pointyAppend('bot', 'Sync failed: ' + _esc(e.message||'error')); }
       } else if (a === 'bulk_action') {
         const ids = pend.bulkJobs || []; let n = 0;
         for (const jid of ids) {
           const job = DB.getJobById(jid); if (!job) continue;
           if (p.op === 'mark_lost') { job.status = 'lost'; await DB.saveJob(job); n++; }
-          else if (p.op === 'mark_estimate') { job.status = 'follow_up'; await DB.saveJob(job); n++; }
         }
         _pointyAppend('bot', `&#9989; Updated <b>${n}</b> job(s).`);
       }
