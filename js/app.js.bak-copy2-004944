@@ -2323,7 +2323,7 @@ const App = (() => {
     // Copy Details — identical message body as Dispatch, delivered via clipboard
     // instead of WhatsApp so it can be pasted into SMS/iMessage/anywhere else.
     const copyBtn = Auth.isAdminOrDisp()
-      ? `<button class="detail-action-primary-btn dab-primary-copy" onclick="event.stopPropagation();App.openDispatchModal('${job.jobId}','copy')">
+      ? `<button class="detail-action-primary-btn dab-primary-copy" onclick="event.stopPropagation();App.copyJobDetails('${job.jobId}')">
            <span class="dab-primary-icon">&#128203;</span><span class="dab-primary-label">Copy Details</span>
          </button>`
       : '';
@@ -5459,7 +5459,7 @@ const App = (() => {
 
   // Open WhatsApp with job details (user chooses recipient)
   // Dispatch choice: 100% (full) vs 50% (city+zip only, no phone) — for subcontractors
-  function openDispatchModal(jobId, action) {
+  function openDispatchModal(jobId) {
     if (!Auth.isAdminOrDisp()) return;
     const job = DB.getJobById(jobId);
     if (!job) { showToast('Job not found', 'error'); return; }
@@ -5473,21 +5473,21 @@ const App = (() => {
     sheet.className = 'dispatch-choice-sheet';
     sheet.innerHTML =
       '<div class="dispatch-choice-handle"></div>' +
-      '<div class="dispatch-choice-title">' + (action === 'copy' ? 'Copy ' : 'Dispatch ') + _esc(job.customerName || '') + '</div>' +
+      '<div class="dispatch-choice-title">Dispatch ' + _esc(job.customerName || '') + '</div>' +
       '<div class="dispatch-choice-sub">How much detail to send?</div>' +
       '<button class="dispatch-choice-btn" id="dc-full"><b>100%</b><span>Full details — address &amp; phone</span></button>' +
       '<button class="dispatch-choice-btn" id="dc-half"><b>50%</b><span>City &amp; ZIP only — no street, no phone</span></button>' +
       '<button class="dispatch-choice-cancel" id="dc-cancel">Cancel</button>';
     ov.appendChild(sheet);
     document.body.appendChild(ov);
-    sheet.querySelector('#dc-full').addEventListener('click', () => _doDispatch(jobId, 'full', action));
-    sheet.querySelector('#dc-half').addEventListener('click', () => _doDispatch(jobId, 'half', action));
+    sheet.querySelector('#dc-full').addEventListener('click', () => _doDispatch(jobId, 'full'));
+    sheet.querySelector('#dc-half').addEventListener('click', () => _doDispatch(jobId, 'half'));
     sheet.querySelector('#dc-cancel').addEventListener('click', () => ov.remove());
   }
-  function _doDispatch(jobId, mode, action) {
+  function _doDispatch(jobId, mode) {
     const o = document.getElementById('dispatch-choice-overlay');
     if (o) o.remove();
-    if (action === 'copy') copyJobDetails(jobId, mode); else openWhatsApp(jobId, mode);
+    openWhatsApp(jobId, mode);
   }
 
   function openWhatsApp(jobId, mode) {
@@ -5509,14 +5509,14 @@ const App = (() => {
   // Copy the identical dispatch message to the clipboard — same text openWhatsApp()
   // sends, just delivered by paste-into-SMS instead of WhatsApp. Two delivery
   // paths, one message body, so the tech never gets inconsistent details.
-  function copyJobDetails(jobId, mode) {
+  function copyJobDetails(jobId) {
     if (!Auth.isAdminOrDisp()) return;
     const job = DB.getJobById(jobId);
     if (!job) { showToast('Job not found', 'error'); return; }
 
     const msg = job.status === 'paid'
       ? _buildWhatsAppJobText(job)
-      : _buildWhatsAppTechDispatchMsg(job, mode);
+      : _buildWhatsAppTechDispatchMsg(job);
 
     if (!navigator.clipboard || !navigator.clipboard.writeText) {
       showToast('Clipboard not available on this browser', 'error');
