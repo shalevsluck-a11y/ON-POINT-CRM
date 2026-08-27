@@ -411,3 +411,8 @@ h1, .page-title { letter-spacing: -0.03em; font-weight: 800; }
 .field-group:has(#m-tech-zelle),
 .field-group:has(#m-tech-zips),
 .field-group:has(#m-tech-is-owner) { display:none !important; }
+
+/* Settings gear: black + bold, clearly a settings button */
+#btn-settings-top { color: var(--color-text) !important; opacity: 1 !important; }
+#btn-settings-top svg { stroke-width: 2.4; }
+#btn-settings-top:active { transform: scale(0.9); }
