@@ -719,7 +719,7 @@ app.post('/api/save-job', rateLimit({ max: 120, windowMs: 60_000 }), async (req,
     // RLS entirely), so this endpoint is the ONLY thing scoping a dispatcher's
     // write to their allowed_lead_sources. Reject up front, same deny-by-default
     // rule as migration 046 (dispatcher_can_access_job) and /api/load-jobs.
-    if (false) { // dispatchers may save any company (operator rule)
+    if (role === 'dispatcher') {
       const allowedSources = Array.isArray(profile.allowed_lead_sources) ? profile.allowed_lead_sources : [];
       if (!allowedSources.length || !allowedSources.includes(job.source)) {
         console.warn('[SAVE JOB] Dispatcher blocked - source not allowed:', { userId: user.id, jobSource: job.source, allowedSources });
@@ -912,7 +912,7 @@ app.get('/api/load-jobs', async (req, res) => {
         // Contractor with no assigned lead source sees no jobs
         return res.json({ jobs: [], zelleMap: {} });
       }
-    } else if (false) { // dispatchers see ALL jobs (operator rule)
+    } else if (role === 'dispatcher') {
       // Dispatcher: scope to allowed_lead_sources (the array field RLS actually
       // enforces - see dispatcher_can_access_job(), migration 046). Previously
       // this branch filtered by the separate, independently-set
