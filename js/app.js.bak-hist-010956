@@ -5827,7 +5827,6 @@ const App = (() => {
   }
 
   function _pointyRenderAction(data) {
-    try { if (data && data.action && data.action !== 'chat') { _pointyHistory.push({ role:'assistant', text: '[proposed ' + data.action + ']' }); } } catch(e){}
     const a = data.action, p = data.params || {};
     if (a === 'chat' || !a) { _pointyHistory.push({ role:'assistant', text: (data.reply||'') });
       _pointyAppend('bot', _pointyFmt(data.reply || "I can add a job, close one, mark it lost, or answer questions about your jobs.")); return; }
