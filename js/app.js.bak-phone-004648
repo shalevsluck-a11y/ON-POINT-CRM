@@ -5403,11 +5403,6 @@ const App = (() => {
   // Tech dispatch message — sent to assigned technician's WhatsApp.
   // Clean, professional layout: no brand header, no divider art, no emoji
   // clutter. Section labels in bold, content underneath, blank line gaps.
-  // Remove phone-like number sequences (used for 50% dispatch privacy)
-  function _scrubPhones(t){
-    return String(t||'').replace(/(\+?\d[\d().\-\s]{7,}\d)/g, '[hidden]');
-  }
-
   function _buildWhatsAppTechDispatchMsg(job, mode) {
     const half = (mode === 'half');
     const fullAddress = (half ? [job.city, job.state, job.zip] : [job.address, job.city, job.state, job.zip]).filter(Boolean).join(', ') || 'See job details';
@@ -5423,7 +5418,7 @@ const App = (() => {
 
     lines.push('*Customer*');
     lines.push(job.customerName || '—');
-    if (!half && job.phone) lines.push(job.phone);
+    if (job.phone) lines.push(job.phone);
     lines.push('');
 
     lines.push('*Address*');
@@ -5436,13 +5431,13 @@ const App = (() => {
     if (job.description) {
       lines.push('');
       lines.push('*Description*');
-      lines.push(half ? _scrubPhones(job.description) : job.description);
+      lines.push(job.description);
     }
 
     if (job.notes) {
       lines.push('');
       lines.push('*Notes*');
-      lines.push(half ? _scrubPhones(job.notes) : job.notes);
+      lines.push(job.notes);
     }
 
     // Always recompute so tech sees the correct cut even if storage has stale split
