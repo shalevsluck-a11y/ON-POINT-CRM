@@ -16,26 +16,6 @@ const DB = (() => {
     await Promise.all([_syncJobsDown(), _syncSettingsDown()]);
   }
 
-  // A "ghost" is a corrupt cache entry: no id, or no customer name AND no real
-  // status. The server has no such row, so a normal delete can never remove it —
-  // it must be pruned locally or it renders forever as "Unknown Customer".
-  function _isGhostJob(j) {
-    if (!j || typeof j !== 'object') return true;
-    if (!j.jobId) return true;
-    const hasName = typeof j.customerName === 'string' && j.customerName.trim() !== '';
-    const hasStatus = typeof j.status === 'string' && j.status.trim() !== '' && j.status !== 'undefined';
-    return !hasName && !hasStatus;
-  }
-
-  // Remove every ghost from the local cache. Returns how many were removed.
-  function purgeGhostJobs() {
-    const all = Storage.getJobs() || [];
-    const clean = all.filter(j => !_isGhostJob(j));
-    const removed = all.length - clean.length;
-    if (removed > 0) Storage.saveJobs(clean);
-    return removed;
-  }
-
   async function _syncJobsDown() {
     try {
       // Use server endpoint (reads from correct project)
@@ -124,7 +104,7 @@ const DB = (() => {
         // Older local jobs not on server: trust server (likely RLS-filtered for this user) — drop from local view
       }
 
-      Storage.saveJobs(merged.filter(j => !_isGhostJob(j)));
+      Storage.saveJobs(merged);
     } catch (e) {
       console.warn('DB._syncJobsDown error (using cache):', e.message);
     }
@@ -239,7 +219,7 @@ const DB = (() => {
   // JOBS — read (from cache, fast)
   // ──────────────────────────────────────────────────────────
 
-  function getJobs()                 { return (Storage.getJobs() || []).filter(j => !_isGhostJob(j)); }
+  function getJobs()                 { return Storage.getJobs(); }
   function getJobById(id)            { return Storage.getJobById(id); }
   function getJobsByDate(date)       { return Storage.getJobsByDate(date); }
   function getJobsByFilter(filter)   { return Storage.getJobsByFilter(filter); }
@@ -860,7 +840,6 @@ const DB = (() => {
     getJobs,
     saveJob,
     deleteJob,
-    purgeGhostJobs,
     getJobById,
     getJobsByDate,
     getJobsByFilter,

@@ -144,7 +144,6 @@ const App = (() => {
     }, true);
 
     // Render immediately from localStorage cache so the app feels instant
-    try { if (DB.purgeGhostJobs) DB.purgeGhostJobs(); } catch(e){}
     _loadSettingsForm();
     renderDashboard();
     renderJobList();
@@ -6080,16 +6079,7 @@ const App = (() => {
         await DB.saveJob(job);
         _pointyAppend('bot', '&#9989; <b>' + _esc(job.customerName) + '</b> reopened.');
       } else if (a === 'delete_job') {
-        const job = DB.getJobById(p.jobId);
-        if (!job) {
-          // The row is not on the server (a corrupt local "ghost"). Purge it.
-          const n = DB.purgeGhostJobs ? DB.purgeGhostJobs() : 0;
-          try { if (_state.currentView === 'jobs') renderJobList(); else renderDashboard(); } catch(e){}
-          _pointyAppend('bot', n > 0
-            ? '&#9989; Removed ' + n + ' broken job entr' + (n === 1 ? 'y' : 'ies') + '.'
-            : 'That job is already gone.');
-          return;
-        }
+        const job = DB.getJobById(p.jobId); if (!job) throw new Error('Job not found');
         const nm = job.customerName;
         await DB.deleteJob(p.jobId);
         _pointyAppend('bot', '&#9989; Deleted <b>' + _esc(nm) + '</b>.');
