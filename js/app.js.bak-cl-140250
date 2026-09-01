@@ -2357,7 +2357,7 @@ const App = (() => {
       <div class="detail-action-bar">
         ${followUpBtn}
         ${job.address ? `<button class="detail-action-btn" onclick="App.navigateToJob('${job.jobId}')"><span class="dab-icon">&#128205;</span><span class="dab-label">Navigate</span></button>` : ''}
-        ${Auth.isAdminOrDisp() && (job.status === 'paid' || job.status === 'closed') ? `<button class="detail-action-btn dab-green" onclick="App.openClosingSheet('${job.jobId}')"><span class="dab-icon">&#129534;</span><span class="dab-label">Closing</span></button>` : ''}
+        ${Auth.isAdmin() && (parseFloat(job.jobTotal) || parseFloat(job.estimatedTotal)) ? `<button class="detail-action-btn dab-green" onclick="App.openZelleRequest('${job.jobId}')"><span class="dab-icon">&#128178;</span><span class="dab-label">Zelle</span></button>` : ''}
         ${Auth.canEditAllJobs() ? `<button class="detail-action-btn" onclick="App.showEditJobModal('${job.jobId}')"><span class="dab-icon">&#9998;</span><span class="dab-label">Edit</span></button>` : ''}
       </div>
 
@@ -5435,7 +5435,7 @@ const App = (() => {
 
     lines.push('*Customer*');
     lines.push(job.customerName || '—');
-    if (job.phone) lines.push(job.phone);
+    if (!half && job.phone) lines.push(job.phone);
     if (address) {
       lines.push('');
       lines.push('*Address*');
@@ -5509,100 +5509,6 @@ const App = (() => {
   // Remove phone-like number sequences (used for 50% dispatch privacy)
   function _scrubPhones(t){
     return String(t||'').replace(/(\+?\d[\d().\-\s]{7,}\d)/g, '[hidden]');
-  }
-
-  // ── CLOSING SUMMARY — what the tech owes the company, the split, and Zelle ──
-  function _buildClosingMsg(job) {
-    const settings = DB.getSettings();
-    const tech = job.assignedTechId ? (settings.technicians || []).find(t => t.id === job.assignedTechId) : null;
-    const calc = _jobCalc(job) || {};
-    const ref = (job.jobId || '').slice(-6).toUpperCase();
-    const money = (n) => '$' + (Number(n) || 0).toFixed(2);
-
-    const techCut = Number(calc.techPayout) || 0;
-    const companyCut = (Number(calc.ownerPayout) || 0) + (Number(calc.contractorFee) || 0);
-    const collected = Number(calc.jobTotal) || 0;
-    const parts = Number(calc.partsCost) || 0;
-    // If the tech collected the money, they owe the company its share.
-    const owed = companyCut;
-
-    const lines = ['*JOB CLOSING*'];
-    if (ref) lines.push('Ref #' + ref);
-    lines.push('');
-
-    lines.push('*Customer*');
-    lines.push(job.customerName || '—');
-    const addr = [job.address, job.city, job.state, job.zip].filter(Boolean).join(', ');
-    if (addr) lines.push(addr);
-    if (job.scheduledDate) lines.push(_formatDispatchDate(job.scheduledDate));
-    lines.push('');
-
-    lines.push('*Collected*');
-    lines.push('Total: ' + money(collected));
-    if (parts > 0) {
-      lines.push('Parts: -' + money(parts));
-      lines.push('Net: ' + money(collected - parts));
-    }
-    if (job.paymentMethod) lines.push('Paid by: ' + String(job.paymentMethod).toUpperCase());
-    lines.push('');
-
-    lines.push('*Split*');
-    lines.push((tech ? tech.name : 'Tech') + ' (' + (Number(calc.techPercent) || 0) + '%): ' + money(techCut));
-    lines.push('Company: ' + money(companyCut));
-    lines.push('');
-
-    lines.push('*TECH OWES COMPANY: ' + money(owed) + '*');
-
-    const ownerZelle = settings.ownerZelle || '';
-    if (ownerZelle) {
-      lines.push('');
-      lines.push('*Send via Zelle to:*');
-      lines.push(ownerZelle);
-    }
-    return lines.join('\n');
-  }
-
-  // Closing sheet: send on WhatsApp or copy the same text
-  function openClosingSheet(jobId) {
-    if (!Auth.isAdminOrDisp()) return;
-    const job = DB.getJobById(jobId);
-    if (!job) { showToast('Job not found', 'error'); return; }
-    const ex = document.getElementById('dispatch-choice-overlay');
-    if (ex) ex.remove();
-    const ov = document.createElement('div');
-    ov.id = 'dispatch-choice-overlay';
-    ov.className = 'dispatch-choice-overlay';
-    ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
-    const sheet = document.createElement('div');
-    sheet.className = 'dispatch-choice-sheet';
-    const calc = _jobCalc(job) || {};
-    const owed = (Number(calc.ownerPayout) || 0) + (Number(calc.contractorFee) || 0);
-    sheet.innerHTML =
-      '<div class="dispatch-choice-handle"></div>' +
-      '<div class="dispatch-choice-title">Closing — ' + _esc(job.customerName || '') + '</div>' +
-      '<div class="dispatch-choice-sub">Tech owes company <b>$' + owed.toFixed(2) + '</b></div>' +
-      '<button class="dispatch-choice-btn" id="cl-wa"><b>WhatsApp</b><span>Send the closing summary</span></button>' +
-      '<button class="dispatch-choice-btn" id="cl-copy"><b>Copy</b><span>Copy the summary to paste anywhere</span></button>' +
-      '<button class="dispatch-choice-cancel" id="cl-cancel">Cancel</button>';
-    ov.appendChild(sheet);
-    document.body.appendChild(sheet.parentElement === ov ? ov : ov);
-    sheet.querySelector('#cl-wa').addEventListener('click', () => {
-      const msg = _buildClosingMsg(job);
-      const o = document.getElementById('dispatch-choice-overlay'); if (o) o.remove();
-      window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener,noreferrer');
-    });
-    sheet.querySelector('#cl-copy').addEventListener('click', () => {
-      const msg = _buildClosingMsg(job);
-      const o = document.getElementById('dispatch-choice-overlay'); if (o) o.remove();
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(msg)
-          .then(() => showToast('Closing summary copied', 'success'))
-          .catch(() => showToast('Copy failed', 'error'));
-      } else showToast('Clipboard not available', 'error');
-    });
-    sheet.querySelector('#cl-cancel').addEventListener('click', () => {
-      const o = document.getElementById('dispatch-choice-overlay'); if (o) o.remove();
-    });
   }
 
   function _buildWhatsAppTechDispatchMsg(job, mode) {
@@ -6375,7 +6281,6 @@ const App = (() => {
 
     // WhatsApp
     openWhatsApp,
-    openClosingSheet,
     openDispatchModal,
     _doDispatch,
     copyJobDetails,
