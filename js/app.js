@@ -506,7 +506,9 @@ const App = (() => {
       setJobFilter(opts.filter, null);
     }
 
-    _state.previousView = _state.currentView;
+    // Re-entering the SAME view (realtime refresh re-opens job-detail on every
+    // save) must not overwrite previousView — that made goBack() a no-op.
+    if (_state.currentView !== viewName) _state.previousView = _state.currentView;
     _state.currentView  = viewName;
 
     // Reset users list fetch flag when leaving settings
@@ -2505,9 +2507,92 @@ const App = (() => {
   function _buildStatusActions(job) {
     if (job.status === 'paid' || job.status === 'closed') return '';
     return `<div class="status-action-row">
-      <button class="status-action-btn sab-est ${job.status==='follow_up'?'current':''}" onclick="App.setJobStatus('${job.jobId}','follow_up')">Estimate</button>
+      <button class="status-action-btn sab-est ${job.status==='follow_up'?'current':''}" onclick="App.showEstimateModal('${job.jobId}')">Estimate</button>
       <button class="status-action-btn sab-lst ${job.status==='lost'?'current':''}" onclick="App.setJobStatus('${job.jobId}','lost')">Mark Lost</button>
     </div>`;
+  }
+
+  // ══════════════════════════════════════════════════════════
+  // ESTIMATE — amount + details + follow-up reminder day.
+  // Reuses existing persisted columns: estimated_total, notes, follow_up_at.
+  // ══════════════════════════════════════════════════════════
+
+  // follow_up_at is a TIMESTAMPTZ stored at noon UTC so the YYYY-MM-DD prefix
+  // is the reminder day in every timezone. Never parse it into a local Date.
+  function _followUpDay(job) {
+    return (job?.followUpAt || '').slice(0, 10);
+  }
+
+  function showEstimateModal(jobId) {
+    const job = DB.getJobById(jobId);
+    if (!job) { showToast('Job not found', 'error'); return; }
+    if (!Auth.canEditAllJobs()) { showToast('Not authorized to set an estimate', 'error'); return; }
+
+    const body = document.getElementById('modal-estimate-body');
+    if (!body) return;
+
+    const amount = parseFloat(job.estimatedTotal) || 0;
+    const day    = _followUpDay(job) || _todayStr();
+
+    body.innerHTML = `
+      <div class="field-group">
+        <label class="field-label">Estimate Amount ($)</label>
+        <input type="number" id="est-amount" class="field-input" inputmode="decimal"
+               placeholder="0" step="0.01" min="0" value="${amount || ''}">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Details</label>
+        <textarea id="est-details" class="field-input" rows="5"
+                  placeholder="What was quoted, parts, customer objections…"
+                  style="resize:vertical;min-height:110px">${_esc(job.notes || '')}</textarea>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Remind Me On</label>
+        <input type="date" id="est-followup" class="field-input" value="${day}" min="${_todayStr()}">
+        <div style="font-size:12px;color:var(--color-text-muted);margin-top:6px">
+          Shows on that day's schedule as a follow-up, not a job.
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn btn-secondary" style="flex:1" onclick="App.closeModal()">Cancel</button>
+        <button class="btn btn-success" style="flex:2;font-weight:800"
+                onclick="App.saveEstimate('${job.jobId}')">Save Estimate</button>
+      </div>
+    `;
+
+    showModal('modal-estimate');
+  }
+
+  function saveEstimate(jobId) {
+    const job = DB.getJobById(jobId);
+    if (!job) { showToast('Job not found', 'error'); return; }
+    if (!Auth.canEditAllJobs()) { showToast('Not authorized to set an estimate', 'error'); return; }
+
+    const amount  = parseFloat(document.getElementById('est-amount')?.value) || 0;
+    const details = document.getElementById('est-details')?.value?.trim() || '';
+    const day     = document.getElementById('est-followup')?.value || '';
+
+    if (amount <= 0)                     { showToast('Enter the estimate amount', 'warning'); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) { showToast('Pick a reminder day', 'warning'); return; }
+
+    DB.saveJob({
+      ...job,
+      status:         'follow_up',
+      estimatedTotal: amount,
+      notes:          details,
+      followUpAt:     day + 'T12:00:00Z',
+    });
+    SyncManager.queueJob(jobId);
+
+    closeModal();
+    showToast(`Estimate $${amount.toFixed(2)} — follow up ${_formatDate(day)}`, 'success');
+
+    const container = document.getElementById('job-detail-content');
+    const updated   = DB.getJobById(jobId);
+    if (container && updated) container.innerHTML = _buildJobDetailHTML(updated);
   }
 
   function _buildPhotoGrid(jobId, photos) {
@@ -3668,6 +3753,15 @@ const App = (() => {
     const settings = DB.getSettings();
     const container = document.getElementById('calendar-content');
 
+    // Estimates whose reminder day is today — office tasks, not dispatched work,
+    // so they render in their own block and are never counted as jobs.
+    // Deliberately not tech-filtered: a follow-up you can't see is not a reminder.
+    const followUps = DB.getJobs().filter(j =>
+      j.status === 'follow_up' && _followUpDay(j) === dateStr
+    );
+    const followUpIds = new Set(followUps.map(j => j.jobId));
+    jobs = jobs.filter(j => !followUpIds.has(j.jobId));
+
     // Populate tech filter dropdown
     _populateCalendarTechFilter();
 
@@ -3676,7 +3770,7 @@ const App = (() => {
       jobs = jobs.filter(j => j.assignedTechId === _state.calendarTechFilter);
     }
 
-    if (jobs.length === 0) {
+    if (jobs.length === 0 && followUps.length === 0) {
       container.innerHTML = `<div class="empty-state">
         <div class="empty-icon">&#128197;</div>
         <div class="empty-title">No jobs scheduled</div>
@@ -3697,6 +3791,34 @@ const App = (() => {
     Object.values(byTech).forEach(arr => arr.sort((a,b) => (a.scheduledTime||'').localeCompare(b.scheduledTime||'')));
 
     let html = '';
+
+    if (followUps.length) {
+      const fuRows = followUps.map(f => {
+        const amt = parseFloat(f.estimatedTotal) || 0;
+        const det = (f.notes || '').trim().replace(/\s+/g, ' ');
+        return `
+          <div class="cal-job-row" onclick="App.openJobDetail('${f.jobId}')">
+            <div class="cal-job-time">&#128276;</div>
+            <div class="cal-job-info">
+              <div class="cal-job-name">${_esc(f.customerName || 'Unknown')}</div>
+              <div class="cal-job-addr">${amt ? '$' + amt.toFixed(2) + ' estimate' : 'Estimate'}</div>
+              ${det ? `<div class="cal-job-summary">${_esc(det.slice(0,110))}${det.length>110?'…':''}</div>` : ''}
+            </div>
+            <span class="status-badge sb-follow_up" style="font-size:10px">Follow-Up</span>
+          </div>`;
+      }).join('');
+
+      html += `
+        <div class="cal-tech-block">
+          <div class="cal-tech-header">
+            <div class="cal-tech-avatar" style="background:#f59e0b">&#128276;</div>
+            <div class="cal-tech-name">Follow-Ups</div>
+            <div class="cal-tech-count">${followUps.length} estimate${followUps.length!==1?'s':''}</div>
+          </div>
+          ${fuRows}
+        </div>
+      `;
+    }
 
     for (const [techId, techJobs] of Object.entries(byTech)) {
       const tech = techId !== '__unassigned__'
@@ -6282,6 +6404,8 @@ const App = (() => {
 
     navigate,
     goBack,
+    showEstimateModal,
+    saveEstimate,
     onReconnect,
 
     // Dashboard
