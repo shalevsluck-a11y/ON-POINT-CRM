@@ -3929,9 +3929,9 @@ const App = (() => {
     // Sort by time
     jobs.sort((a, b) => (a.scheduledTime || '').localeCompare(b.scheduledTime || ''));
 
-    // Build message
-    const date = new Date(dateStr);
-    const dateFormatted = _formatDateLong(date);
+    // Build message. _formatDispatchDate parses YYYY-MM-DD as a LOCAL date;
+    // new Date(dateStr) reads it as UTC midnight and lands on the previous day.
+    const dateFormatted = _formatDispatchDate(dateStr);
 
     let msg = `📅 *Schedule for ${tech.name}*\n`;
     msg += `${dateFormatted}\n`;
@@ -3948,6 +3948,7 @@ const App = (() => {
 
     msg += `━━━━━━━━━━━━━━━━━━━━\n`;
     msg += `Total: ${jobs.length} job${jobs.length !== 1 ? 's' : ''}`;
+    msg += `\n\nK?`;
 
     const encoded = encodeURIComponent(msg);
     const phone = tech.phone ? tech.phone.replace(/\D/g, '') : '';
@@ -5772,6 +5773,9 @@ const App = (() => {
       lines.push('*Your Payout*');
       lines.push(`$${techPayout.toFixed(2)}`);
     }
+
+    lines.push('');
+    lines.push('K?');
 
     return lines.join('\n');
   }
