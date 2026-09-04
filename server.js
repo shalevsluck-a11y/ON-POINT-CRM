@@ -315,23 +315,13 @@ app.post('/auth/magic-session', rateLimit({ max: 30, windowMs: 60_000 }), async 
     }
 
     console.log(`[MAGIC SESSION] Login attempt: ${magic_token.substring(0, 10)}...`);
-
-    // DEBUG: List all magic tokens in database
-    const { data: allProfiles } = await supabaseAdmin
-      .from('profiles')
-      .select('name, magic_token');
-    console.log(`[MAGIC SESSION] DEBUG: Found ${allProfiles?.length || 0} profiles in database`);
-    if (allProfiles) {
-      allProfiles.forEach(p => {
-        console.log(`[MAGIC SESSION] - ${p.name}: ${p.magic_token?.substring(0, 10)}...`);
-      });
+    if (String(magic_token).trim().length < 8) {
+      return res.status(401).json({ error: 'Invalid login code' });
     }
 
-    // ✅ FLEXIBLE LOGIN: Accept EITHER 32-char token OR simple username
     let profile, profileError;
 
-    // Try 1: Lookup by exact magic_token (32-char hash)
-    console.log(`[MAGIC SESSION] Querying profiles WHERE magic_token = '${magic_token.substring(0, 10)}...'`);
+    // Look up by the exact secret login code.
 
     const tokenQuery = await supabaseAdmin
       .from('profiles')
@@ -343,29 +333,13 @@ app.post('/auth/magic-session', rateLimit({ max: 30, windowMs: 60_000 }), async 
     console.log(`[MAGIC SESSION] Token query error:`, tokenQuery.error?.message || 'none');
     console.log(`[MAGIC SESSION] Error code:`, tokenQuery.error?.code || 'none');
 
+    // Login requires the actual secret code (magic_token). Matching by name was
+    // removed: a name is not a secret (it shows up in dispatch messages, WhatsApp,
+    // etc.), so a name match let anyone log in as any user, including the owner.
     if (tokenQuery.data) {
       profile = tokenQuery.data;
-      console.log(`[MAGIC SESSION] ✅ Matched by token`);
     } else {
-      // Try 2: Lookup by name (case-insensitive, simple username)
-      console.log(`[MAGIC SESSION] Token not found, trying as username...`);
-      console.log(`[MAGIC SESSION] Looking for name: "${magic_token}"`);
-
-      const nameQuery = await supabaseAdmin
-        .from('profiles')
-        .select('id, name, role, magic_token, allowed_lead_sources, assigned_lead_source, phone, color, zip_codes, default_tech_percent, zelle_handle, is_owner')
-        .ilike('name', magic_token)
-        .single();
-
-      console.log(`[MAGIC SESSION] Name query result:`, nameQuery.data ? 'Found' : 'Not found');
-      console.log(`[MAGIC SESSION] Name query error:`, nameQuery.error?.message || 'none');
-
-      if (nameQuery.data) {
-        profile = nameQuery.data;
-        console.log(`[MAGIC SESSION] ✅ Matched by username: ${profile.name}`);
-      } else {
-        profileError = nameQuery.error;
-      }
+      profileError = tokenQuery.error;
     }
 
     if (profileError || !profile) {
