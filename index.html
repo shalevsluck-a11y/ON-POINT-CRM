@@ -5,9 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="On Point">
-  <meta name="theme-color" content="#0F172A">
+  <!-- Status-bar area matches the app so it looks full-screen (was dark #0F172A) -->
+  <meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0F172A" media="(prefers-color-scheme: dark)">
   <title>On Point Pro Doors CRM</title>
   <meta name="description" content="On Point Pro Doors — garage door service management, scheduling, and technician coordination.">
   <!-- Preconnect to self-hosted Supabase for faster API calls -->
@@ -32,7 +34,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=20260904b">
   <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png?v=20260904">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="On Point">
   <!-- Supabase JS v2 — served locally so no CDN round-trip on every load -->
   <script defer src="js/supabase.min.js"></script>
