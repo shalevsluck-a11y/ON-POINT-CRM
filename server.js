@@ -1056,6 +1056,15 @@ app.post('/api/save-settings', async (req, res) => {
 // Test push notification endpoint
 app.post('/api/test-push', async (req, res) => {
   try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Unauthorized - missing auth token' });
+    }
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Invalid auth token' });
+    }
     console.log('[TEST PUSH] ========== Test push request received ==========');
     console.log('[TEST PUSH] Request body:', req.body);
 
@@ -1110,9 +1119,18 @@ app.post('/api/test-push', async (req, res) => {
 
 // Diagnostic endpoint to check trigger status
 app.get('/api/diagnostic/trigger-status', async (req, res) => {
-  console.log('[DIAGNOSTIC] Checking trigger status...');
-
   try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Unauthorized - missing auth token' });
+    }
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !user) {
+      return res.status(401).json({ error: 'Invalid auth token' });
+    }
+    console.log('[DIAGNOSTIC] Checking trigger status...');
+
     const diagnostics = {
       timestamp: new Date().toISOString(),
       checks: {}
