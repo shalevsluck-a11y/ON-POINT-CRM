@@ -5155,9 +5155,20 @@ const App = (() => {
   // THEME — light/dark with localStorage persistence (default light)
   // ══════════════════════════════════════════════════════════
 
+  // Keep the iOS/Android status-bar tint matching the app's OWN theme, not the
+  // phone's system scheme. Light top (#F2F2F7) was showing navy when the phone
+  // was in system dark mode.
+  function _applyThemeColor(theme) {
+    const color = theme === 'dark' ? '#0F172A' : '#F2F2F7';
+    let m = document.querySelector('meta[name="theme-color"]');
+    if (!m) { m = document.createElement('meta'); m.name = 'theme-color'; document.head.appendChild(m); }
+    m.setAttribute('content', color);
+  }
+
   function _initDarkMode() {
     const saved = localStorage.getItem('op_theme') || 'light';
     document.documentElement.setAttribute('data-theme', saved);
+    _applyThemeColor(saved);
     _syncThemeToggleUI(saved);
   }
 
@@ -5166,6 +5177,7 @@ const App = (() => {
     const next = current === 'light' ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', next);
     localStorage.setItem('op_theme', next);
+    _applyThemeColor(next);
     _syncThemeToggleUI(next);
   }
 

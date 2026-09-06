@@ -7,9 +7,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="On Point">
-  <!-- Status-bar area matches the app so it looks full-screen (was dark #0F172A) -->
-  <meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#0F172A" media="(prefers-color-scheme: dark)">
+  <!-- Status-bar color is kept in sync with the app's OWN theme (data-theme) by
+       js/app.js _applyThemeColor(). Do NOT key this to prefers-color-scheme —
+       the app's light/dark is its own toggle, independent of the phone's. -->
+  <meta name="theme-color" content="#F2F2F7">
   <title>On Point Pro Doors CRM</title>
   <meta name="description" content="On Point Pro Doors — garage door service management, scheduling, and technician coordination.">
   <!-- Preconnect to self-hosted Supabase for faster API calls -->
