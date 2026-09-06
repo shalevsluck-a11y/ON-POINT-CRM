@@ -5,6 +5,11 @@ const { createClient } = require('@supabase/supabase-js');
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
+// Behind nginx, which forwards the real client IP in X-Forwarded-For. Without
+// this, req.ip is the proxy address and the per-IP rate limiter can't tell
+// clients apart (login brute-force protection was effectively off).
+app.set('trust proxy', 1);
+
 // Supabase admin client (custom domain for main operations)
 const supabaseAdmin = createClient(
   process.env.SUPABASE_DIRECT_URL || 'https://nmmpemjcnncjfpooytpv.supabase.co',
