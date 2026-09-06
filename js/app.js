@@ -2506,10 +2506,28 @@ const App = (() => {
 
   function _buildStatusActions(job) {
     if (job.status === 'paid' || job.status === 'closed') return '';
+    // A lost job must be recoverable — offer Reopen instead of a dead-end.
+    if (job.status === 'lost') {
+      if (!Auth.isAdminOrDisp()) return '';
+      return `<div class="status-action-row">
+        <button class="status-action-btn sab-reopen" onclick="App.reopenJob('${job.jobId}')">&#8617; Reopen Job</button>
+      </div>`;
+    }
     return `<div class="status-action-row">
       <button class="status-action-btn sab-est ${job.status==='follow_up'?'current':''}" onclick="App.showEstimateModal('${job.jobId}')">Estimate</button>
-      <button class="status-action-btn sab-lst ${job.status==='lost'?'current':''}" onclick="App.setJobStatus('${job.jobId}','lost')">Mark Lost</button>
+      <button class="status-action-btn sab-lst" onclick="App.setJobStatus('${job.jobId}','lost')">Mark Lost</button>
     </div>`;
+  }
+
+  // Revert a lost job back into the active pipeline.
+  function reopenJob(jobId) {
+    if (!Auth.isAdminOrDisp()) { showToast('Not authorized', 'error'); return; }
+    const job = DB.getJobById(jobId);
+    if (!job) return;
+    if (job.status !== 'lost') return;
+    // Back to scheduled if it has a date, otherwise a fresh new lead.
+    setJobStatus(jobId, job.scheduledDate ? 'scheduled' : 'new');
+    showToast('Job reopened', 'success');
   }
 
   // ══════════════════════════════════════════════════════════
@@ -6455,6 +6473,7 @@ const App = (() => {
     // Job Detail
     openJobDetail,
     setJobStatus,
+    reopenJob,
     showCloseJobModal,
     showEditJobModal,
     finalizeJob,

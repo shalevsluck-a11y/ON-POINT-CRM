@@ -386,9 +386,10 @@ h1, .page-title { letter-spacing: -0.03em; font-weight: 800; }
 
 /* Job detail: Estimate / Lost buttons — big, bold, colored */
 .status-action-row { display:flex !important; gap:10px !important; margin:0 0 12px !important; }
-.status-action-btn.sab-est, .status-action-btn.sab-lst { flex:1 !important; padding:13px !important; border-radius:14px !important; font-weight:800 !important; font-size:15px !important; border:none !important; }
+.status-action-btn.sab-est, .status-action-btn.sab-lst, .status-action-btn.sab-reopen { flex:1 !important; padding:13px !important; border-radius:14px !important; font-weight:800 !important; font-size:15px !important; border:none !important; }
 .sab-est { background:var(--st-estimate-bg) !important; color:var(--st-estimate) !important; }
 .sab-lst { background:var(--st-lost-bg) !important; color:var(--st-lost) !important; }
+.sab-reopen { background:rgba(34,197,94,0.14) !important; color:#16a34a !important; }
 .sab-est.current { background:var(--st-estimate) !important; color:#fff !important; }
 .sab-lst.current { background:var(--st-lost) !important; color:#fff !important; }
 
