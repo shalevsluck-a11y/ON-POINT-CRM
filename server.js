@@ -1227,7 +1227,7 @@ app.post('/api/ai-assistant', rateLimit({ max: 30, windowMs: 60_000 }), async (r
     const counts = { open: 0, estimate: 0, closed: 0, lost: 0 };
     for (const j of safeJobs) counts[bucket(j.status)]++;
     const jobLines = safeJobs.length
-      ? safeJobs.map(j => `- ${j.customerName || '?'} | ${j.status || '?'}${j.tech ? ' | tech:'+j.tech : ''}${j.date ? ' | '+j.date : ''}${(j.total!=null&&j.total!=='') ? ' | $'+j.total : ''} | id:${j.jobId}`).join('\n')
+      ? safeJobs.map(j => `- ${j.customerName || '?'} | ${j.status || '?'}${j.tech ? ' | tech:'+j.tech : ''}${j.date ? ' | '+j.date : ''}${j.created ? ' | created:'+j.created : ''}${(j.total!=null&&j.total!=='') ? ' | $'+j.total : ''} | id:${j.jobId}`).join('\n')
       : '(none)';
 
     const system = [

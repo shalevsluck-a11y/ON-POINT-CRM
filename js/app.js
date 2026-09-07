@@ -6165,7 +6165,7 @@ const App = (() => {
         .filter(j => j.status !== 'archived')
         .sort((a, b) => _rank(a) - _rank(b))
         .slice(0, 150)
-        .map(j => { const o = { jobId:j.jobId, customerName:j.customerName, status:j.status, tech:j.assignedTechName, date:j.scheduledDate, phone:j.phone }; if (Auth.isAdmin() && (j.status==='paid'||j.status==='closed')) o.total = j.jobTotal; return o; });
+        .map(j => { const o = { jobId:j.jobId, customerName:j.customerName, status:j.status, tech:j.assignedTechName, date:j.scheduledDate, created:(j.createdAt||'').slice(0,10), phone:j.phone }; if (Auth.isAdmin() && (j.status==='paid'||j.status==='closed')) o.total = j.jobTotal; return o; });
 
       const res = await fetch('/api/ai-assistant', {
         method: 'POST',
