@@ -282,7 +282,12 @@ const App = (() => {
 
     // Auto-sync Google Sheets on load if URL configured
     const settings = DB.getSettings();
-    if (settings.appsScriptUrl) setTimeout(() => SyncManager.syncAll(), 3000);
+    if (settings.appsScriptUrl) setTimeout(() => {
+      SyncManager.syncAll().then(r => {
+        // A dead Sheets link used to fail silently while every job showed "synced".
+        if (r && !r.success && r.error && !/already in progress/i.test(r.error)) showToast('Google Sheets sync is NOT working: ' + r.error, 'warning', 12000);
+      }).catch(() => {});
+    }, 3000);
 
     // Background polling every 30 s — realtime can silently miss events for some users
     // (e.g. dispatcher RLS edge cases), so polling stays the source of truth.

@@ -374,6 +374,7 @@ const DB = (() => {
 
   async function deleteJob(jobId) {
     Storage.deleteJob(jobId);
+    try { if (typeof SyncManager !== 'undefined' && SyncManager.deleteJob) SyncManager.deleteJob(jobId).catch(() => {}); } catch (e) {}
 
     // Use server endpoint (deletes from correct project)
     try {

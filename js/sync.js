@@ -11,6 +11,19 @@ const SyncManager = (() => {
   // SYNC A SINGLE JOB
   // ────────────────────────────────────────────
 
+  // The Apps Script answers JSON {ok:true,...}. When the deployment is gone Google serves an
+  // HTML "Page Not Found" page with HTTP 200, which used to count as "synced".
+  const DEAD_LINK_MSG = 'Google Sheets link is not working (Google returned a web page, not data). In the sheet: Extensions > Apps Script > Deploy > New deployment > Web app, Execute as Me, Anyone > paste the new URL in Settings.';
+  async function _readScriptResponse(response) {
+    const text = await response.text();
+    let json = null;
+    try { json = JSON.parse(text); } catch (e) { json = null; }
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    if (!json || typeof json !== 'object') throw new Error(DEAD_LINK_MSG);
+    if (json.ok === false) throw new Error(json.error || 'Apps Script returned an error');
+    return json;
+  }
+
   async function syncJob(job) {
     if (!job) {
       return { success: true, skipped: true };
@@ -35,9 +48,7 @@ const SyncManager = (() => {
         body: JSON.stringify({ action: 'upsertJob', data: payload }),
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
+      await _readScriptResponse(response);
 
       // Mark the CURRENT cached job, not the snapshot we were handed: the create flow syncs
       // a copy taken at save time, and writing that copy back a few seconds later erased
@@ -79,28 +90,29 @@ const SyncManager = (() => {
 
       if (unsyncedJobs.length === 0) {
         // All synced — still do a full push to be safe
-        const results = [];
-        let count = 0;
-        for (const job of allJobs.slice(0, 50)) { // limit to last 50
+        // Push EVERY job (upsert by jobId): the sheet must be complete, not "the last 50".
+        let count = 0, errs = 0, lastErr = '';
+        for (const job of allJobs) {
           const r = await syncJob(job);
-          results.push(r);
-          count++;
-          if (onProgress) onProgress(count, allJobs.length);
+          if (r.success) count++; else { errs++; lastErr = r.error || ''; if (errs >= 3) break; }
+          if (onProgress) onProgress(count + errs, allJobs.length);
+          await _sleep(120);
         }
         Storage.saveSettings({ lastSyncAt: new Date().toISOString() });
-        return { success: true, synced: count, total: allJobs.length };
+        return { success: errs === 0, synced: count, errors: errs, error: lastErr, total: allJobs.length };
       }
 
       const results = [];
       let successCount = 0;
       let errorCount = 0;
+      let lastError = '';
 
       for (let i = 0; i < unsyncedJobs.length; i++) {
         const job = unsyncedJobs[i];
         const r = await syncJob(job);
         results.push(r);
         if (r.success) successCount++;
-        else errorCount++;
+        else { errorCount++; lastError = r.error || ''; if (errorCount >= 3 && successCount === 0) break; }
         if (onProgress) onProgress(i + 1, unsyncedJobs.length);
 
         // Small delay between requests to avoid rate limiting
@@ -115,6 +127,7 @@ const SyncManager = (() => {
         success: errorCount === 0,
         synced: successCount,
         errors: errorCount,
+        error: lastError,
         total: unsyncedJobs.length,
       };
     } finally {
@@ -140,10 +153,10 @@ const SyncManager = (() => {
         headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ action: 'ping' }),
       });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      await _readScriptResponse(response);
       return { success: true };
     } catch (error) {
-      return { success: false, error: 'Could not reach Apps Script URL. Check the URL in Settings.' };
+      return { success: false, error: error.message || 'Could not reach Apps Script URL. Check the URL in Settings.' };
     }
   }
 
@@ -197,6 +210,17 @@ const SyncManager = (() => {
     Storage.addToSyncQueue(jobId);
   }
 
+  // Remove a deleted job's row from the sheet (best effort; the sheet never learned about deletes before).
+  async function deleteJob(jobId) {
+    const url = Storage.getSettings().appsScriptUrl;
+    if (!jobId || !url || !url.includes('script.google.com')) return { success: false, skipped: true };
+    try {
+      const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'deleteJob', data: { jobId } }) });
+      await _readScriptResponse(response);
+      return { success: true };
+    } catch (error) { return { success: false, error: error.message }; }
+  }
+
   // ────────────────────────────────────────────
   // HELPERS
   // ────────────────────────────────────────────
@@ -212,6 +236,7 @@ const SyncManager = (() => {
     syncAll,
     testConnection,
     queueJob,
+    deleteJob,
     isSyncing,
   };
 
