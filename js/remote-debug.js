@@ -2,7 +2,7 @@
 // Works in both app context and service worker context
 
 const RemoteDebug = {
-  enabled: true, // Toggle to disable remote logging
+  enabled: false, // Off in production: it POSTed every UI event to the self-hosted debug stack. Flip on only while debugging.
   deviceId: null,
   sessionId: null,
   queue: [], // Offline queue for failed requests

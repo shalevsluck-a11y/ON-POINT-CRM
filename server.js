@@ -114,7 +114,10 @@ app.use((_req, res, next) => {
   next();
 });
 
-app.use(express.static(path.join(__dirname), {
+// Only the files the app actually loads are public. Everything else at the repo
+// root (server.js, .git, .secrets, migrations, backups, docs) stays private.
+const PUBLIC_ASSET = /^\/(?:index\.html|sw\.js|manifest\.json|offline\.html|clear-cache\.html|apple-touch-icon(?:-precomposed)?\.png|js\/[\w.-]+\.js|css\/[\w.-]+\.css|assets\/[\w.-]+|public\/sounds\/[\w.-]+\.mp3)$/;
+const staticHandler = express.static(path.join(__dirname), {
   setHeaders(res, filePath) {
     // SW headers are set by nginx, don't duplicate
     if (filePath.endsWith('sw.js')) {
@@ -148,7 +151,12 @@ app.use(express.static(path.join(__dirname), {
       return;
     }
   },
-}));
+});
+app.use((req, res, next) => {
+  if (req.path === '/' || PUBLIC_ASSET.test(req.path)) return staticHandler(req, res, next);
+  if (/\.[A-Za-z0-9]{1,6}$/.test(req.path)) return res.status(404).end(); // file-looking path not on the list
+  next();
+});
 
 // Admin endpoints
 app.post('/admin/create-user', rateLimit({ max: 20, windowMs: 60_000 }), async (req, res) => {
@@ -240,7 +248,7 @@ app.post('/admin/create-user', rateLimit({ max: 20, windowMs: 60_000 }), async (
   }
 });
 
-app.delete('/admin/delete-user/:id', async (req, res) => {
+app.delete('/admin/delete-user/:id', rateLimit({ max: 10, windowMs: 60_000 }), async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
@@ -348,7 +356,7 @@ app.post('/auth/magic-session', rateLimit({ max: 30, windowMs: 60_000 }), async 
     }
 
     if (profileError || !profile) {
-      console.error(`[MAGIC SESSION] ❌ Login failed for: ${magic_token}`);
+      console.error(`[MAGIC SESSION] ❌ Login failed for: ${String(magic_token).slice(0, 4)}…`);
       return res.status(401).json({ error: 'Invalid login code' });
     }
 
@@ -399,117 +407,6 @@ app.post('/auth/magic-session', rateLimit({ max: 30, windowMs: 60_000 }), async 
     });
   } catch (error) {
     console.error(`[MAGIC SESSION] Error:`, error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Apply migration 027 - fix notification trigger
-app.post('/admin/apply-migration-027', async (req, res) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ error: 'Missing authorization header' });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('id, role')
-      .eq('magic_token', token)
-      .single();
-
-    if (!profile || profile.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin only' });
-    }
-
-    console.log('[MIGRATION 027] Fixing notification triggers...');
-
-    // Read migration file
-    const fs = require('fs');
-    const sql = fs.readFileSync('./supabase/migrations/027_fix_notification_trigger_job_id.sql', 'utf8');
-
-    // Execute each function separately
-    const functions = sql.split('CREATE OR REPLACE FUNCTION');
-
-    for (let i = 1; i < functions.length; i++) {
-      const func = 'CREATE OR REPLACE FUNCTION' + functions[i].split(';')[0] + ';';
-      console.log(`[MIGRATION 027] Executing function ${i}...`);
-
-      const { error } = await supabaseAdmin.rpc('exec_sql', { query: func });
-      if (error) {
-        console.error(`[MIGRATION 027] Error:`, error);
-        // Try direct query
-        const { error: queryError } = await supabaseAdmin.from('_migrations').insert({ sql: func });
-        if (queryError) {
-          throw new Error(`Failed to execute function ${i}: ${error.message}`);
-        }
-      }
-    }
-
-    console.log('[MIGRATION 027] Migration applied successfully!');
-
-    res.json({
-      success: true,
-      message: 'Migration 027 applied - notification triggers fixed'
-    });
-  } catch (error) {
-    console.error('[MIGRATION 027] Error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Debug endpoint: check for duplicate magic tokens
-app.get('/admin/debug-tokens', async (req, res) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ error: 'Missing authorization header' });
-    }
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('id, role')
-      .eq('magic_token', token)
-      .single();
-
-    if (!profile || profile.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin only' });
-    }
-
-    // Get all profiles with their magic tokens
-    const { data: allProfiles } = await supabaseAdmin
-      .from('profiles')
-      .select('id, name, email, magic_token')
-      .order('created_at', { ascending: false });
-
-    // Find duplicates
-    const tokenMap = {};
-    const duplicates = [];
-    allProfiles.forEach(p => {
-      if (p.magic_token) {
-        if (tokenMap[p.magic_token]) {
-          duplicates.push({
-            token: p.magic_token.substring(0, 10) + '...',
-            users: [tokenMap[p.magic_token], { id: p.id, name: p.name, email: p.email }]
-          });
-        } else {
-          tokenMap[p.magic_token] = { id: p.id, name: p.name, email: p.email };
-        }
-      }
-    });
-
-    res.json({
-      totalProfiles: allProfiles.length,
-      profilesWithTokens: allProfiles.filter(p => p.magic_token).length,
-      duplicates: duplicates.length > 0 ? duplicates : 'None',
-      recentUsers: allProfiles.slice(0, 10).map(p => ({
-        name: p.name,
-        email: p.email,
-        tokenPrefix: p.magic_token ? p.magic_token.substring(0, 10) + '...' : 'null'
-      }))
-    });
-  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
@@ -690,6 +587,9 @@ app.post('/api/save-job', rateLimit({ max: 120, windowMs: 60_000 }), async (req,
     if (!job || !job.jobId) {
       return res.status(400).json({ error: 'job object with jobId required' });
     }
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(String(job.jobId))) {
+      return res.status(400).json({ error: 'Invalid jobId' });
+    }
 
     const role = profile.role;
     const isTechOrContractor = role === 'tech' || role === 'contractor';
@@ -708,17 +608,22 @@ app.post('/api/save-job', rateLimit({ max: 120, windowMs: 60_000 }), async (req,
 
     // Tech/contractor: partial update only (status field)
     if (isTechOrContractor) {
-      const { error: updateError } = await supabaseDirectAdmin
+      const { data: techRows, error: updateError } = await supabaseDirectAdmin
         .from('jobs')
         .update({
           status: job.status,
           updated_at: new Date().toISOString(),
         })
-        .eq('job_id', job.jobId);
+        .eq('job_id', job.jobId)
+        .eq('assigned_tech_id', user.id) // a tech may only touch jobs assigned to them
+        .select('job_id');
 
       if (updateError) {
         console.error('[SAVE JOB] Tech update error:', updateError);
         return res.status(500).json({ error: updateError.message });
+      }
+      if (!techRows || techRows.length === 0) {
+        return res.status(403).json({ error: 'Not your job' });
       }
 
       console.log('[SAVE JOB] ✅ Tech/contractor job updated:', job.jobId);
@@ -802,7 +707,7 @@ app.post('/api/save-job', rateLimit({ max: 120, windowMs: 60_000 }), async (req,
 });
 
 // Delete job endpoint (deletes from correct project)
-app.delete('/api/delete-job/:jobId', async (req, res) => {
+app.delete('/api/delete-job/:jobId', rateLimit({ max: 30, windowMs: 60_000 }), async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
@@ -814,6 +719,11 @@ app.delete('/api/delete-job/:jobId', async (req, res) => {
 
     if (authError || !user) {
       return res.status(401).json({ error: 'Invalid auth token' });
+    }
+
+    const { data: delProfile } = await supabaseAdmin.from('profiles').select('role').eq('id', user.id).single();
+    if (!delProfile || delProfile.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin only' });
     }
 
     const jobId = req.params.jobId;
@@ -881,6 +791,7 @@ app.get('/api/load-jobs', async (req, res) => {
     // Tech/contractor get limited view, admin/dispatcher get full view
     const tableName = isTechOrContractor ? 'jobs_limited' : 'jobs';
     let query = supabaseDirectAdmin.from(tableName).select('*');
+    if (role === 'tech') query = query.eq('assigned_tech_id', user.id);
 
     // Contractor/Dispatcher filtering: only jobs matching their assigned lead source
     if (role === 'contractor') {
@@ -1005,7 +916,7 @@ app.get('/api/load-settings', async (req, res) => {
 });
 
 // Save settings endpoint
-app.post('/api/save-settings', async (req, res) => {
+app.post('/api/save-settings', rateLimit({ max: 30, windowMs: 60_000 }), async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) {
@@ -1122,124 +1033,7 @@ app.post('/api/test-push', async (req, res) => {
   }
 });
 
-// Diagnostic endpoint to check trigger status
-app.get('/api/diagnostic/trigger-status', async (req, res) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ error: 'Unauthorized - missing auth token' });
-    }
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    if (authError || !user) {
-      return res.status(401).json({ error: 'Invalid auth token' });
-    }
-    console.log('[DIAGNOSTIC] Checking trigger status...');
-
-    const diagnostics = {
-      timestamp: new Date().toISOString(),
-      checks: {}
-    };
-
-    // Check 1: pg_net extension
-    const { data: pgNetData, error: pgNetError } = await supabaseAdmin.rpc('pg_extension_check', {});
-
-    if (pgNetError) {
-      // Extension check function doesn't exist, create inline SQL check
-      const { data: extData, error: extError } = await supabaseAdmin
-        .from('pg_extension')
-        .select('extname, extversion')
-        .eq('extname', 'pg_net')
-        .maybeSingle();
-
-      diagnostics.checks.pg_net = {
-        exists: !!extData && !extError,
-        version: extData?.extversion || null,
-        error: extError?.message || null
-      };
-    } else {
-      diagnostics.checks.pg_net = pgNetData;
-    }
-
-    // Check 2: Trigger exists (query via raw SQL if possible)
-    try {
-      const { data: triggerData, error: triggerError } = await supabaseAdmin.rpc('check_trigger_status', {});
-
-      diagnostics.checks.trigger = {
-        exists: !!triggerData && !triggerError,
-        data: triggerData,
-        error: triggerError?.message || null
-      };
-    } catch (e) {
-      diagnostics.checks.trigger = {
-        exists: 'unknown',
-        error: 'Cannot query system catalogs via RPC - manual SQL needed'
-      };
-    }
-
-    // Check 3: App config
-    const { data: configData, error: configError } = await supabaseAdmin
-      .from('app_config')
-      .select('key, value')
-      .in('key', ['supabase_url', 'service_role_key']);
-
-    diagnostics.checks.app_config = {
-      exists: !!configData && !configError,
-      supabase_url: configData?.find(c => c.key === 'supabase_url')?.value || null,
-      has_service_role_key: !!configData?.find(c => c.key === 'service_role_key')?.value,
-      error: configError?.message || null
-    };
-
-    // Check 4: Recent test jobs
-    const { data: jobsData, error: jobsError } = await supabaseAdmin
-      .from('jobs')
-      .select('job_id, customer_name, created_by, created_at')
-      .or('job_id.like.moc%,job_id.like.DIAGNOSTIC_%')
-      .order('created_at', { ascending: false })
-      .limit(5);
-
-    diagnostics.checks.test_jobs = {
-      count: jobsData?.length || 0,
-      jobs: jobsData || [],
-      error: jobsError?.message || null
-    };
-
-    // Check 5: Test trigger manually
-    console.log('[DIAGNOSTIC] Attempting manual trigger test...');
-    const testJobId = `DIAGNOSTIC_${Date.now()}`;
-
-    const { data: insertData, error: insertError } = await supabaseAdmin
-      .from('jobs')
-      .insert({
-        job_id: testJobId,
-        customer_name: 'Trigger Diagnostic Test',
-        created_by: '8b2d9042-501e-408d-b260-64e0b08a555f', // dispatcher "de"
-        status: 'new',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single();
-
-    diagnostics.checks.manual_trigger_test = {
-      job_created: !!insertData && !insertError,
-      job_id: testJobId,
-      job_data: insertData,
-      error: insertError?.message || null,
-      note: 'Check edge function logs for invocation within 5 seconds'
-    };
-
-    console.log('[DIAGNOSTIC] ✅ Diagnostics complete:', JSON.stringify(diagnostics, null, 2));
-    res.json(diagnostics);
-
-  } catch (error) {
-    console.error('[DIAGNOSTIC] ❌ Exception:', error.message);
-    res.status(500).json({
-      error: error.message,
-      stack: error.stack
-    });
-  }
-});
+app.get('/healthz', (_req, res) => res.json({ ok: true, uptime: Math.round(process.uptime()) }));
 
 // SPA fallback — all routes serve index.html
 app.get('*', (req, res) => {
@@ -1251,7 +1045,7 @@ app.get('*', (req, res) => {
 // Parse-only: returns fields for the operator to confirm. Never writes to the DB.
 // ── AI add-job: parse a messy or labelled lead into a structured job via Haiku ──
 // Parse-only: returns fields for the operator to confirm. Never writes to the DB.
-app.post('/api/ai-parse-job', async (req, res) => {
+app.post('/api/ai-parse-job', rateLimit({ max: 30, windowMs: 60_000 }), async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
@@ -1348,7 +1142,7 @@ app.post('/api/ai-parse-job', async (req, res) => {
 // One Haiku call per message. Returns a PROPOSED action for the client to
 // confirm — it never writes to the DB itself. Cheap + safe.
 // ── AI ASSISTANT (Pointy) — full job control with confirm-before-write ──
-app.post('/api/ai-assistant', async (req, res) => {
+app.post('/api/ai-assistant', rateLimit({ max: 30, windowMs: 60_000 }), async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader) return res.status(401).json({ error: 'Unauthorized' });
@@ -1485,6 +1279,6 @@ app.post('/api/ai-assistant', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '127.0.0.1', () => {
   console.log(`On Point CRM running on port ${PORT}`);
 });

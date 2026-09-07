@@ -2,3 +2,9 @@
 docs/VAPID_KEYS.txt
 .secrets/
 .anthropic*
+node_modules/
+playwright-report/
+test-results/
+debug-screenshots/
+*.bak
+*.bak-*

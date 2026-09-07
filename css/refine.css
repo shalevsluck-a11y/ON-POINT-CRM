@@ -387,7 +387,7 @@ h1, .page-title { letter-spacing: -0.03em; font-weight: 800; }
 /* Job detail: Estimate / Lost buttons — big, bold, colored */
 .status-action-row { display:flex !important; gap:10px !important; margin:0 0 12px !important; }
 .status-action-btn.sab-est, .status-action-btn.sab-lst, .status-action-btn.sab-reopen { flex:1 !important; padding:13px !important; border-radius:14px !important; font-weight:800 !important; font-size:15px !important; border:none !important; }
-.sab-est { background:var(--st-estimate-bg) !important; color:var(--st-estimate) !important; }
+.sab-est { background:var(--st-estimate-bg) !important; color:#7c4a00 !important; } /* 6.3:1 on the cream chip; the token amber was 1.8:1 */
 .sab-lst { background:var(--st-lost-bg) !important; color:var(--st-lost) !important; }
 .sab-reopen { background:rgba(34,197,94,0.14) !important; color:#16a34a !important; }
 .sab-est.current { background:var(--st-estimate) !important; color:#fff !important; }
@@ -440,3 +440,6 @@ h1, .page-title { letter-spacing: -0.03em; font-weight: 800; }
 .cal-cell.cal-selected .cal-day-count { background:rgba(255,255,255,.9); color:var(--color-primary); }
 .cal-cell:active { transform:scale(.93); }
 .cal-picker-today { width:100%; margin-top:12px; padding:13px; border:none; border-radius:14px; background:var(--color-primary); color:#fff; font-weight:800; font-size:15px; cursor:pointer; }
+
+/* Header date: token grey was 3.6:1 on white; this is 4.8:1 */
+.header-date { color:#6b7280 !important; opacity:1 !important; }
