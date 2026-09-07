@@ -42,7 +42,7 @@ async function pointy(page, text, { confirm = false } = {}) {
   const before = await page.evaluate(() => (document.querySelector('main').innerText.match(/✦/g) || []).length);
   const msg = page.getByPlaceholder(/Message Pointy/);
   await msg.fill(text); await msg.press('Enter');
-  await page.waitForFunction(b => (document.querySelector('main').innerText.match(/✦/g) || []).length > b, before, { timeout: 45000 });
+  await page.waitForFunction(b => { const t = document.querySelector('main').innerText; return (t.match(/✦/g) || []).length > b && !/Pointy is thinking/.test(t); }, before, { timeout: 60000 });
   await sleep(1200);
   if (confirm) {
     const btn = page.locator('button.pointy-btn-do').last();

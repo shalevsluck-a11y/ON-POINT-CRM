@@ -39,13 +39,17 @@ const SyncManager = (() => {
         throw new Error(`HTTP ${response.status}`);
       }
 
-      Storage.saveJob({ ...job, syncStatus: 'synced', syncedAt: new Date().toISOString() });
+      // Mark the CURRENT cached job, not the snapshot we were handed: the create flow syncs
+      // a copy taken at save time, and writing that copy back a few seconds later erased
+      // an Estimate / Mark Lost the user had made in between.
+      const current = Storage.getJobById(job.jobId) || job;
+      Storage.saveJob({ ...current, syncStatus: 'synced', syncedAt: new Date().toISOString() });
       Storage.removeFromSyncQueue(job.jobId);
 
       return { success: true };
     } catch (error) {
       console.warn(`Sync failed for job ${job.jobId}:`, error.message);
-      Storage.saveJob({ ...job, syncStatus: 'error' });
+      Storage.saveJob({ ...(Storage.getJobById(job.jobId) || job), syncStatus: 'error' });
       return { success: false, error: error.message };
     }
   }
