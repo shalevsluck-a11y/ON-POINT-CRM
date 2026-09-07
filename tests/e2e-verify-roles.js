@@ -151,10 +151,18 @@ async function lastBubble(page) {
   await page.locator('#invite-name').fill('QA Dispatcher');
   await page.locator('#invite-submit-btn').click();
   await page.locator('#invite-success-body').waitFor({ state: 'visible', timeout: 20000 });
-  const successText = await page.locator('#invite-success-body').innerText();
-  const dispCode = (successText.match(/DISPATCHER-[A-Z0-9]{4}/) || [])[0];
-  ok('owner: Create Dispatcher gives a login code', !!dispCode, dispCode || successText.slice(0, 120));
   await page.screenshot({ path: SHOT + '/qa-owner-invite.png' });
+  // The success screen shares the code over WhatsApp; capture the share text instead of clicking through.
+  let shareUrl = null;
+  await ownerCtx.route(/wa\.me|whatsapp\.com/, r => { shareUrl = r.request().url(); r.abort(); });
+  const onPopup = p2 => { try { shareUrl = shareUrl || p2.url(); p2.close(); } catch (e) {} };
+  ownerCtx.on('page', onPopup);
+  await page.getByRole('button', { name: /WhatsApp/ }).click().catch(() => {});
+  await sleep(2000);
+  ownerCtx.off('page', onPopup); await ownerCtx.unroute(/wa\.me|whatsapp\.com/);
+  let dispCode = (decodeURIComponent(shareUrl || '').match(/DISPATCHER-[A-Z0-9]{4}/) || [])[0];
+  if (!dispCode) { await page.evaluate(() => App.navigate('settings')); await sleep(1500); dispCode = ((await page.locator('#admin-users-section').innerText().catch(() => '')).match(/DISPATCHER-[A-Z0-9]{4}/) || [])[0]; }
+  ok('owner: Create Dispatcher gives a login code', !!dispCode, dispCode || ('share=' + (shareUrl || 'none').slice(0, 80)));
   await page.evaluate(() => { try { document.getElementById('invite-modal').classList.add('hidden'); } catch (e) {} });
   const users = await page.evaluate(async () => { const r = await SupabaseClient.rpc('get_users_for_admin'); return (r.data || []).map(u => u.name + ':' + u.role); });
   ok('owner: users list shows the dispatcher', users.some(u => u.startsWith('QA Dispatcher:dispatcher')), users.join(', '));
@@ -163,7 +171,7 @@ async function lastBubble(page) {
   const dCtx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const d = await dCtx.newPage(); const derrs = []; d.on('pageerror', e => derrs.push(e.message));
   let dOK = false;
-  try { await login(d, dispCode); dOK = true; } catch (e) { ok('dispatcher login', false, e.message); }
+  if (!dispCode) ok('dispatcher login', false, 'no code captured'); else try { await login(d, dispCode); dOK = true; } catch (e) { ok('dispatcher login', false, e.message); }
   if (dOK) {
     const dme = await d.evaluate(() => Auth.getUser() && (Auth.getUser().name + '/' + Auth.getUser().role));
     ok('dispatcher login', dme === 'QA Dispatcher/dispatcher', dme);
@@ -193,7 +201,7 @@ async function lastBubble(page) {
     await d.evaluate(() => App.navigate('settings')); await sleep(1200);
     const adminSectionHidden = await d.evaluate(() => { const el = document.getElementById('admin-users-section'); return !el || el.classList.contains('hidden') || getComputedStyle(el).display === 'none' || el.innerText.trim() === ''; });
     ok('dispatcher: no user-management section', adminSectionHidden);
-    await d.evaluate(() => Auth.logout()); await sleep(1500);
+    await d.evaluate(() => App.logout()); await sleep(2500);
     const afterLogout = await d.evaluate(() => ({ jobsKey: localStorage.getItem('op_jobs'), token: localStorage.getItem('magic_token') }));
     ok('dispatcher: logout clears cached jobs + code', !afterLogout.jobsKey && !afterLogout.token);
     ok('dispatcher: no page errors', derrs.length === 0, derrs.slice(0, 2).join(' | '));
@@ -207,7 +215,7 @@ async function lastBubble(page) {
   ok('cleanup: QA jobs deleted on the server', !srvEnd.names.some(n => /DELETE ME/.test(n)), 'server n=' + srvEnd.n + ' (started ' + srv0.n + ')');
   const dispId = await page.evaluate(async () => { const r = await SupabaseClient.rpc('get_users_for_admin'); const u = (r.data || []).find(x => x.name === 'QA Dispatcher'); return u && u.id; });
   if (dispId) {
-    const delStatus = await page.evaluate(async (id, code) => { const r = await fetch('/admin/delete-user/' + id, { method: 'DELETE', headers: { Authorization: 'Bearer ' + code } }); return r.status; }, dispId, OWNER_CODE);
+    const delStatus = await page.evaluate(async ({ id, code }) => { const r = await fetch('/admin/delete-user/' + id, { method: 'DELETE', headers: { Authorization: 'Bearer ' + code } }); return r.status; }, { id: dispId, code: OWNER_CODE });
     const usersEnd = await page.evaluate(async () => { const r = await SupabaseClient.rpc('get_users_for_admin'); return (r.data || []).map(u => u.name); });
     ok('cleanup: QA Dispatcher deleted', delStatus === 200 && !usersEnd.includes('QA Dispatcher'), 'status ' + delStatus + ' users=' + usersEnd.join(','));
   }
