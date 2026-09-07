@@ -281,6 +281,7 @@ const DB = (() => {
   }
 
   async function _upsertJobRemote(job) {
+    const sentStamp = job.updatedAt;
     console.log('[DB] _upsertJobRemote - Starting for job', job.jobId);
 
     // Use server endpoint (bypasses custom domain routing to correct project)
@@ -299,6 +300,16 @@ const DB = (() => {
     });
 
     const result = await response.json();
+    // Re-stamp the local copy with the SERVER's updated_at. Local edits are stamped with
+    // the device clock; realtime events carry the server clock. A device a few seconds
+    // behind made a late INSERT event look newer than the user's edit and overwrite it.
+    if (response.ok && result && result.data && result.data.updated_at) {
+      const local = Storage.getJobById(job.jobId);
+      const localTs = local && local.updatedAt ? new Date(local.updatedAt).getTime() : 0;
+      if (!local || local.updatedAt === sentStamp || localTs <= new Date(result.data.updated_at).getTime()) {
+        Storage.saveJob({ ...(local || job), updatedAt: result.data.updated_at });
+      }
+    }
 
     if (!response.ok) {
       console.error('[DB] _upsertJobRemote - Save FAILED:', result);

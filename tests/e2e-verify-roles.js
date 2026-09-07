@@ -86,9 +86,10 @@ async function lastBubble(page) {
   await page.getByRole('button', { name: 'Estimate' }).click();
   await page.locator('#est-amount').waitFor({ timeout: 8000 });
   await page.locator('#est-amount').fill('450');
-  await page.getByRole('button', { name: 'Save Estimate' }).click(); await sleep(2500);
+  await page.getByRole('button', { name: 'Save Estimate' }).click(); await sleep(3500);
   let st = await page.evaluate(id => DB.getJobById(id).status, j1.jobId);
-  ok('owner: Estimate → follow_up', st === 'follow_up', st);
+  let srvEst = await page.evaluate(async id => { const s = await SupabaseClient.auth.getSession(); const r = await fetch('/api/load-jobs', { headers: { Authorization: 'Bearer ' + s.data.session.access_token } }); const d = await r.json(); const j = d.jobs.find(x => x.job_id === id) || {}; return j.status + '/' + j.estimated_total; }, j1.jobId);
+  ok('owner: Estimate → follow_up (cache and server agree, $450)', st === 'follow_up' && srvEst === 'follow_up/450', 'cache=' + st + ' server=' + srvEst);
 
   // Mark lost, then reopen
   await page.evaluate(id => App.setJobStatus(id, 'lost'), j1.jobId); await sleep(3500);
@@ -125,10 +126,17 @@ async function lastBubble(page) {
   ok('owner: Schedule view renders', calVisible);
 
   // Dispatch modal
-  await page.evaluate(id => App.openDispatchModal(id), j1.jobId); await sleep(1200);
-  const dispatchHasWA = await page.evaluate(() => !!document.querySelector('a[href*="wa.me"], a[href*="whatsapp"], a[href^="https://api.whatsapp.com"]') || /whatsapp/i.test(document.body.innerText));
-  ok('owner: Dispatch modal opens with a WhatsApp action', dispatchHasWA);
-  await page.evaluate(() => { try { App.closeModal(); } catch (e) {} });
+  let waUrl = null;
+  await ownerCtx.route(/wa\.me|whatsapp\.com/, r => { waUrl = r.request().url(); r.abort(); });
+  ownerCtx.on('page', async p2 => { try { waUrl = waUrl || p2.url(); await p2.close(); } catch (e) {} });
+  await page.evaluate(id => App.openDispatchModal(id), j1.jobId); await sleep(1000);
+  const choice = page.locator('#dispatch-choice-overlay button:not(#dc-cancel)').first();
+  ok('owner: Dispatch asks full vs limited details first', await choice.count() > 0, await page.locator('#dispatch-choice-overlay').innerText().catch(() => ''));
+  if (await choice.count()) { await choice.click(); await sleep(2500); }
+  const waInDom = await page.evaluate(() => { const a = document.querySelector('a[href*="wa.me"], a[href*="whatsapp"]'); return a ? a.href : null; });
+  ok('owner: Dispatch opens WhatsApp with the job text', !!(waUrl || waInDom), (waUrl || waInDom || '').slice(0, 90));
+  await page.evaluate(() => { try { App.closeModal(); } catch (e) {} const o = document.getElementById('dispatch-choice-overlay'); if (o) o.remove(); });
+  await ownerCtx.unroute(/wa\.me|whatsapp\.com/);
 
   // Pointy write with confirm
   const p1 = await pointy(page, 'add a note to QA TEST DELETE ME: verified by QA', { confirm: true });
