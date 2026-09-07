@@ -470,6 +470,13 @@ const Auth = (() => {
     _currentUser = null;
     _consecutiveRefreshFailures = 0;
     _persistUserIdForSW(null);
+    // Logging out must not leave 147 customers' names, phones and addresses in
+    // localStorage on a shared or lost phone. The cache is rebuilt on next login.
+    try {
+      if (typeof Storage !== 'undefined' && typeof Storage.clearAll === 'function') Storage.clearAll();
+      ['magic_token', 'onpoint-auth-magic_token', 'onpoint-pwa-auth-magic_token', 'onpoint-web-auth-magic_token', 'stay_logged_in']
+        .forEach(k => localStorage.removeItem(k));
+    } catch (e) { console.warn('[Auth.logout] cache clear failed:', e.message); }
   }
 
   // ──────────────────────────────────────────────────────────
