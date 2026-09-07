@@ -20,7 +20,8 @@ const SyncManager = (() => {
     try { json = JSON.parse(text); } catch (e) { json = null; }
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     if (!json || typeof json !== 'object') throw new Error(DEAD_LINK_MSG);
-    if (json.ok === false) throw new Error(json.error || 'Apps Script returned an error');
+    // Newer script replies {ok:false,error}, the deployed older one {success:false,error}.
+    if (json.ok === false || json.success === false) throw new Error(json.error || 'Apps Script returned an error');
     return json;
   }
 
