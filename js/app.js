@@ -6159,9 +6159,12 @@ const App = (() => {
       if (!token) throw new Error('Please sign in again');
 
       // send a compact list of current jobs so Pointy can match by name
+      // Open/estimate jobs first so the cap never drops the ones Pointy is asked about.
+      const _rank = j => (j.status === 'closed' || j.status === 'paid' || j.status === 'lost') ? 1 : 0;
       const jobs = (DB.getJobs() || [])
         .filter(j => j.status !== 'archived')
-        .slice(0, 140)
+        .sort((a, b) => _rank(a) - _rank(b))
+        .slice(0, 150)
         .map(j => { const o = { jobId:j.jobId, customerName:j.customerName, status:j.status, tech:j.assignedTechName, date:j.scheduledDate, phone:j.phone }; if (Auth.isAdmin() && (j.status==='paid'||j.status==='closed')) o.total = j.jobTotal; return o; });
 
       const res = await fetch('/api/ai-assistant', {

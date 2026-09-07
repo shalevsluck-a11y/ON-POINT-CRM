@@ -18,5 +18,8 @@
     "@playwright/test": "^1.59.1",
     "playwright": "^1.59.1",
     "sharp": "^0.33.0"
+  },
+  "overrides": {
+    "qs": "^6.16.0"
   }
 }

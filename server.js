@@ -1222,6 +1222,10 @@ app.post('/api/ai-assistant', rateLimit({ max: 30, windowMs: 60_000 }), async (r
     const safeJobs = jobs; // dispatchers may see balances too (operator rule)
 
     const today = new Date().toISOString().slice(0, 10);
+    // Counting is the one thing the model gets wrong on a 150-line list; do it here.
+    const bucket = s => (s === 'lost') ? 'lost' : (s === 'closed' || s === 'paid') ? 'closed' : (s === 'follow_up') ? 'estimate' : 'open';
+    const counts = { open: 0, estimate: 0, closed: 0, lost: 0 };
+    for (const j of safeJobs) counts[bucket(j.status)]++;
     const jobLines = safeJobs.length
       ? safeJobs.map(j => `- ${j.customerName || '?'} | ${j.status || '?'}${j.tech ? ' | tech:'+j.tech : ''}${j.date ? ' | '+j.date : ''}${(j.total!=null&&j.total!=='') ? ' | $'+j.total : ''} | id:${j.jobId}`).join('\n')
       : '(none)';
@@ -1236,6 +1240,7 @@ app.post('/api/ai-assistant', rateLimit({ max: 30, windowMs: 60_000 }), async (r
       'Status buckets: Open (new/scheduled/in_progress), Estimate (follow_up = quoted, awaiting decision), Closed (closed/paid), Lost.',
       'Lead formats often use labels: Co=company, PDL=reference, N=name, Ph=phone, Addr=address, Desc/Occu=service, Appt=date+time. "Pay 250 by zell" = jobTotal 250, paymentMethod zelle.',
       'DEFAULTS when adding: if no company is named it is On Point (their own); if no tech is named it is the owner himself.',
+      'AUTHORITATIVE COUNTS (computed by the app, use these for any "how many" question): open=' + counts.open + ', estimate=' + counts.estimate + ', closed=' + counts.closed + ', lost=' + counts.lost + '. Open = new/scheduled/in_progress.',
       'CURRENT JOBS (use these exact ids):',
       jobLines,
       'For balance/report questions (what a tech owes, revenue, conversion), compute from the job list: closed/paid jobs have $totals, and each line shows the tech. Show short plain numbers.',
