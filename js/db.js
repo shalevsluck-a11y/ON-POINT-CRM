@@ -493,6 +493,16 @@ const DB = (() => {
     const user = Auth.getUser();
     if (!user) return null;
 
+    // Realtime events can arrive out of order (the INSERT for a job after two UPDATEs
+    // to it). Applying an older row over a newer local edit showed "scheduled" on a job
+    // the user had just marked lost. Only accept rows at least as new as what we hold.
+    const _isStaleEvent = incoming => {
+      const local = Storage.getJobById(incoming.jobId);
+      if (!local || !local.updatedAt || !incoming.updatedAt) return false;
+      const stale = new Date(incoming.updatedAt).getTime() < new Date(local.updatedAt).getTime();
+      if (stale) console.log('[Realtime] ignoring stale event for', incoming.jobId, incoming.updatedAt, '<', local.updatedAt);
+      return stale;
+    };
     const channel = supa.channel('public:jobs');
 
     // Everyone sees all jobs (admin + dispatcher only)
@@ -505,6 +515,7 @@ const DB = (() => {
           } catch (e) { console.warn('[Debug] log failed:', e); }
         }
         const job = _dbRowToJob(payload.new, {}, true, false);
+        if (_isStaleEvent(job)) return;
         Storage.saveJob(job);
 
         // FIX 1: Don't play sound/notify if I created this job
@@ -524,6 +535,7 @@ const DB = (() => {
           } catch (e) { console.warn('[Debug] log failed:', e); }
         }
         const job = _dbRowToJob(payload.new, {}, true, false);
+        if (_isStaleEvent(job)) return;
         Storage.saveJob(job);
         if (onUpdate) onUpdate(job);
       })
