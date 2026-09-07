@@ -154,8 +154,8 @@ const staticHandler = express.static(path.join(__dirname), {
 });
 app.use((req, res, next) => {
   if (req.path === '/' || PUBLIC_ASSET.test(req.path)) return staticHandler(req, res, next);
-  if (/\.[A-Za-z0-9]{1,6}$/.test(req.path)) return res.status(404).end(); // file-looking path not on the list
-  next();
+  if (/^\/(?:api|auth|admin|healthz)(?:\/|$)/.test(req.path)) return next();
+  res.status(404).end(); // the app has no client-side routes: anything else is not ours to serve
 });
 
 // Admin endpoints
@@ -1035,11 +1035,8 @@ app.post('/api/test-push', async (req, res) => {
 
 app.get('/healthz', (_req, res) => res.json({ ok: true, uptime: Math.round(process.uptime()) }));
 
-// SPA fallback — all routes serve index.html
-app.get('*', (req, res) => {
-  res.set('Cache-Control', 'no-cache, must-revalidate');
-  res.sendFile(path.join(__dirname, 'index.html'));
-});
+// Unknown API-prefixed GETs: 404 (the root and the whitelisted assets are served above).
+app.get('*', (_req, res) => res.status(404).json({ error: 'Not found' }));
 
 // ── AI add-job: parse a messy pasted lead into a structured job via Haiku ──
 // Parse-only: returns fields for the operator to confirm. Never writes to the DB.
