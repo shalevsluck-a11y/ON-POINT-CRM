@@ -478,7 +478,10 @@ const Balance = (function() {
         const parts = job.scheduledDate.split('-');
         jobDate = new Date(parts[0], parts[1] - 1, parts[2], 12, 0, 0);
       } else {
-        jobDate = new Date(job.updatedAt);
+        // No schedule or payment: use when the lead came in (what the row shows).
+        // Never updatedAt - every local save (even a Sheets sync) restamps it, which
+        // pulled April/May lost jobs into "this week" (2026-09-14).
+        jobDate = new Date(job.createdAt || job.updatedAt);
       }
 
       // Set range dates to noon for fair comparison
