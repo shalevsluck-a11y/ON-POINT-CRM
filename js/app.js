@@ -4219,7 +4219,7 @@ const App = (() => {
 
     // Hide admin-only settings sections from tech/contractor
     ['settings-myinfo-card','settings-tax-card','settings-tech-card','settings-sources-card',
-     'settings-data-card','settings-defaultstate-group'].forEach(id => {
+     'settings-data-card','settings-defaultstate-group','settings-ai-card'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.classList.toggle('hidden', !isAdmin);
     });
@@ -4235,7 +4235,28 @@ const App = (() => {
     if (isAdmin) {
       _renderTechList(s.technicians);
       _renderSourceList(s.leadSources);
+      _loadAiUsage();
       _renderAdminUsersSection();
+    }
+  }
+
+  // Settings > Pointy Usage: what Pointy has cost (server sums the ai_usage log).
+  async function _loadAiUsage() {
+    const el = document.getElementById('ai-usage-body');
+    if (!el) return;
+    try {
+      const session = await SupabaseClient.auth.getSession();
+      const token = session?.data?.session?.access_token;
+      const res = await fetch('/api/ai-usage', { headers: { 'Authorization': 'Bearer ' + token } });
+      const u = await res.json();
+      if (!res.ok) throw new Error(u.error || 'failed');
+      const money = n => '$' + n.toFixed(n < 1 ? 3 : 2);
+      el.innerHTML = 'Today: <b>' + money(u.today.cost) + '</b> (' + u.today.calls + ' messages)<br>' +
+        'This month: <b>' + money(u.month.cost) + '</b> (' + u.month.calls + ')<br>' +
+        'All time: <b>' + money(u.all.cost) + '</b> (' + u.all.calls + ')<br>' +
+        '<small>' + (u.since ? 'Counting since ' + u.since : 'Counting starts with your next Pointy message') + '</small>';
+    } catch (e) {
+      el.textContent = 'Could not load Pointy usage.';
     }
   }
 

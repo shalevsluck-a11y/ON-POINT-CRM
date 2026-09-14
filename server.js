@@ -1,6 +1,7 @@
 const express = require('express');
 const path    = require('path');
 const { createClient } = require('@supabase/supabase-js');
+const { nyDateLine, aiCost, summarizeUsage } = require('./src/ai-usage');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -28,6 +29,16 @@ const supabaseDirectAdmin = createClient(
   process.env.SUPABASE_DIRECT_SERVICE_KEY,
   { auth: { persistSession: false } }
 );
+
+// Pointy cost log: one ai_usage row per Anthropic call (service role only). Never blocks the reply.
+function logAiUsage(endpoint, userId, usage) {
+  if (!usage) return;
+  supabaseDirectAdmin.from('ai_usage').insert({
+    endpoint, user_id: userId,
+    input_tokens: usage.input_tokens || 0, output_tokens: usage.output_tokens || 0,
+    cost_usd: aiCost(usage)
+  }).then(({ error }) => { if (error) console.error('[ai-usage] log failed', error.message); });
+}
 
 app.disable('x-powered-by');
 app.use(express.json());
@@ -1035,6 +1046,30 @@ app.post('/api/test-push', async (req, res) => {
 
 app.get('/healthz', (_req, res) => res.json({ ok: true, uptime: Math.round(process.uptime()) }));
 
+// Pointy cost for the Settings card (owner only). Rows start 2026-09-13; older spend is only in the Anthropic Console.
+app.get('/api/ai-usage', rateLimit({ max: 30, windowMs: 60_000 }), async (req, res) => {
+  try {
+    const token = (req.headers.authorization || '').replace('Bearer ', '');
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !user) return res.status(401).json({ error: 'Invalid auth token' });
+    const { data: profile } = await supabaseAdmin.from('profiles').select('role').eq('id', user.id).single();
+    if (!profile || profile.role !== 'admin') return res.status(403).json({ error: 'Owner only' });
+    // ponytail: sums every row in JS (PostgREST pages at 1000); fine for years at Pointy's volume, move to a SQL view if it ever gets slow.
+    const rows = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabaseDirectAdmin.from('ai_usage').select('created_at,cost_usd').order('id').range(from, from + 999);
+      if (error) throw error;
+      rows.push(...data);
+      if (data.length < 1000) break;
+    }
+    return res.json(summarizeUsage(rows));
+  } catch (e) {
+    console.error('[ai-usage] error', e);
+    return res.status(500).json({ error: 'Could not load usage' });
+  }
+});
+
 // Unknown API-prefixed GETs: 404 (the root and the whitelisted assets are served above).
 app.get('*', (_req, res) => res.status(404).json({ error: 'Not found' }));
 
@@ -1087,7 +1122,6 @@ app.post('/api/ai-parse-job', rateLimit({ max: 30, windowMs: 60_000 }), async (r
       }
     };
 
-    const today = new Date().toISOString().slice(0, 10);
     const system = [
       'You extract ONE structured garage-door service job from a pasted lead for On Point garage-door CRM.',
       'The lead is either free text (a customer message) OR a labelled block using these labels:',
@@ -1097,7 +1131,7 @@ app.post('/api/ai-parse-job', rateLimit({ max: 30, windowMs: 60_000 }), async (r
       'Mapping: N->customerName; Ph->phone (digits only); Addr-> split into address (street only), city, state (2-letter), zip;',
       'Desc + Occu -> a short description; Appt-> scheduledDate (ISO YYYY-MM-DD) and scheduledTime (the window as written);',
       'Co->company; PDL->reference.',
-      'Today is ' + today + '. Interpret dates like "08/26" as that month/day in the current year.',
+      nyDateLine() + ' Interpret dates like "08/26" as that month/day in the current year; "today"/"tomorrow" mean the dates given here.',
       'Call create_job exactly once. NEVER invent data - use an empty string for anything not clearly present.'
     ].join(' ');
 
@@ -1124,6 +1158,7 @@ app.post('/api/ai-parse-job', rateLimit({ max: 30, windowMs: 60_000 }), async (r
       return res.status(502).json({ error: 'AI request failed (' + anthropicRes.status + ')' });
     }
     const data = await anthropicRes.json();
+    logAiUsage('parse-job', user.id, data.usage);
     const toolUse = (data.content || []).find(b => b.type === 'tool_use');
     if (!toolUse) return res.status(502).json({ error: 'AI did not return a job' });
 
@@ -1221,7 +1256,6 @@ app.post('/api/ai-assistant', rateLimit({ max: 30, windowMs: 60_000 }), async (r
     // already omits it, but never trust the client with someone else's cut).
     const safeJobs = jobs; // dispatchers may see balances too (operator rule)
 
-    const today = new Date().toISOString().slice(0, 10);
     // Counting is the one thing the model gets wrong on a 150-line list; do it here.
     const bucket = s => (s === 'lost') ? 'lost' : (s === 'closed' || s === 'paid') ? 'closed' : (s === 'follow_up') ? 'estimate' : 'open';
     const counts = { open: 0, estimate: 0, closed: 0, lost: 0 };
@@ -1244,7 +1278,7 @@ app.post('/api/ai-assistant', rateLimit({ max: 30, windowMs: 60_000 }), async (r
       'CURRENT JOBS (use these exact ids):',
       jobLines,
       'For balance/report questions (what a tech owes, revenue, conversion), compute from the job list: closed/paid jobs have $totals, and each line shows the tech. Show short plain numbers.',
-      'RULES: Use exactly one tool when the user wants to CHANGE something. For selective bulk requests like "mark all open lost except Natalie and Brett", call bulk_action with filter and excludeNames — never refuse this, it is supported. For QUESTIONS or REPORTS (totals, counts, per-tech balances, what to follow up), do NOT call a tool: answer directly in short plain sentences using the job list. Money answers: only totals present in the list. Today is ' + today + '. Never invent data. No markdown symbols like ** in replies.'
+      'RULES: Use exactly one tool when the user wants to CHANGE something. For selective bulk requests like "mark all open lost except Natalie and Brett", call bulk_action with filter and excludeNames — never refuse this, it is supported. For QUESTIONS or REPORTS (totals, counts, per-tech balances, what to follow up), do NOT call a tool: answer directly in short plain sentences using the job list. Money answers: only totals present in the list. ' + nyDateLine() + ' Resolve "today", "tomorrow" and weekday names from these dates (scheduledDate is YYYY-MM-DD). Never invent data. No markdown symbols like ** in replies.'
     ].join('\n\n');
 
     const msgs = [];
@@ -1266,6 +1300,7 @@ app.post('/api/ai-assistant', rateLimit({ max: 30, windowMs: 60_000 }), async (r
       return res.status(502).json({ error: 'AI request failed (' + anthropicRes.status + ')' });
     }
     const data = await anthropicRes.json();
+    logAiUsage('assistant', user.id, data.usage);
     const toolUse = (data.content || []).find(b => b.type === 'tool_use');
     const textBlock = (data.content || []).find(b => b.type === 'text');
     if (!toolUse) {
