@@ -225,6 +225,8 @@ const PushSubscriptionEnforcer = (() => {
     // Remove existing banner if any
     const existing = document.getElementById('push-denied-banner');
     if (existing) return; // Already showing
+    // Dismissed this visit: the fixed banner covers the header (Settings, bell, user menu) on phones.
+    try { if (sessionStorage.getItem('pushBannerDismissed')) return; } catch (e) {}
 
     const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
 
@@ -237,7 +239,7 @@ const PushSubscriptionEnforcer = (() => {
       right: 0;
       background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
       color: white;
-      padding: 12px 16px;
+      padding: 12px 48px 12px 16px;
       z-index: 9999;
       font-size: 14px;
       line-height: 1.5;
@@ -269,6 +271,17 @@ const PushSubscriptionEnforcer = (() => {
         </div>
       `;
     }
+
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Dismiss');
+    close.textContent = '✕';
+    close.style.cssText = 'position:absolute;top:4px;right:4px;min-width:44px;min-height:44px;background:none;border:0;color:#fff;font-size:20px;cursor:pointer;';
+    close.onclick = () => {
+      try { sessionStorage.setItem('pushBannerDismissed', '1'); } catch (e) {}
+      banner.remove();
+    };
+    banner.appendChild(close);
 
     document.body.prepend(banner);
   }

@@ -4251,7 +4251,7 @@ const App = (() => {
       const u = await res.json();
       if (!res.ok) throw new Error(u.error || 'failed');
       const money = n => '$' + n.toFixed(n < 1 ? 3 : 2);
-      el.innerHTML = 'Today: <b>' + money(u.today.cost) + '</b> (' + u.today.calls + ' messages)<br>' +
+      el.innerHTML = 'Today: <b>' + money(u.today.cost) + '</b> (' + u.today.calls + (u.today.calls === 1 ? ' message' : ' messages') + ')<br>' +
         'This month: <b>' + money(u.month.cost) + '</b> (' + u.month.calls + ')<br>' +
         'All time: <b>' + money(u.all.cost) + '</b> (' + u.all.calls + ')<br>' +
         '<small>' + (u.since ? 'Counting since ' + u.since : 'Counting starts with your next Pointy message') + '</small>';
