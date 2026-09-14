@@ -1,7 +1,7 @@
 const express = require('express');
 const path    = require('path');
 const { createClient } = require('@supabase/supabase-js');
-const { nyDateLine, aiCost, summarizeUsage } = require('./src/ai-usage');
+const { nyDateLine, snapToNamedWeekday, aiCost, summarizeUsage } = require('./src/ai-usage');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -1131,7 +1131,7 @@ app.post('/api/ai-parse-job', rateLimit({ max: 30, windowMs: 60_000 }), async (r
       'Mapping: N->customerName; Ph->phone (digits only); Addr-> split into address (street only), city, state (2-letter), zip;',
       'Desc + Occu -> a short description; Appt-> scheduledDate (ISO YYYY-MM-DD) and scheduledTime (the window as written);',
       'Co->company; PDL->reference.',
-      nyDateLine() + ' Interpret dates like "08/26" as that month/day in the current year; "today"/"tomorrow" mean the dates given here.',
+      nyDateLine() + ' Interpret dates like "08/26" as that month/day in the current year. Copy scheduledDate from the calendar, never calculate it: a weekday name ("Sunday", "this Sunday", "next Sunday") is the first calendar date after today with that weekday; "Sunday after next" is 7 days after that.',
       'Call create_job exactly once. NEVER invent data - use an empty string for anything not clearly present.'
     ].join(' ');
 
@@ -1162,7 +1162,9 @@ app.post('/api/ai-parse-job', rateLimit({ max: 30, windowMs: 60_000 }), async (r
     const toolUse = (data.content || []).find(b => b.type === 'tool_use');
     if (!toolUse) return res.status(502).json({ error: 'AI did not return a job' });
 
-    return res.json({ job: toolUse.input, usage: data.usage || null });
+    const job = toolUse.input || {};
+    if (job.scheduledDate) job.scheduledDate = snapToNamedWeekday(text, job.scheduledDate);
+    return res.json({ job, usage: data.usage || null });
   } catch (e) {
     console.error('[ai-parse-job] error', e);
     return res.status(500).json({ error: e.message || 'AI parse failed' });
@@ -1278,7 +1280,7 @@ app.post('/api/ai-assistant', rateLimit({ max: 30, windowMs: 60_000 }), async (r
       'CURRENT JOBS (use these exact ids):',
       jobLines,
       'For balance/report questions (what a tech owes, revenue, conversion), compute from the job list: closed/paid jobs have $totals, and each line shows the tech. Show short plain numbers.',
-      'RULES: Use exactly one tool when the user wants to CHANGE something. For selective bulk requests like "mark all open lost except Natalie and Brett", call bulk_action with filter and excludeNames — never refuse this, it is supported. For QUESTIONS or REPORTS (totals, counts, per-tech balances, what to follow up), do NOT call a tool: answer directly in short plain sentences using the job list. Money answers: only totals present in the list. ' + nyDateLine() + ' Resolve "today", "tomorrow" and weekday names from these dates (scheduledDate is YYYY-MM-DD). Never invent data. No markdown symbols like ** in replies.'
+      'RULES: Use exactly one tool when the user wants to CHANGE something. For selective bulk requests like "mark all open lost except Natalie and Brett", call bulk_action with filter and excludeNames — never refuse this, it is supported. For QUESTIONS or REPORTS (totals, counts, per-tech balances, what to follow up), do NOT call a tool: answer directly in short plain sentences using the job list. Money answers: only totals present in the list. ' + nyDateLine() + ' DATES: copy scheduledDate (YYYY-MM-DD) from the calendar, never calculate it. A weekday name ("Sunday", "this Sunday", "next Sunday") means the first calendar date after today with that weekday; "Sunday after next" or "a week from Sunday" is 7 days after that. Never invent data. No markdown symbols like ** in replies.'
     ].join('\n\n');
 
     const msgs = [];
@@ -1309,7 +1311,11 @@ app.post('/api/ai-assistant', rateLimit({ max: 30, windowMs: 60_000 }), async (r
     if (!isAdmin && ADMIN_ONLY_TOOLS.includes(toolUse.name)) {
       return res.json({ action: 'chat', reply: 'That one is owner-only — ask ' + 'the owner to do it in Settings.', usage: data.usage || null });
     }
-    return res.json({ action: toolUse.name, params: toolUse.input, reply: textBlock ? textBlock.text : '', usage: data.usage || null });
+    const params = toolUse.input || {};
+    if ((toolUse.name === 'add_job' || toolUse.name === 'update_job') && params.scheduledDate) {
+      params.scheduledDate = snapToNamedWeekday(message, params.scheduledDate);
+    }
+    return res.json({ action: toolUse.name, params, reply: textBlock ? textBlock.text : '', usage: data.usage || null });
   } catch (e) {
     console.error('[ai-assistant] error', e);
     return res.status(500).json({ error: e.message || 'assistant failed' });

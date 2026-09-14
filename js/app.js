@@ -6208,6 +6208,13 @@ const App = (() => {
     }
   }
 
+  // "2026-09-20" -> "Sun, Sep 20": a bare ISO date hid Pointy's wrong-weekday mistakes.
+  function _pointyDay(iso) {
+    const [y, m, d] = String(iso || '').split('-').map(Number);
+    if (!y || !m || !d) return String(iso || '');
+    return new Date(y, m - 1, d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+
   function _pointyRenderAction(data) {
     try { if (data && data.action && data.action !== 'chat') { _pointyHistory.push({ role:'assistant', text: '[proposed ' + data.action + ']' }); } } catch(e){}
     const a = data.action, p = data.params || {};
@@ -6223,7 +6230,7 @@ const App = (() => {
       body = `<b>${_esc(p.customerName||'?')}</b>` +
         (p.phone ? ' · ' + _esc(p.phone) : '') +
         (p.address ? `<br>${_esc([p.address, p.city, p.state, p.zip].filter(Boolean).join(', '))}` : '') +
-        (p.scheduledDate ? `<br>${_esc(p.scheduledDate)} ${_esc(p.scheduledTime||'')}` : '') +
+        (p.scheduledDate ? `<br><b>${_esc(_pointyDay(p.scheduledDate))}</b> ${_esc(p.scheduledTime||'')}` : '') +
         (p.description ? `<br><i>${_esc(p.description)}</i>` : '');
     } else if (a === 'close_job') {
       const job = p.jobId ? DB.getJobById(p.jobId) : null;
@@ -6271,7 +6278,7 @@ const App = (() => {
         (!p.jobId ? '<br><span class="pointy-warn">&#9888; Couldn\'t find that job.</span>' : '');
     } else if (a === 'update_job') {
       const F = ['scheduledDate','scheduledTime','address','city','state','zip','description','notes','phone'];
-      const ch = F.filter(k => p[k]).map(k => k.replace('scheduled','') + ': ' + _esc(p[k])).join('<br>');
+      const ch = F.filter(k => p[k]).map(k => k.replace('scheduled','') + ': ' + _esc(k === 'scheduledDate' ? _pointyDay(p[k]) : p[k])).join('<br>');
       title = 'Update job';
       body = '<b>' + _esc(p.customerName||'?') + '</b><br>' + (ch || 'No changes detected') +
         (!p.jobId ? '<br><span class="pointy-warn">&#9888; Couldn\'t find that job.</span>' : '');
