@@ -5799,7 +5799,7 @@ const App = (() => {
         [job.city, [job.state, job.zip].filter(Boolean).join(' ')].filter(Boolean).join(', '), // "Landing, NJ 07850"
         when,
         service ? '*' + service + '*' : ''
-      ].filter(Boolean).join('\n');
+      ].filter(Boolean).join('\n\n'); // blank line between each (operator 2026-09-15)
     }
     const fullAddress = [job.address, job.city, job.state, job.zip].filter(Boolean).join(', ') || 'See job details';
     const dateLine = job.scheduledDate ? _formatDispatchDate(job.scheduledDate) : 'TBD';
