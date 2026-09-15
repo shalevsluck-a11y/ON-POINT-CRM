@@ -32,6 +32,11 @@ for (const leak of ['NEW JOB', 'Ref', 'ANA', 'OSORIO', 'Mansel', '9738762863', '
 }
 // multi-line description stays ONE bold line; stray * can't break the bold
 assert.strictEqual(build({ ...job, description: 'new spring\n**urgent**' }, 'half'), 'Landing, NJ 07850\nTuesday, Jan 15, 2030  ·  2-5 PM\n*new spring urgent*');
+// today / tomorrow: just the word, not the date (operator 2026-09-15)
+const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const now = new Date(), tmrw = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+assert.strictEqual(build({ ...job, scheduledDate: iso(now) }, 'half').split('\n')[1], 'TODAY  ·  2-5 PM');
+assert.strictEqual(build({ ...job, scheduledDate: iso(tmrw) }, 'half').split('\n')[1], 'TOMORROW  ·  2-5 PM');
 // no time yet: date alone; no description: two lines
 assert.strictEqual(build({ ...job, scheduledTime: '', description: '' }, 'half'), 'Landing, NJ 07850\nTuesday, Jan 15, 2030');
 

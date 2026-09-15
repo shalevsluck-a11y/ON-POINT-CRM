@@ -5789,7 +5789,9 @@ const App = (() => {
     // no header, name, street, phone, notes or payout (operator 2026-09-15). Exactly 3 lines:
     // city + ZIP / date + time / service in WhatsApp bold (joined to one line so *...* holds).
     if (mode === 'half') {
-      const when = [job.scheduledDate ? _formatDispatchDate(job.scheduledDate) : '',
+      // Just "TODAY" / "TOMORROW"; the full date only when it's further out.
+      const day = job.scheduledDate ? _formatDispatchDate(job.scheduledDate) : '';
+      const when = [(/^(TODAY|TOMORROW)\b/.exec(day) || [day])[1] || day,
                     job.scheduledTime ? _formatTime(job.scheduledTime) : ''].filter(Boolean).join('  ·  ');
       const service = String(job.description ? _scrubPhones(job.description) : '')
         .replace(/\*/g, '').replace(/\s*\n\s*/g, ' ').trim();
