@@ -5785,8 +5785,19 @@ const App = (() => {
   }
 
   function _buildWhatsAppTechDispatchMsg(job, mode) {
-    const half = (mode === 'half');
-    const fullAddress = (half ? [job.city, job.state, job.zip] : [job.address, job.city, job.state, job.zip]).filter(Boolean).join(', ') || 'See job details';
+    // 50% = for a sub deciding on the job: what it is, where (city + ZIP), when. Nothing else -
+    // no header, name, street, phone, notes or payout (operator 2026-09-15). Service line in
+    // WhatsApp bold (*...*), one pair per line - WhatsApp can't bold across a line break.
+    if (mode === 'half') {
+      const service = String(job.description ? _scrubPhones(job.description) : '')
+        .split('\n').map(l => l.replace(/\*/g, '').trim()).filter(Boolean).map(l => '*' + l + '*').join('\n');
+      return [
+        service,
+        [job.city, job.zip].filter(Boolean).join(' '),
+        job.scheduledDate ? _formatDispatchDate(job.scheduledDate) : ''
+      ].filter(Boolean).join('\n');
+    }
+    const fullAddress = [job.address, job.city, job.state, job.zip].filter(Boolean).join(', ') || 'See job details';
     const dateLine = job.scheduledDate ? _formatDispatchDate(job.scheduledDate) : 'TBD';
     const timeLine = job.scheduledTime ? _formatTime(job.scheduledTime) : 'TBD';
     const ref = (job.jobId || '').slice(-6).toUpperCase();
@@ -5799,7 +5810,7 @@ const App = (() => {
 
     lines.push('*Customer*');
     lines.push(job.customerName || '—');
-    if (!half && job.phone) lines.push(job.phone);
+    if (job.phone) lines.push(job.phone);
     lines.push('');
 
     lines.push('*Address*');
@@ -5812,13 +5823,13 @@ const App = (() => {
     if (job.description) {
       lines.push('');
       lines.push('*Description*');
-      lines.push(half ? _scrubPhones(job.description) : job.description);
+      lines.push(job.description);
     }
 
     if (job.notes) {
       lines.push('');
       lines.push('*Notes*');
-      lines.push(half ? _scrubPhones(job.notes) : job.notes);
+      lines.push(job.notes);
     }
 
     // Always recompute so tech sees the correct cut even if storage has stale split
@@ -5855,7 +5866,7 @@ const App = (() => {
       '<div class="dispatch-choice-title">' + (action === 'copy' ? 'Copy ' : 'Dispatch ') + _esc(job.customerName || '') + '</div>' +
       '<div class="dispatch-choice-sub">How much detail to send?</div>' +
       '<button class="dispatch-choice-btn" id="dc-full"><b>100%</b><span>Full details — address &amp; phone</span></button>' +
-      '<button class="dispatch-choice-btn" id="dc-half"><b>50%</b><span>City &amp; ZIP only — no street, no phone</span></button>' +
+      '<button class="dispatch-choice-btn" id="dc-half"><b>50%</b><span>Description, city, ZIP &amp; date only</span></button>' +
       '<button class="dispatch-choice-cancel" id="dc-cancel">Cancel</button>';
     ov.appendChild(sheet);
     document.body.appendChild(ov);
@@ -6250,7 +6261,7 @@ const App = (() => {
       const d = (p.detail == 50) ? 50 : 100;
       title = 'Dispatch ' + d + '%';
       body = '<b>' + _esc(p.customerName||'?') + '</b><br>' +
-        (d === 50 ? 'City &amp; ZIP only — no street, no phone' : 'Full details — address &amp; phone') +
+        (d === 50 ? 'Description, city, ZIP &amp; date only' : 'Full details — address &amp; phone') +
         (!p.jobId ? '<br><span class="pointy-warn">&#9888; Couldn\'t find that job.</span>' : '');
     } else if (a === 'assign_tech') {
       title = 'Assign tech';
