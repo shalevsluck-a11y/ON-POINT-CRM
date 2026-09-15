@@ -6145,10 +6145,12 @@ const App = (() => {
     while((m = re.exec(s)) && toks.length < 2){ toks.push({ h: parseInt(m[1],10), ap: m[3]||null }); }
     if(!toks.length) return '';
     const ap = (toks.find(t=>t.ap)||{}).ap || null;
-    const conv = (t)=>{ let h=t.h; const a=t.ap||ap; if(a==='pm'&&h<12)h+=12; if(a==='am'&&h===12)h=0; return h; };
+    // No am/pm written: 1-5 is afternoon ("2-5" = 2-5 PM), 6-11 morning - same rule as parser.js _to24Ambiguous.
+    const conv = (t)=>{ let h=t.h; const a=t.ap||ap; if(a==='pm'&&h<12)h+=12; if(a==='am'&&h===12)h=0; if(!a&&h>=1&&h<=5)h+=12; return h; };
     let x = conv(toks[0]);
     let y = toks[1] ? conv(toks[1]) : x+2;
     if(!Number.isFinite(x)) return '';
+    if(Number.isFinite(y) && y<=x && y+12>x && y+12<=23) y += 12; // "11am-2" -> 11-14
     if(!Number.isFinite(y) || y<=x) y = x+2;
     x=Math.max(0,Math.min(23,x)); y=Math.max(0,Math.min(23,y));
     return String(x).padStart(2,'0')+'-'+String(y).padStart(2,'0');
@@ -6230,7 +6232,7 @@ const App = (() => {
       body = `<b>${_esc(p.customerName||'?')}</b>` +
         (p.phone ? ' · ' + _esc(p.phone) : '') +
         (p.address ? `<br>${_esc([p.address, p.city, p.state, p.zip].filter(Boolean).join(', '))}` : '') +
-        (p.scheduledDate ? `<br><b>${_esc(_pointyDay(p.scheduledDate))}</b> ${_esc(p.scheduledTime||'')}` : '') +
+        (p.scheduledDate ? `<br><b>${_esc(_pointyDay(p.scheduledDate))}</b> ${_esc(p.scheduledTime ? _formatTime(_normTimeWindow(p.scheduledTime)) : '')}` : '') +
         (p.description ? `<br><i>${_esc(p.description)}</i>` : '');
     } else if (a === 'close_job') {
       const job = p.jobId ? DB.getJobById(p.jobId) : null;
@@ -6278,7 +6280,7 @@ const App = (() => {
         (!p.jobId ? '<br><span class="pointy-warn">&#9888; Couldn\'t find that job.</span>' : '');
     } else if (a === 'update_job') {
       const F = ['scheduledDate','scheduledTime','address','city','state','zip','description','notes','phone'];
-      const ch = F.filter(k => p[k]).map(k => k.replace('scheduled','') + ': ' + _esc(k === 'scheduledDate' ? _pointyDay(p[k]) : p[k])).join('<br>');
+      const ch = F.filter(k => p[k]).map(k => k.replace('scheduled','') + ': ' + _esc(k === 'scheduledDate' ? _pointyDay(p[k]) : k === 'scheduledTime' ? _formatTime(_normTimeWindow(p[k])) : p[k])).join('<br>');
       title = 'Update job';
       body = '<b>' + _esc(p.customerName||'?') + '</b><br>' + (ch || 'No changes detected') +
         (!p.jobId ? '<br><span class="pointy-warn">&#9888; Couldn\'t find that job.</span>' : '');

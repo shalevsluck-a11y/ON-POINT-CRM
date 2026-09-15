@@ -55,6 +55,20 @@ function snapToNamedWeekday(message, iso, now = new Date()) {
   return out;
 }
 
+// Keep every price the user typed ("99$", "$99", "$1,200") in the job details - Haiku
+// dropped "-99$" from "cleaning+ inspection -99$". Adds only amounts not already there.
+function keepPrices(message, description) {
+  const desc = String(description || '').trim();
+  const amounts = [...String(message || '').matchAll(/\$\s?(\d[\d,]*(?:\.\d{1,2})?)|(\d[\d,]*(?:\.\d{1,2})?)\s?\$/g)]
+    .map(m => m[1] || m[2]);
+  const missing = [...new Set(amounts)].filter(a => {
+    const n = a.replace(/\./g, '\\.');
+    return !new RegExp('\\$\\s?' + n + '(?!\\d)|(?<!\\d)' + n + '\\s?\\$').test(desc);
+  });
+  if (!missing.length) return desc;
+  return (desc ? desc + ' - ' : '') + missing.map(a => '$' + a).join(', ');
+}
+
 // Claude Haiku 4.5 list prices, USD per million tokens
 // (platform.claude.com/docs/en/about-claude/pricing, checked 2026-09-13).
 const HAIKU_45 = { input: 1, output: 5, cacheWrite: 1.25, cacheRead: 0.10 };
@@ -81,4 +95,4 @@ function summarizeUsage(rows, now = new Date()) {
   return out;
 }
 
-module.exports = { nyDate, nyCalendar, nyDateLine, snapToNamedWeekday, aiCost, summarizeUsage, HAIKU_45 };
+module.exports = { nyDate, nyCalendar, nyDateLine, snapToNamedWeekday, keepPrices, aiCost, summarizeUsage, HAIKU_45 };

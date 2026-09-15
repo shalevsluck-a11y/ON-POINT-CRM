@@ -1,7 +1,7 @@
 const express = require('express');
 const path    = require('path');
 const { createClient } = require('@supabase/supabase-js');
-const { nyDateLine, snapToNamedWeekday, aiCost, summarizeUsage } = require('./src/ai-usage');
+const { nyDateLine, snapToNamedWeekday, keepPrices, aiCost, summarizeUsage } = require('./src/ai-usage');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -1114,7 +1114,7 @@ app.post('/api/ai-parse-job', rateLimit({ max: 30, windowMs: 60_000 }), async (r
           zip:           { type: 'string', description: '5-digit ZIP (from "Addr:")' },
           scheduledDate: { type: 'string', description: 'ISO date YYYY-MM-DD from "Appt:", else empty' },
           scheduledTime: { type: 'string', description: 'Time window as written, e.g. "12:00 PM - 2:00 PM" (from "Appt:"), else empty' },
-          description:   { type: 'string', description: 'Short summary of the service, combining "Desc:" and "Occu:"' },
+          description:   { type: 'string', description: 'Short summary of the service, combining "Desc:" and "Occu:", plus any price written (e.g. "$99")' },
           company:       { type: 'string', description: 'Company / lead source (the "Co:" field), else empty' },
           reference:     { type: 'string', description: 'Lead reference code (the "PDL:" field), else empty' }
         },
@@ -1164,6 +1164,7 @@ app.post('/api/ai-parse-job', rateLimit({ max: 30, windowMs: 60_000 }), async (r
 
     const job = toolUse.input || {};
     if (job.scheduledDate) job.scheduledDate = snapToNamedWeekday(text, job.scheduledDate);
+    job.description = keepPrices(text, job.description);
     return res.json({ job, usage: data.usage || null });
   } catch (e) {
     console.error('[ai-parse-job] error', e);
@@ -1206,7 +1207,7 @@ app.post('/api/ai-assistant', rateLimit({ max: 30, windowMs: 60_000 }), async (r
           customerName:{type:'string'}, phone:{type:'string',description:'digits only'},
           address:{type:'string',description:'street only'}, city:{type:'string'}, state:{type:'string'}, zip:{type:'string'},
           scheduledDate:{type:'string',description:'ISO YYYY-MM-DD or empty'}, scheduledTime:{type:'string'},
-          description:{type:'string'}, company:{type:'string'}, reference:{type:'string'} }, required:['customerName'] } },
+          description:{type:'string',description:'the service AND any price the user wrote, e.g. "cleaning + inspection $99"'}, company:{type:'string'}, reference:{type:'string'} }, required:['customerName'] } },
       { name: 'close_job', description: 'Close a job and record payment.',
         input_schema: { type:'object', properties:{
           jobId:{type:'string',description:'EXACT jobId from the list; empty if unsure'}, customerName:{type:'string'},
@@ -1280,7 +1281,7 @@ app.post('/api/ai-assistant', rateLimit({ max: 30, windowMs: 60_000 }), async (r
       'CURRENT JOBS (use these exact ids):',
       jobLines,
       'For balance/report questions (what a tech owes, revenue, conversion), compute from the job list: closed/paid jobs have $totals, and each line shows the tech. Show short plain numbers.',
-      'RULES: Use exactly one tool when the user wants to CHANGE something. For selective bulk requests like "mark all open lost except Natalie and Brett", call bulk_action with filter and excludeNames — never refuse this, it is supported. For QUESTIONS or REPORTS (totals, counts, per-tech balances, what to follow up), do NOT call a tool: answer directly in short plain sentences using the job list. Money answers: only totals present in the list. ' + nyDateLine() + ' DATES: copy scheduledDate (YYYY-MM-DD) from the calendar, never calculate it. A weekday name ("Sunday", "this Sunday", "next Sunday") means the first calendar date after today with that weekday; "Sunday after next" or "a week from Sunday" is 7 days after that. Never invent data. No markdown symbols like ** in replies.'
+      'RULES: Use exactly one tool when the user wants to CHANGE something. For selective bulk requests like "mark all open lost except Natalie and Brett", call bulk_action with filter and excludeNames — never refuse this, it is supported. For QUESTIONS or REPORTS (totals, counts, per-tech balances, what to follow up), do NOT call a tool: answer directly in short plain sentences using the job list. Money answers: only totals present in the list. ' + nyDateLine() + ' A time window with no am/pm ("2-5", "12-2") is daytime: 1-5 means PM; pass scheduledTime as written. Keep every price the user writes ("99$", "$99") in the job description. DATES: copy scheduledDate (YYYY-MM-DD) from the calendar, never calculate it. A weekday name ("Sunday", "this Sunday", "next Sunday") means the first calendar date after today with that weekday; "Sunday after next" or "a week from Sunday" is 7 days after that. Never invent data. No markdown symbols like ** in replies.'
     ].join('\n\n');
 
     const msgs = [];
@@ -1314,6 +1315,10 @@ app.post('/api/ai-assistant', rateLimit({ max: 30, windowMs: 60_000 }), async (r
     const params = toolUse.input || {};
     if ((toolUse.name === 'add_job' || toolUse.name === 'update_job') && params.scheduledDate) {
       params.scheduledDate = snapToNamedWeekday(message, params.scheduledDate);
+    }
+    // Prices into details. On update only when the model already rewrites description - never blank one out.
+    if (toolUse.name === 'add_job' || (toolUse.name === 'update_job' && params.description)) {
+      params.description = keepPrices(message, params.description);
     }
     return res.json({ action: toolUse.name, params, reply: textBlock ? textBlock.text : '', usage: data.usage || null });
   } catch (e) {
