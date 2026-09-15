@@ -5786,15 +5786,17 @@ const App = (() => {
 
   function _buildWhatsAppTechDispatchMsg(job, mode) {
     // 50% = for a sub deciding on the job: what it is, where (city + ZIP), when. Nothing else -
-    // no header, name, street, phone, notes or payout (operator 2026-09-15). Service line in
-    // WhatsApp bold (*...*), one pair per line - WhatsApp can't bold across a line break.
+    // no header, name, street, phone, notes or payout (operator 2026-09-15). Exactly 3 lines:
+    // city + ZIP / date + time / service in WhatsApp bold (joined to one line so *...* holds).
     if (mode === 'half') {
+      const when = [job.scheduledDate ? _formatDispatchDate(job.scheduledDate) : '',
+                    job.scheduledTime ? _formatTime(job.scheduledTime) : ''].filter(Boolean).join('  ·  ');
       const service = String(job.description ? _scrubPhones(job.description) : '')
-        .split('\n').map(l => l.replace(/\*/g, '').trim()).filter(Boolean).map(l => '*' + l + '*').join('\n');
+        .replace(/\*/g, '').replace(/\s*\n\s*/g, ' ').trim();
       return [
-        service,
-        [job.city, job.zip].filter(Boolean).join(' '),
-        job.scheduledDate ? _formatDispatchDate(job.scheduledDate) : ''
+        [job.city, [job.state, job.zip].filter(Boolean).join(' ')].filter(Boolean).join(', '), // "Landing, NJ 07850"
+        when,
+        service ? '*' + service + '*' : ''
       ].filter(Boolean).join('\n');
     }
     const fullAddress = [job.address, job.city, job.state, job.zip].filter(Boolean).join(', ') || 'See job details';
