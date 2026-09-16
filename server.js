@@ -1,7 +1,7 @@
 const express = require('express');
 const path    = require('path');
 const { createClient } = require('@supabase/supabase-js');
-const { nyDateLine, snapToNamedWeekday, keepPrices, aiCost, summarizeUsage } = require('./src/ai-usage');
+const { nyDate, nyDateLine, snapToNamedWeekday, keepPrices, aiCost, summarizeUsage } = require('./src/ai-usage');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -1281,7 +1281,7 @@ app.post('/api/ai-assistant', rateLimit({ max: 30, windowMs: 60_000 }), async (r
       'CURRENT JOBS (use these exact ids):',
       jobLines,
       'For balance/report questions (what a tech owes, revenue, conversion), compute from the job list: closed/paid jobs have $totals, and each line shows the tech. Show short plain numbers.',
-      'RULES: Use exactly one tool when the user wants to CHANGE something. For selective bulk requests like "mark all open lost except Natalie and Brett", call bulk_action with filter and excludeNames — never refuse this, it is supported. For QUESTIONS or REPORTS (totals, counts, per-tech balances, what to follow up), do NOT call a tool: answer directly in short plain sentences using the job list. Money answers: only totals present in the list. ' + nyDateLine() + ' A time window with no am/pm ("2-5", "12-2") is daytime: 1-5 means PM; pass scheduledTime as written. Keep every price the user writes ("99$", "$99") in the job description. DATES: copy scheduledDate (YYYY-MM-DD) from the calendar, never calculate it. A weekday name ("Sunday", "this Sunday", "next Sunday") means the first calendar date after today with that weekday; "Sunday after next" or "a week from Sunday" is 7 days after that. Never invent data. No markdown symbols like ** in replies.'
+      'RULES: Use exactly one tool when the user wants to CHANGE something. For selective bulk requests like "mark all open lost except Natalie and Brett", call bulk_action with filter and excludeNames — never refuse this, it is supported. For QUESTIONS or REPORTS (totals, counts, per-tech balances, what to follow up), do NOT call a tool: answer directly in short plain sentences using the job list. Money answers: only totals present in the list. ' + nyDateLine() + ' A time window with no am/pm ("2-5", "12-2") is daytime: 1-5 means PM; pass scheduledTime as written. Keep every price the user writes ("99$", "$99") in the job description. DATES: copy scheduledDate (YYYY-MM-DD) from the calendar, never calculate it. A weekday name ("Sunday", "this Sunday", "next Sunday") means the first calendar date after today with that weekday; "Sunday after next" or "a week from Sunday" is 7 days after that. A job added with no date at all is TODAY. Never invent data. No markdown symbols like ** in replies.'
     ].join('\n\n');
 
     const msgs = [];
@@ -1316,6 +1316,9 @@ app.post('/api/ai-assistant', rateLimit({ max: 30, windowMs: 60_000 }), async (r
     if ((toolUse.name === 'add_job' || toolUse.name === 'update_job') && params.scheduledDate) {
       params.scheduledDate = snapToNamedWeekday(message, params.scheduledDate);
     }
+    // A new job with no date at all is TODAY, so it shows on today's schedule instead of
+    // sitting dateless in Jobs (operator 2026-09-16). The card then shows the date to confirm.
+    if (toolUse.name === 'add_job' && !params.scheduledDate) params.scheduledDate = nyDate(0);
     // Prices into details. On update only when the model already rewrites description - never blank one out.
     if (toolUse.name === 'add_job' || (toolUse.name === 'update_job' && params.description)) {
       params.description = keepPrices(message, params.description);

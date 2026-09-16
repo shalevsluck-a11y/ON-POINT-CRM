@@ -3135,6 +3135,7 @@ const App = (() => {
     const updated = Auth.isTech()
       ? {
           ...job,
+          scheduledDate: job.scheduledDate || _todayStr(), // a job closed with no date is today
           status:        'closed', // Tech closes to 'closed', admin marks as 'paid'
           jobTotal:      total,
           partsCost:     parts,
@@ -3148,6 +3149,7 @@ const App = (() => {
         }
       : {
           ...job,
+          scheduledDate: job.scheduledDate || _todayStr(), // a job closed with no date is today
           status:        'paid',
           jobTotal:      total,
           partsCost:     parts,
@@ -6348,11 +6350,12 @@ const App = (() => {
         const settings = DB.getSettings();
         const owner = (settings.technicians||[]).find(t => t.isOwner);
         const job = {
-          jobId: DB.generateId(), status: p.scheduledDate ? 'scheduled' : 'new',
+          jobId: DB.generateId(), status: 'scheduled', // no date = today (below), so always scheduled
           createdBy: Auth.getUser()?.id || null,
           customerName: p.customerName || '', phone: p.phone ? LeadParser.formatPhone(p.phone) : '',
           address: p.address||'', city: p.city||'', state: p.state || settings.defaultState || 'NY', zip: p.zip||'',
-          scheduledDate: p.scheduledDate||'', scheduledTime: _normTimeWindow(p.scheduledTime),
+          // No date given = today, or the job never reaches the Schedule (operator 2026-09-16).
+          scheduledDate: p.scheduledDate || _todayStr(), scheduledTime: _normTimeWindow(p.scheduledTime),
           description: p.description||'', notes: p.reference ? ('Ref: '+p.reference) : '',
           rawLead: '', source: 'my_lead',
           assignedTechId: owner?.id || '', assignedTechName: owner?.name || '', isSelfAssigned: !!owner,
@@ -6370,6 +6373,7 @@ const App = (() => {
         _pointyAppend('bot', `&#9989; Marked <b>${_esc(job.customerName)}</b> as lost.`);
       } else if (a === 'close_job') {
         const job = DB.getJobById(p.jobId); if (!job) throw new Error('Job not found');
+        if (!job.scheduledDate) job.scheduledDate = _todayStr(); // closing a dateless job puts it on today
         const settings = DB.getSettings();
         const calc = PayoutEngine.calculate({
           jobTotal: Number(p.jobTotal)||0, partsCost: Number(p.partsCost)||0,
