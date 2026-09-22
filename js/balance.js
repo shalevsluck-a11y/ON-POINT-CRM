@@ -6,6 +6,7 @@
 
 const Balance = (function() {
   let currentReportType = null;
+  let cameFromAllTechs = false;   // report view reached by tapping a tech in the all-techs breakdown
   let currentReportData = null;
 
   // Range picker state
@@ -192,12 +193,14 @@ const Balance = (function() {
     document.getElementById('balance-options').classList.add('hidden');
     document.getElementById('balance-report').classList.add('hidden');
     currentReportType = null;
+    cameFromAllTechs = false;
   }
 
   function showReportOptions(type) {
     // When the back-arrow on the report view calls this with no arg,
     // keep the previously-chosen report type instead of wiping it.
     if (type) currentReportType = type;
+    cameFromAllTechs = false;
     document.getElementById('balance-menu').classList.add('hidden');
     document.getElementById('balance-options').classList.remove('hidden');
     document.getElementById('balance-report').classList.add('hidden');
@@ -723,8 +726,8 @@ const Balance = (function() {
     return Object.entries(techStats)
       .sort((a, b) => b[1].revenue - a[1].revenue)
       .map(([id, stats]) => `
-        <div class="tech-item">
-          <div class="tech-name">${stats.name}</div>
+        <div class="tech-item" role="button" tabindex="0" style="cursor:pointer" onclick="Balance.openTech('${escapeHtml(id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();Balance.openTech('${escapeHtml(id)}')}">
+          <div class="tech-name" style="display:flex;justify-content:space-between;align-items:center">${escapeHtml(stats.name)}<span aria-hidden="true" style="color:#94a3b8;font-size:18px;line-height:1">›</span></div>
           <div class="tech-stats">
             <span>${stats.jobs} jobs</span>
             <span>Revenue: $${formatMoney(stats.revenue)}</span>
@@ -732,6 +735,33 @@ const Balance = (function() {
           </div>
         </div>
       `).join('');
+  }
+
+  // Tap a tech in the all-techs breakdown -> that tech's own report for the same
+  // dates/status/source. Back returns to the all-techs report; Back from there
+  // goes to the options as before. One level deep, so a flag is enough.
+  function openTech(techId) {
+    const select = document.getElementById('balance-tech-select');
+    if (!select || !techId) return;
+    if (![...select.options].some(o => o.value === techId)) {
+      alert('That tech is no longer in Settings, so there is no report to open.');
+      return;
+    }
+    select.value = techId;
+    cameFromAllTechs = true;
+    generateReport();
+    document.getElementById('balance-report')?.scrollIntoView({ block: 'start' });
+  }
+
+  function back() {
+    if (cameFromAllTechs) {
+      cameFromAllTechs = false;
+      const select = document.getElementById('balance-tech-select');
+      if (select) select.value = '';
+      generateReport();
+      return;
+    }
+    showReportOptions();
   }
 
   function calculateStats(jobs) {
@@ -1218,6 +1248,8 @@ const Balance = (function() {
     showMenu,
     showReportOptions,
     generateReport,
+    openTech,
+    back,
     copyToClipboard,
     shareWhatsApp,
     downloadPDF,
