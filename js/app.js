@@ -6257,7 +6257,10 @@ const App = (() => {
       title = 'Add job';
       body = `<b>${_esc(p.customerName||'?')}</b>` +
         (p.phone ? ' · ' + _esc(p.phone) : '') +
-        (p.address ? `<br>${_esc([p.address, p.city, p.state, p.zip].filter(Boolean).join(', '))}` : '') +
+        // "12 Main St, Pine Island, NY 10969" - shown whenever ANY part is known (a town
+        // with no street used to hide the whole line, 2026-09-21)
+        ((p.address || p.city || p.state || p.zip)
+          ? `<br>${_esc([p.address, p.city].filter(Boolean).join(', ') + (p.state ? ', ' + p.state : '') + (p.zip ? ' ' + p.zip : ''))}` : '') +
         (p.scheduledDate ? `<br><b>${_esc(_pointyDay(p.scheduledDate))}</b> ${_esc(p.scheduledTime ? _formatTime(_normTimeWindow(p.scheduledTime)) : '')}` : '') +
         (p.description ? `<br><i>${_esc(p.description)}</i>` : '');
     } else if (a === 'close_job') {
