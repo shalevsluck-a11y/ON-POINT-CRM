@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="css/components.css?v=20260826-2">
   <link rel="stylesheet" href="css/auth.css?v=20260427-1">
   <link rel="stylesheet" href="css/notification-settings.css?v=20260427-1">
-  <link rel="stylesheet" href="css/balance.css?v=20260906-1">
+  <link rel="stylesheet" href="css/balance.css?v=20260921-b">
   <link rel="stylesheet" href="css/balance-premium.css?v=20260427-1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -653,10 +653,7 @@
         <h1>Reports</h1>
       </div>
       <div class="view-body" style="padding: 16px;">
-        <!-- Quick Reports dashboard (computed live, read-only — does not touch Balance logic) -->
-        <div id="reports-dashboard" class="reports-dashboard" style="margin: 12px 0 18px"></div>
-
-        <!-- Main menu -->
+        <!-- Main menu: the tool first, the quick-numbers dashboard under it -->
         <div id="balance-menu" class="balance-container">
           <div class="balance-card" onclick="Balance.showReportOptions('tech')">
             <div class="balance-card-icon"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
@@ -664,6 +661,10 @@
             <div class="balance-card-desc">What each tech owes you, and why</div>
           </div>
         </div>
+
+        <!-- Quick Reports dashboard (computed live, read-only — does not touch Balance logic).
+             Hidden while the options or a report are open, so those start at the top of the screen. -->
+        <div id="reports-dashboard" class="reports-dashboard" style="margin: 12px 0 18px"></div>
 
         <!-- Report options -->
         <div id="balance-options" class="balance-container hidden">
@@ -724,7 +725,7 @@
               <select id="balance-status" class="balance-select">
                 <option value="all">All Jobs</option>
                 <option value="paid">Paid Only</option>
-                <option value="unpaid">Unpaid Only</option>
+                <option value="unpaid">Open, not paid yet</option>
               </select>
             </div>
 
@@ -1288,7 +1289,7 @@
 <script defer src="js/realtime-manager.js?v=20260427"></script>
 <script defer src="js/offline-queue.js?v=20260427"></script>
 <script defer src="js/optimistic-ui.js?v=20260427"></script>
-<script defer src="js/balance.js?v=20260921-a"></script>
+<script defer src="js/balance.js?v=20260921-b"></script>
 <script defer src="js/app.js?v=20260916-a"></script>
 
 <!-- PWA: Service Worker + Install Prompt -->

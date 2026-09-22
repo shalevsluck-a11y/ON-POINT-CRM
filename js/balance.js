@@ -188,10 +188,17 @@ const Balance = (function() {
     }
   }
 
+  // The quick-numbers dashboard only belongs on the menu. With it above the
+  // options/report the tool started ~900px down the page (2026-09-21).
+  function showDashboard(on) {
+    document.getElementById('reports-dashboard')?.classList.toggle('hidden', !on);
+  }
+
   function showMenu() {
     document.getElementById('balance-menu').classList.remove('hidden');
     document.getElementById('balance-options').classList.add('hidden');
     document.getElementById('balance-report').classList.add('hidden');
+    showDashboard(true);
     currentReportType = null;
     cameFromAllTechs = false;
   }
@@ -204,6 +211,8 @@ const Balance = (function() {
     document.getElementById('balance-menu').classList.add('hidden');
     document.getElementById('balance-options').classList.remove('hidden');
     document.getElementById('balance-report').classList.add('hidden');
+    showDashboard(false);
+    window.scrollTo(0, 0);
 
     document.getElementById('balance-options-title').textContent = 'Balance by Tech';
 
@@ -263,6 +272,8 @@ const Balance = (function() {
       document.getElementById('balance-report-content').innerHTML = reportHTML;
       document.getElementById('balance-options').classList.add('hidden');
       document.getElementById('balance-report').classList.remove('hidden');
+      showDashboard(false);
+      window.scrollTo(0, 0);
 
     } catch (err) {
       console.error('[Balance] Report generation failed:', err);
@@ -499,14 +510,15 @@ const Balance = (function() {
 
       // Filter by payment status
       //   'paid'   → paid_at not null (money was collected)
-      //   'unpaid' → closed completed job that hasn't been paid yet
+      //   'unpaid' → still open: not paid and not lost (new/scheduled/follow-up)
       //   'all'    → every job in the date range, including lost/scheduled
       //              (so the report doesn't silently hide activity)
+      // Until 2026-09-21 'unpaid' required status === 'closed', a status no job
+      // has ever had (they go new → scheduled → paid | lost), so it always showed 0.
       if (status === 'paid') {
         if (!job.paidAt) return false;
       } else if (status === 'unpaid') {
-        if (job.paidAt) return false;
-        if (job.status !== 'closed') return false;
+        if (job.paidAt || job.status === 'paid' || job.status === 'lost') return false;
       }
       // status === 'all' → no extra status filter; show everything
 
@@ -583,18 +595,7 @@ const Balance = (function() {
     let techName = 'All Techs';
 
     if (techId) {
-      console.log('[Balance] Filtering for techId:', techId);
-      console.log('[Balance] Total jobs before tech filter:', jobs.length);
-      jobs.forEach(j => {
-        console.log('[Balance] Job:', j.jobId, 'Tech:', j.assignedTechName, 'TechID:', j.assignedTechId, 'Date:', j.scheduledDate, 'Status:', j.status);
-      });
-
       techJobs = jobs.filter(j => j.assignedTechId === techId);
-      console.log('[Balance] Jobs after tech filter:', techJobs.length);
-      techJobs.forEach(j => {
-        console.log('[Balance] INCLUDED Job:', j.jobId, j.customerName, 'Date:', j.scheduledDate, 'Status:', j.status);
-      });
-
       const settings = DB.getSettings();
       const tech = settings.technicians?.find(t => t.id === techId);
       techName = tech ? tech.name : 'Unknown Tech';
@@ -602,7 +603,7 @@ const Balance = (function() {
 
     const stats = calculateStats(techJobs);
     const periodLabel = dateRange.label;
-    const statusLabel = status === 'all' ? 'All Jobs' : status === 'paid' ? 'Paid Only' : 'Unpaid Only';
+    const statusLabel = status === 'all' ? 'All jobs' : status === 'paid' ? 'Paid only' : 'Open, not paid yet';
 
     // Show lead source for dispatchers or admin-selected filter
     const currentUser = Auth.getUser();
@@ -613,76 +614,57 @@ const Balance = (function() {
     // Calculate company cut (what tech owes company)
     const companyCut = stats.laborTotal - stats.techPayout;
 
+    // One number is the point of this screen - what the tech owes - so it leads.
+    // Everything else is the "why" underneath it. All values are unchanged; the
+    // old "Financial Breakdown" box is folded into the hero + the Tech cut tile.
     let html = `
       <div class="report-header">
-        <h2>Balance by Tech</h2>
+        <h2>${escapeHtml(techName)}</h2>
         <div class="report-meta">
-          ${displaySource ? `
-            <div class="report-meta-item">
-              <span class="report-meta-label">Company:</span>
-              <span class="report-meta-value">${displaySource}</span>
-            </div>
-          ` : ''}
-          <div class="report-meta-item">
-            <span class="report-meta-label">Tech:</span>
-            <span class="report-meta-value">${techName}</span>
-          </div>
-          <div class="report-meta-item">
-            <span class="report-meta-label">Period:</span>
-            <span class="report-meta-value">${periodLabel}</span>
-          </div>
-          <div class="report-meta-item">
-            <span class="report-meta-label">Status:</span>
-            <span class="report-meta-value">${statusLabel}</span>
-          </div>
+          ${displaySource ? `<span class="report-meta-item">${escapeHtml(displaySource)}</span>` : ''}
+          <span class="report-meta-item">${periodLabel}</span>
+          <span class="report-meta-item">${statusLabel}</span>
         </div>
+      </div>
+
+      <div class="report-hero">
+        <div class="report-hero-label">${techId ? 'Owes you' : 'Techs owe you'}</div>
+        <div class="report-hero-value">$${formatMoney(companyCut)}</div>
+        <div class="report-hero-sub">Labor $${formatMoney(stats.laborTotal)} − tech cut $${formatMoney(stats.techPayout)}</div>
       </div>
 
       <div class="report-summary">
         <div class="summary-card">
-          <div class="summary-label">Total Jobs</div>
+          <div class="summary-label">Jobs</div>
           <div class="summary-value">${stats.totalJobs}</div>
-          <div style="font-size:11px;color:#94a3b8;margin-top:4px">${stats.closedJobs} closed</div>
+          <div class="summary-sub">${stats.closedJobs} closed</div>
         </div>
         <div class="summary-card">
-          <div class="summary-label">Total Sales</div>
+          <div class="summary-label">Sales</div>
           <div class="summary-value">$${formatMoney(stats.totalCollected)}</div>
         </div>
         <div class="summary-card">
-          <div class="summary-label">Total Parts</div>
+          <div class="summary-label">Parts</div>
           <div class="summary-value">$${formatMoney(stats.partsCost)}</div>
         </div>
         <div class="summary-card">
-          <div class="summary-label">Labor (Total - Parts)</div>
-          <div class="summary-value">$${formatMoney(stats.laborTotal)}</div>
-        </div>
-      </div>
-
-      <div class="report-breakdown">
-        <h3>Financial Breakdown</h3>
-        <div class="breakdown-row">
-          <span class="breakdown-label">Tech Cut (from Labor)</span>
-          <span class="breakdown-value">$${formatMoney(stats.techPayout)}</span>
-        </div>
-        <div class="breakdown-row total">
-          <span class="breakdown-label" style="font-weight:bold;color:#d32f2f">YOU OWE (COMPANY CUT)</span>
-          <span class="breakdown-value positive">$${formatMoney(companyCut)}</span>
+          <div class="summary-label">Tech cut</div>
+          <div class="summary-value">$${formatMoney(stats.techPayout)}</div>
+          <div class="summary-sub">from labor $${formatMoney(stats.laborTotal)}</div>
         </div>
       </div>
 
       ${!techId ? `
         <div class="report-tech-breakdown">
-          <h3>By Individual Tech</h3>
+          <h3>By tech <span class="report-hint">tap one to open their balance</span></h3>
           ${generateTechBreakdown(jobs)}
         </div>
       ` : ''}
 
-      <div class="report-alert" style="margin-top:20px;background:#e3f2fd;border:1px solid #2196f3">
-        <div class="alert-content">
-          <div class="alert-title" style="color:#1976d2;font-weight:bold">💳 ZELLE PAYMENT</div>
-          <div class="alert-text" style="font-size:16px;font-weight:bold">SERVICE@ONPOINTPRODOORS.COM</div>
-          <div class="alert-text" style="font-size:14px;margin-top:8px;color:#555">Please send a screenshot of your Zelle transfer for our records. Thank you!</div>
-        </div>
+      <div class="report-zelle">
+        <div class="report-zelle-title">💳 Zelle payment</div>
+        <div class="report-zelle-addr">SERVICE@ONPOINTPRODOORS.COM</div>
+        <div class="report-zelle-note">Please send a screenshot of your Zelle transfer for our records. Thank you!</div>
       </div>
 
       ${renderJobsList(techJobs, techId ? `${techName}'s jobs in this report` : 'Jobs in this report')}
@@ -726,13 +708,12 @@ const Balance = (function() {
     return Object.entries(techStats)
       .sort((a, b) => b[1].revenue - a[1].revenue)
       .map(([id, stats]) => `
-        <div class="tech-item" role="button" tabindex="0" style="cursor:pointer" onclick="Balance.openTech('${escapeHtml(id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();Balance.openTech('${escapeHtml(id)}')}">
-          <div class="tech-name" style="display:flex;justify-content:space-between;align-items:center">${escapeHtml(stats.name)}<span aria-hidden="true" style="color:#94a3b8;font-size:18px;line-height:1">›</span></div>
-          <div class="tech-stats">
-            <span>${stats.jobs} jobs</span>
-            <span>Revenue: $${formatMoney(stats.revenue)}</span>
-            <span>Payout: $${formatMoney(stats.payout)}</span>
+        <div class="tech-item" role="button" tabindex="0" onclick="Balance.openTech('${escapeHtml(id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();Balance.openTech('${escapeHtml(id)}')}">
+          <div class="tech-item-main">
+            <div class="tech-name">${escapeHtml(stats.name)}</div>
+            <div class="tech-stats">${stats.jobs} jobs · sales $${formatMoney(stats.revenue)} · cut $${formatMoney(stats.payout)}</div>
           </div>
+          <span class="tech-chev" aria-hidden="true">›</span>
         </div>
       `).join('');
   }
@@ -809,8 +790,8 @@ const Balance = (function() {
       stats.contractorFee += contractorPay;
       stats.ownerPayout += ownerPay;
 
-      // Track unpaid jobs
-      if (!job.paidAt && job.status === 'closed') {
+      // Track unpaid (still open) jobs - same rule as filterJobs 'unpaid'
+      if (!job.paidAt && job.status !== 'paid' && job.status !== 'lost') {
         stats.unpaidJobs++;
         stats.unpaidAmount += jobTotal;
       }
@@ -877,7 +858,7 @@ const Balance = (function() {
       text += `Company: ${_companyLabel}\n`;
       text += `Period: ${periodLabel}\n`;
       text += `Date: ${formatDate(dateRange.start)} - ${formatDate(dateRange.end)}\n`;
-      text += `Status: ${status === 'all' ? 'All Jobs' : status === 'paid' ? 'Paid Only' : 'Unpaid Only'}\n\n`;
+      text += `Status: ${status === 'all' ? 'All Jobs' : status === 'paid' ? 'Paid Only' : 'Open, not paid yet'}\n\n`;
 
       text += `SUMMARY\n`;
       text += `Total Jobs:     ${stats.totalJobs}\n`;
@@ -1060,7 +1041,7 @@ const Balance = (function() {
         if (tech) metaLines.push(`Tech: ${tech.name}`);
       }
       metaLines.push(`Period: ${dateRange.label}  (${formatDate(dateRange.start)} to ${formatDate(dateRange.end)})`);
-      metaLines.push(`Status: ${status === 'all' ? 'All Jobs' : status === 'paid' ? 'Paid Only' : 'Unpaid Only'}`);
+      metaLines.push(`Status: ${status === 'all' ? 'All Jobs' : status === 'paid' ? 'Paid Only' : 'Open, not paid yet'}`);
       metaLines.push(`Total Jobs: ${stats.totalJobs}    Closed Jobs: ${stats.closedJobs}`);
       if (type === 'overall' && singleContrPct !== null && singleTechPct !== null) {
         metaLines.push(`Split: ${companyName} ${singleContrPct}%  /  Tech ${singleTechPct}%`);

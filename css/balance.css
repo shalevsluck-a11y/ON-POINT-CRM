@@ -708,3 +708,69 @@
 .bal-cal-btn-clear { background: var(--color-surface-2); color: var(--color-text); }
 .bal-cal-btn-apply { background: var(--color-primary); color: #fff; }
 .bal-cal-btn-apply:disabled { opacity: 0.45; cursor: default; }
+
+/* ═══════════════════════════════════════════════════════════════
+   REPORT VIEW — 2026-09-21 restyle.
+   The rules above hard-code the dark palette (#1e293b etc.), which in light
+   mode drew dark boxes on a white page and hid the title. Everything below
+   uses the theme tokens, so the report looks native in both themes.
+   ═══════════════════════════════════════════════════════════════ */
+.report-header { margin-bottom: 14px; padding-bottom: 0; border-bottom: none; }
+.report-header h2 { font-size: 22px; font-weight: 800; color: var(--color-text); margin: 0 0 6px; letter-spacing: -0.3px; }
+.report-meta { gap: 6px; }
+.report-meta-item {
+  background: var(--color-surface-2); border: 1px solid var(--color-border-2);
+  color: var(--color-text-muted); font-size: 12px; font-weight: 600;
+  padding: 4px 10px; border-radius: 999px;
+}
+
+.report-hero {
+  background: var(--color-text); color: var(--color-bg);
+  border-radius: 16px; padding: 18px 20px; margin-bottom: 12px;
+}
+.report-hero-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; opacity: .75; }
+.report-hero-value { font-size: 38px; font-weight: 900; line-height: 1.1; margin: 4px 0 6px; font-variant-numeric: tabular-nums; letter-spacing: -0.5px; }
+.report-hero-sub { font-size: 12px; font-weight: 500; opacity: .75; }
+
+.report-summary { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; }
+.summary-card {
+  background: var(--color-surface); border: 1px solid var(--color-border-2);
+  border-radius: 14px; padding: 14px 12px; text-align: left;
+}
+.summary-label { color: var(--color-text-muted); font-size: 11px; letter-spacing: .5px; margin-bottom: 4px; }
+.summary-value { color: var(--color-text); font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.summary-sub { font-size: 11px; color: var(--color-text-muted); margin-top: 3px; }
+
+.report-tech-breakdown {
+  background: var(--color-surface); border: 1px solid var(--color-border-2);
+  border-radius: 14px; padding: 14px; margin-bottom: 14px;
+}
+.report-tech-breakdown h3 { font-size: 15px; font-weight: 800; color: var(--color-text); margin: 0 0 10px; }
+.report-hint { font-size: 11px; font-weight: 500; color: var(--color-text-muted); margin-left: 6px; }
+.tech-item {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--color-surface-2); border-radius: 12px;
+  padding: 12px 12px 12px 14px; margin-bottom: 8px; cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.tech-item:last-child { margin-bottom: 0; }
+.tech-item:active { transform: scale(0.985); background: var(--color-surface-3); }
+.tech-item-main { flex: 1; min-width: 0; }
+.tech-name { font-size: 15px; font-weight: 700; color: var(--color-text); margin: 0 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tech-stats { font-size: 12px; color: var(--color-text-muted); display: block; }
+.tech-chev { color: var(--color-text-muted); font-size: 22px; line-height: 1; flex-shrink: 0; }
+
+.report-zelle {
+  background: var(--color-surface); border: 1px dashed var(--color-border-2);
+  border-radius: 14px; padding: 14px; margin-bottom: 14px; text-align: center;
+}
+.report-zelle-title { font-size: 12px; font-weight: 700; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: .5px; }
+.report-zelle-addr { font-size: 15px; font-weight: 800; color: var(--color-text); margin: 4px 0; word-break: break-all; }
+.report-zelle-note { font-size: 12px; color: var(--color-text-muted); }
+
+.report-jobs-list {
+  background: var(--color-surface); border: 1px solid var(--color-border-2);
+  border-radius: 14px; padding: 14px; margin-bottom: 8px;
+}
+.report-jobs-list h3 { font-size: 15px; font-weight: 800; color: var(--color-text); margin: 0; }
+.balance-actions { margin-top: 16px; }
