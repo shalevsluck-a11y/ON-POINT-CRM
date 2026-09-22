@@ -955,8 +955,8 @@ const Balance = (function() {
 
   function shareWhatsApp() {
     const text = generatePlainText();
-    const encoded = encodeURIComponent(text);
-    const url = `https://wa.me/?text=${encoded}`;
+    // window.waUrl (app.js) picks whatsapp:// on the phone so WhatsApp Business opens first
+    const url = window.waUrl ? window.waUrl('', text) : `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   }
 

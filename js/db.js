@@ -251,6 +251,9 @@ const DB = (() => {
   // ──────────────────────────────────────────────────────────
 
   async function saveJob(job) {
+    // Every save path (manual form, AI paste, Pointy, edits) goes through here, so
+    // this is the one place that keeps names/cities/states/zips looking professional.
+    if (typeof TidyJob !== 'undefined') TidyJob.apply(job);
     console.log('[DB] saveJob START - Job ID:', job.jobId, 'Customer:', job.customerName);
     console.log('[DB] saveJob CALLER STACK:', new Error().stack);
     // Add timestamp to track when job was last modified locally

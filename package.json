@@ -7,7 +7,7 @@
     "generate-icons": "node scripts/generate-icons.js",
     "start": "node server.js",
     "bump-cache": "node -e \"const fs=require('fs');const v='v'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'-'+Date.now().toString(36).slice(-4);const f=fs.readFileSync('sw.js','utf8').replace(/CACHE_VERSION = '[^']+'/,\\`CACHE_VERSION = '\\${v}'\\`);fs.writeFileSync('sw.js',f);console.log('Cache version:',v);\"",
-    "test": "node --check server.js && node tests/static-whitelist.test.js && node tests/dispatch-date.test.js && node tests/estimate-followup.test.js && node tests/reopen-lost.test.js && node tests/ai-usage.test.js && node tests/time-window.test.js && node tests/dispatch-half.test.js",
+    "test": "node --check server.js && node tests/static-whitelist.test.js && node tests/dispatch-date.test.js && node tests/estimate-followup.test.js && node tests/reopen-lost.test.js && node tests/ai-usage.test.js && node tests/time-window.test.js && node tests/dispatch-half.test.js && node tests/tidy.test.js",
     "test:e2e": "playwright test"
   },
   "dependencies": {

@@ -3309,8 +3309,7 @@ const App = (() => {
     const memo = job.zelleMemo || '';
 
     const _zelleWaPhone = _cleanPhoneForWA(job.phone) || '';
-    const waMsg  = encodeURIComponent(_buildWhatsAppJobText(job));
-    const waHref = `https://wa.me/${_zelleWaPhone}?text=${waMsg}`;
+    const waHref = _waUrl(_zelleWaPhone, _buildWhatsAppJobText(job));
 
     const body = document.getElementById('modal-zelle-body');
     body.innerHTML = `
@@ -3975,11 +3974,7 @@ const App = (() => {
     msg += `Total: ${jobs.length} job${jobs.length !== 1 ? 's' : ''}`;
     msg += `\n\nK?`;
 
-    const encoded = encodeURIComponent(msg);
-    const phone = tech.phone ? tech.phone.replace(/\D/g, '') : '';
-    const waUrl = phone ? `https://wa.me/${phone}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
-
-    window.open(waUrl, '_blank');
+    window.open(_waUrl(tech.phone, msg), '_blank');
   }
 
   // ══════════════════════════════════════════════════════════
@@ -4423,7 +4418,7 @@ const App = (() => {
   }
 
   function _openWAWithMsg(_phone, msg) {
-    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    window.open(_waUrl('', msg), '_blank');
   }
 
   function _sendInviteWA() {
@@ -5317,7 +5312,7 @@ const App = (() => {
       `Thank you for choosing On Point Pro Doors! 🏠`,
     ].join('\n');
 
-    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+    window.open(_waUrl(cleanPhone, msg), '_blank', 'noopener');
   }
 
   // ══════════════════════════════════════════════════════════
@@ -5674,6 +5669,21 @@ const App = (() => {
     return lines.join('\n');
   }
 
+  // Every WhatsApp button goes through here. On the phone it uses the whatsapp://
+  // scheme instead of https://wa.me: iOS has no "default WhatsApp" setting, and with
+  // both apps installed wa.me opens the personal app first while whatsapp:// opens
+  // WhatsApp Business first (operator 2026-09-21: dispatch should default to Business).
+  // Desktop keeps wa.me, which also works with no app installed.
+  function _waUrl(phone, text) {
+    const p = String(phone || '').replace(/\D/g, '');
+    const t = encodeURIComponent(text || '');
+    if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+      return 'whatsapp://send?' + (p ? 'phone=' + p + '&' : '') + 'text=' + t;
+    }
+    return 'https://wa.me/' + p + '?text=' + t;
+  }
+  window.waUrl = _waUrl;   // balance.js shares it
+
   // Clean a phone number to E.164-style digits for wa.me URLs
   function _cleanPhoneForWA(phone) {
     if (!phone) return null;
@@ -5770,7 +5780,7 @@ const App = (() => {
     sheet.querySelector('#cl-wa').addEventListener('click', () => {
       const msg = _buildClosingMsg(job);
       const o = document.getElementById('dispatch-choice-overlay'); if (o) o.remove();
-      window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener,noreferrer');
+      window.open(_waUrl('', msg), '_blank', 'noopener,noreferrer');
     });
     sheet.querySelector('#cl-copy').addEventListener('click', () => {
       const msg = _buildClosingMsg(job);
@@ -5898,8 +5908,7 @@ const App = (() => {
       : _buildWhatsAppTechDispatchMsg(job, mode);
 
     // Open WhatsApp with pre-filled message (user chooses recipient)
-    const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    window.open(_waUrl('', msg), '_blank', 'noopener,noreferrer');
   }
 
   // Copy the identical dispatch message to the clipboard — same text openWhatsApp()

@@ -2,6 +2,7 @@ const express = require('express');
 const path    = require('path');
 const { createClient } = require('@supabase/supabase-js');
 const { nyDate, nyDateLine, snapToNamedWeekday, keepPrices, aiCost, summarizeUsage } = require('./src/ai-usage');
+const TidyJob = require('./js/tidy.js');   // same file the browser loads: names/cities/states/zips look professional
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -1165,6 +1166,7 @@ app.post('/api/ai-parse-job', rateLimit({ max: 30, windowMs: 60_000 }), async (r
     const job = toolUse.input || {};
     if (job.scheduledDate) job.scheduledDate = snapToNamedWeekday(text, job.scheduledDate);
     job.description = keepPrices(text, job.description);
+    TidyJob.apply(job);
     return res.json({ job, usage: data.usage || null });
   } catch (e) {
     console.error('[ai-parse-job] error', e);
@@ -1323,6 +1325,8 @@ app.post('/api/ai-assistant', rateLimit({ max: 30, windowMs: 60_000 }), async (r
     if (toolUse.name === 'add_job' || (toolUse.name === 'update_job' && params.description)) {
       params.description = keepPrices(message, params.description);
     }
+    // "THOMAS DIBLASI pine island, ny" -> "Thomas Diblasi, Pine Island, NY" before the confirm card.
+    if (toolUse.name === 'add_job' || toolUse.name === 'update_job') TidyJob.apply(params);
     return res.json({ action: toolUse.name, params, reply: textBlock ? textBlock.text : '', usage: data.usage || null });
   } catch (e) {
     console.error('[ai-assistant] error', e);
