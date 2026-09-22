@@ -30,6 +30,15 @@ assert.strictEqual(T.zip('10969'), '10969');
 assert.strictEqual(T.zip('10969 1234'), '10969-1234');
 assert.strictEqual(T.zip('abc'), 'abc');
 
+// phone + description + the town-copied-into-address case from the live Pointy test
+assert.strictEqual(T.phone('9175550100'), '(917) 555-0100');
+assert.strictEqual(T.phone('+1 917.555.0100'), '(917) 555-0100');
+assert.strictEqual(T.phone('555-0100'), '555-0100');
+assert.strictEqual(T.sentence("garage door won't open $99"), "Garage door won't open $99");
+assert.deepStrictEqual(
+  T.apply({ customerName: 'THOMAS DIBLASI', address: 'pine island', city: 'pine island', state: 'ny', zip: '10969', phone: '9175550100', description: "garage door won't open" }),
+  { customerName: 'Thomas Diblasi', address: '', city: 'Pine Island', state: 'NY', zip: '10969', phone: '(917) 555-0100', description: "Garage door won't open" });
+
 // never invents fields, never touches non-strings, idempotent
 const partial = T.apply({ customerName: 'jo', phone: 5551234, jobTotal: 200 });
 assert.deepStrictEqual(partial, { customerName: 'Jo', phone: 5551234, jobTotal: 200 });

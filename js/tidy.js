@@ -56,6 +56,16 @@
     return m ? (m[2] ? m[1] + '-' + m[2] : m[1]) : t;
   }
 
+  // "9175550100" / "917.555.0100" -> "(917) 555-0100"; anything else left alone.
+  function phone(s) {
+    const t = clean(s);
+    let d = t.replace(/\D/g, '');
+    if (d.length === 11 && d[0] === '1') d = d.slice(1);
+    return d.length === 10 ? '(' + d.slice(0, 3) + ') ' + d.slice(3, 6) + '-' + d.slice(6) : t;
+  }
+  // Descriptions stay as typed (prices, sizes) - only the first letter goes up.
+  function sentence(s) { const t = clean(s); return t.charAt(0).toUpperCase() + t.slice(1); }
+
   // Mutates and returns the object. Touches only the keys that exist and are strings.
   function apply(job) {
     if (!job || typeof job !== 'object') return job;
@@ -64,10 +74,15 @@
     if (typeof job.address === 'string')      job.address = address(job.address);
     if (typeof job.state === 'string')        job.state = state(job.state);
     if (typeof job.zip === 'string')          job.zip = zip(job.zip);
+    if (typeof job.phone === 'string')        job.phone = phone(job.phone);
+    if (typeof job.description === 'string')  job.description = sentence(job.description);
+    // No street given: the model copies the town into the address too, and the card
+    // read "Pine Island, Pine Island, NY" (live test 2026-09-21). The town is the city.
+    if (job.address && job.city && job.address.toLowerCase() === job.city.toLowerCase()) job.address = '';
     return job;
   }
 
-  const TidyJob = { apply, name, city, address, state, zip, titleCase };
+  const TidyJob = { apply, name, city, address, state, zip, phone, sentence, titleCase };
   if (typeof module !== 'undefined' && module.exports) module.exports = TidyJob;
   root.TidyJob = TidyJob;
 })(typeof window !== 'undefined' ? window : globalThis);
