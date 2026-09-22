@@ -711,7 +711,7 @@ const Balance = (function() {
         <div class="tech-item" role="button" tabindex="0" onclick="Balance.openTech('${escapeHtml(id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();Balance.openTech('${escapeHtml(id)}')}">
           <div class="tech-item-main">
             <div class="tech-name">${escapeHtml(stats.name)}</div>
-            <div class="tech-stats">${stats.jobs} jobs · sales $${formatMoney(stats.revenue)} · cut $${formatMoney(stats.payout)}</div>
+            <div class="tech-stats">${stats.jobs} job${stats.jobs === 1 ? '' : 's'} · sales $${formatMoney(stats.revenue)} · cut $${formatMoney(stats.payout)}</div>
           </div>
           <span class="tech-chev" aria-hidden="true">›</span>
         </div>
