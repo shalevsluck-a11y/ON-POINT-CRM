@@ -69,6 +69,12 @@
   // Mutates and returns the object. Touches only the keys that exist and are strings.
   function apply(job) {
     if (!job || typeof job !== 'object') return job;
+    // "pine island, ny" landed whole in city with state empty (live Pointy test
+    // 2026-09-21, card read "Pine Island, Ny 10969"). Split "Town, ST" apart.
+    if (typeof job.city === 'string' && !clean(job.state)) {
+      const m = clean(job.city).match(/^(.+?),\s*([A-Za-z. ]{2,20})$/);
+      if (m && /^[A-Z]{2}$/.test(state(m[2]))) { job.city = m[1]; job.state = state(m[2]); }
+    }
     if (typeof job.customerName === 'string') job.customerName = name(job.customerName);
     if (typeof job.city === 'string')         job.city = city(job.city);
     if (typeof job.address === 'string')      job.address = address(job.address);

@@ -39,6 +39,12 @@ assert.deepStrictEqual(
   T.apply({ customerName: 'THOMAS DIBLASI', address: 'pine island', city: 'pine island', state: 'ny', zip: '10969', phone: '9175550100', description: "garage door won't open" }),
   { customerName: 'Thomas Diblasi', address: '', city: 'Pine Island', state: 'NY', zip: '10969', phone: '(917) 555-0100', description: "Garage door won't open" });
 
+// "Town, ST" stuffed into city with no state -> split (the card read "Pine Island, Ny 10969")
+assert.deepStrictEqual(T.apply({ city: 'pine island, ny', state: '', zip: '10969' }), { city: 'Pine Island', state: 'NY', zip: '10969' });
+assert.deepStrictEqual(T.apply({ city: 'pine island, new york' }), { city: 'Pine Island', state: 'NY' });
+assert.deepStrictEqual(T.apply({ city: 'pine island, ny', state: 'NJ' }), { city: 'Pine Island, Ny', state: 'NJ' });   // state given: leave city alone
+assert.deepStrictEqual(T.apply({ city: 'Bronx, the good part' }), { city: 'Bronx, The Good Part' });             // tail is not a state
+
 // never invents fields, never touches non-strings, idempotent
 const partial = T.apply({ customerName: 'jo', phone: 5551234, jobTotal: 200 });
 assert.deepStrictEqual(partial, { customerName: 'Jo', phone: 5551234, jobTotal: 200 });
