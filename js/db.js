@@ -77,14 +77,15 @@ const DB = (() => {
           return serverJob;
         }
 
-        // Always preserve lost status (never overwrite with server version)
-        if (localJob.status === 'lost') {
+        // Always preserve lost status: the server must never un-lose a job.
+        // When BOTH sides say lost there is nothing to protect, so the row falls
+        // through to the normal freshness rule below and picks up server-side fields
+        // (lost reason, job type, backfills) like any other job (2026-09-29).
+        if (localJob.status === 'lost' && serverJob.status !== 'lost') {
           console.log('[DB._syncJobsDown] ✅ KEEPING LOCAL version - job is LOST:', serverJob.jobId);
           // Auto-repair: if server doesn't show lost, push it (constraint used to reject 'lost')
-          if (serverJob.status !== 'lost') {
-            console.log('[DB._syncJobsDown] 🔧 AUTO-REPAIR: pushing lost status to server for', serverJob.jobId);
-            _upsertJobRemote(localJob).catch(err => console.warn('[AutoRepair] push lost failed:', err.message));
-          }
+          console.log('[DB._syncJobsDown] 🔧 AUTO-REPAIR: pushing lost status to server for', serverJob.jobId);
+          _upsertJobRemote(localJob).catch(err => console.warn('[AutoRepair] push lost failed:', err.message));
           return localJob;
         }
 
