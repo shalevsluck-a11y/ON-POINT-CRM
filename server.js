@@ -681,6 +681,17 @@ app.post('/api/save-job', rateLimit({ max: 120, windowMs: 60_000 }), async (req,
       follow_up_at:         job.followUpAt || null,
       created_by:           job.createdBy || null,
       created_by_name:      job.createdByName || null,
+      // Funnel + reporting fields (migration 052)
+      job_type:             job.jobType || null,
+      lost_reason:          job.lostReason || null,
+      lost_note:            job.lostNote || '',
+      lost_at:              job.lostAt || null,
+      dispatched_at:        job.dispatchedAt || null,
+      dispatched_to:        job.dispatchedTo || '',
+      closing_details:      job.closingDetails || '',
+      review_requested_at:  job.reviewRequestedAt || null,
+      follow_up_count:      parseInt(job.followUpCount, 10) || 0,
+      last_follow_up_at:    job.lastFollowUpAt || null,
       updated_at:           new Date().toISOString(),
     };
 

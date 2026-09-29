@@ -182,6 +182,9 @@ const Storage = (() => {
     appsScriptUrl:  'https://script.google.com/macros/s/AKfycbzTKDS-ypRqgTC3untSPOEP5QimaDrUBfR3Yk_lJLZs-F8x05W8VWmGfdWK_t5exSTb/exec',
     technicians:    [],
     leadSources:    [],
+    jobTypes:       [],   // empty = Pipeline.JOB_TYPES defaults
+    lostReasons:    [],   // empty = Pipeline.LOST_REASONS defaults
+    reviewLink:     '',
     lastSyncAt:     null,
   };
 

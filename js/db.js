@@ -110,6 +110,7 @@ const DB = (() => {
       const RECENT_MS = 5 * 60 * 1000;
       const now = Date.now();
       for (const localJob of localJobs) {
+        if (!localJob || !localJob.jobId) continue; // corrupt cache entry: nothing to push (it 400s), it is pruned below
         if (serverIds.has(localJob.jobId)) continue;
         const created = localJob.createdAt ? new Date(localJob.createdAt).getTime() : 0;
         const isRecent = created > 0 && (now - created) < RECENT_MS;
@@ -214,6 +215,9 @@ const DB = (() => {
         defaultState:   settings.default_state   ?? current.defaultState  ?? 'NY',
         appsScriptUrl:  settings.apps_script_url ?? current.appsScriptUrl ?? '',
         leadSources:    settings.lead_sources    ?? current.leadSources   ?? [],
+        jobTypes:       settings.job_types       ?? current.jobTypes      ?? [],
+        lostReasons:    settings.lost_reasons    ?? current.lostReasons   ?? [],
+        reviewLink:     settings.review_link     ?? current.reviewLink    ?? '',
         technicians:    techList,
       };
 
@@ -254,6 +258,13 @@ const DB = (() => {
     // Every save path (manual form, AI paste, Pointy, edits) goes through here, so
     // this is the one place that keeps names/cities/states/zips looking professional.
     if (typeof TidyJob !== 'undefined') TidyJob.apply(job);
+    // Funnel stamps in ONE place, so every path (form, Pointy, board, bulk) agrees:
+    // marking lost stamps lostAt; reopening a lost job clears the lost fields.
+    try {
+      const prev = Storage.getJobById(job.jobId);
+      if (job.status === 'lost' && !job.lostAt) job.lostAt = new Date().toISOString();
+      if (job.status !== 'lost' && prev && prev.status === 'lost') { job.lostAt = null; job.lostReason = ''; job.lostNote = ''; }
+    } catch (_) {}
     console.log('[DB] saveJob START - Job ID:', job.jobId, 'Customer:', job.customerName);
     console.log('[DB] saveJob CALLER STACK:', new Error().stack);
     // Add timestamp to track when job was last modified locally
@@ -422,6 +433,9 @@ const DB = (() => {
     if (updates.defaultState   !== undefined) row.default_state   = updates.defaultState;
     if (updates.appsScriptUrl  !== undefined) row.apps_script_url = updates.appsScriptUrl;
     if (updates.leadSources    !== undefined) row.lead_sources    = updates.leadSources;
+    if (updates.jobTypes       !== undefined) row.job_types       = updates.jobTypes;
+    if (updates.lostReasons    !== undefined) row.lost_reasons    = updates.lostReasons;
+    if (updates.reviewLink     !== undefined) row.review_link     = updates.reviewLink;
 
     // NOTE: Technicians are saved via Edge Function only (update-technicians)
     // Do NOT save via this path - PostgREST has stale schema cache for technicians column
@@ -791,6 +805,17 @@ const DB = (() => {
       updatedAt:           row.updated_at,
       createdBy:           row.created_by,
       createdByName:       row.created_by_name || '',
+      // Funnel + reporting fields (migration 052)
+      jobType:             row.job_type || '',
+      lostReason:          row.lost_reason || '',
+      lostNote:            row.lost_note || '',
+      lostAt:              row.lost_at || null,
+      dispatchedAt:        row.dispatched_at || null,
+      dispatchedTo:        row.dispatched_to || '',
+      closingDetails:      row.closing_details || '',
+      reviewRequestedAt:   row.review_requested_at || null,
+      followUpCount:       row.follow_up_count || 0,
+      lastFollowUpAt:      row.last_follow_up_at || null,
     };
 
     // Only expose admin-only financial fields to admin users.
@@ -858,6 +883,16 @@ const DB = (() => {
       overdue_flagged_at:   job.overdueAt || null,
       follow_up_at:         job.followUpAt || null,
       created_by:           job.createdBy || null,
+      job_type:             job.jobType || null,
+      lost_reason:          job.lostReason || null,
+      lost_note:            job.lostNote || '',
+      lost_at:              job.lostAt || null,
+      dispatched_at:        job.dispatchedAt || null,
+      dispatched_to:        job.dispatchedTo || '',
+      closing_details:      job.closingDetails || '',
+      review_requested_at:  job.reviewRequestedAt || null,
+      follow_up_count:      parseInt(job.followUpCount, 10) || 0,
+      last_follow_up_at:    job.lastFollowUpAt || null,
       updated_at:           new Date().toISOString(),
     };
 
