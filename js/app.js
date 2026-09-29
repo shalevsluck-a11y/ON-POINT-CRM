@@ -1479,6 +1479,9 @@ const App = (() => {
     const el = document.getElementById('reports-dashboard');
     if (!el) return;
     if (!Auth.isAdmin()) { el.innerHTML = ''; return; }
+    // The Reports module (js/reports.js) owns this block now: periods, KPIs, breakdowns,
+    // drilldowns and exports. The quick-tiles code below is the fallback if it fails to load.
+    if (window.Reports && typeof Reports.render === 'function') { try { Reports.render(el); return; } catch (e) { console.error('[Reports]', e); } }
 
     const allJobs = DB.getJobs();
     const settings = DB.getSettings();
