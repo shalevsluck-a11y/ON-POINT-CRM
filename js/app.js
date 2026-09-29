@@ -748,40 +748,82 @@ const App = (() => {
     container.classList.remove('hidden');
   }
 
+  // Home cockpit: what needs a decision TODAY, grouped, each row with its one-tap action.
+  function _needsAttention(allJobs) {
+    const today = _todayStr();
+    const tomorrow = Pipeline.addDays(today, 1);
+    const weekAgo = Pipeline.addDays(today, -7);
+    const max = Pipeline.FOLLOW_UP_DAYS.length;
+    const money = j => (parseFloat(j.estimatedTotal) ? '$' + Number(j.estimatedTotal).toFixed(0) + ' · ' : '');
+    const tech = j => (j.assignedTechName ? ' · ' + _esc(j.assignedTechName) : '');
+    const groups = [];
+    const add = (key, title, rows) => { if (rows.length) groups.push({ key, title, rows }); };
+
+    add('overdue', 'Not closed — date passed', allJobs.filter(j => Pipeline.isOverdue(j, today)).map(j => ({ job: j,
+      why: _formatDate(j.scheduledDate) + tech(j),
+      actions: [{ label: 'Close', cls: 'btn-success', fn: `App.showCloseJobModal('${j.jobId}')` }, { label: 'Lost', cls: 'btn-secondary', fn: `App.openLostSheet('${j.jobId}')` }] })));
+
+    add('estimates', 'Estimate follow-ups due', allJobs.filter(j => Pipeline.followUpDue(j, today) && (j.followUpCount || 0) < max).map(j => ({ job: j,
+      why: money(j) + 'reminder ' + ((j.followUpCount || 0) + 1) + ' of ' + max,
+      actions: [{ label: 'Remind', cls: 'btn-primary', fn: `App.openMessageSheet('${j.jobId}','estimate')` }, { label: 'Won', cls: 'btn-success', fn: `App.winEstimate('${j.jobId}')` }, { label: 'Lost', cls: 'btn-secondary', fn: `App.openLostSheet('${j.jobId}')` }] })));
+
+    add('decide', 'Estimates to decide — reminders done', allJobs.filter(j => j.status === 'follow_up' && (j.followUpCount || 0) >= max).map(j => ({ job: j,
+      why: money(j) + j.followUpCount + ' reminders sent',
+      actions: [{ label: 'Won', cls: 'btn-success', fn: `App.winEstimate('${j.jobId}')` }, { label: 'Lost', cls: 'btn-secondary', fn: `App.openLostSheet('${j.jobId}')` }] })));
+
+    add('dispatch', 'Not sent to a tech yet', allJobs.filter(j => Pipeline.isOpen(j) && !j.dispatchedAt && (j.scheduledDate === today || j.scheduledDate === tomorrow)).map(j => ({ job: j,
+      why: (j.scheduledDate === today ? 'Today' : 'Tomorrow') + (j.scheduledTime ? ' · ' + _formatTime(j.scheduledTime) : '') + (j.assignedTechName ? tech(j) : ' · no tech'),
+      actions: [{ label: 'Dispatch', cls: 'btn-primary', fn: `App.openDispatchModal('${j.jobId}')` }] })));
+
+    add('leads', 'New leads — not booked', allJobs.filter(j => j.status === 'new' && !j.scheduledDate).map(j => ({ job: j,
+      why: _staleAge(j),
+      actions: [{ label: 'Book', cls: 'btn-primary', fn: `App.showEditJobModal('${j.jobId}')` }, { label: 'Lost', cls: 'btn-secondary', fn: `App.openLostSheet('${j.jobId}')` }] })));
+
+    add('review', 'Ask for a review', allJobs.filter(j => j.status === 'paid' && j.phone && !j.reviewRequestedAt && (j.paidAt || '').slice(0, 10) >= weekAgo).map(j => ({ job: j,
+      why: 'Paid ' + _formatDate((j.paidAt || '').slice(0, 10)) + tech(j),
+      actions: [{ label: 'Ask', cls: 'btn-primary', fn: `App.openMessageSheet('${j.jobId}','review')` }, { label: 'Skip', cls: 'btn-secondary', fn: `App.skipReview('${j.jobId}')` }] })));
+
+    return groups;
+  }
+  function _staleAge(job) {
+    const created = job.createdAt ? new Date(job.createdAt).getTime() : 0;
+    if (!created) return 'New';
+    const h = Math.floor((Date.now() - created) / 3600000);
+    return h < 1 ? 'Just came in' : h < 24 ? `${h}h waiting` : `${Math.floor(h / 24)}d waiting`;
+  }
+
   function _renderDispatcherSection(allJobs) {
     const container = document.getElementById('dispatcher-section');
     if (!container) return;
 
-    const urgent = allJobs.filter(j => j.status === 'follow_up');
     const today = _todayStr();
     const todayJobs = allJobs.filter(j =>
       j.scheduledDate === today && ['scheduled', 'in_progress', 'new'].includes(j.status)
     );
 
-    const urgentHTML = urgent.length > 0
-      ? urgent.slice(0, 5).map(j => {
-          const daysAgo = j.scheduledDate
-            ? Math.floor((Date.now() - new Date(j.scheduledDate+'T00:00:00').getTime()) / 86400000)
-            : null;
-          const reason = daysAgo !== null && daysAgo > 0 ? `Follow-up · ${daysAgo}d overdue`
-            : 'Follow-up needed';
-          return `
-          <div class="urgent-job-row" onclick="App.openJobDetail('${j.jobId}')">
-            <div class="urgent-dot"></div>
-            <div class="urgent-info">
-              <div class="urgent-name">${_esc(j.customerName || 'Unknown')}</div>
-              <div class="urgent-addr">${_esc(j.address || '')} · <span style="color:var(--color-warning);font-weight:700">${reason}</span></div>
-            </div>
-            ${j.phone ? `<button class="btn btn-sm btn-secondary urgent-wa" onclick="event.stopPropagation();App.sendFollowUpWhatsApp('${j.jobId}')" title="Send follow-up WhatsApp">&#128172;</button>` : ''}
-          </div>`;
-        }).join('')
-      : '<div class="empty-state-sm" style="color:var(--color-success)">✓ No follow-ups needed</div>';
+    const groups = Auth.isAdminOrDisp() ? _needsAttention(allJobs) : [];
+    const total = groups.reduce((s, g) => s + g.rows.length, 0);
+    const urgentHTML = total
+      ? groups.map(g => `
+          <div class="na-group">
+            <div class="na-group-title">${_esc(g.title)} <span class="na-count">${g.rows.length}</span></div>
+            ${g.rows.slice(0, 5).map(r => `
+              <div class="urgent-job-row na-row" onclick="App.openJobDetail('${r.job.jobId}')">
+                <div class="urgent-info">
+                  <div class="urgent-name">${_esc(r.job.customerName || 'Unknown')}</div>
+                  <div class="urgent-addr">${_esc([r.job.city, r.job.state].filter(Boolean).join(', ') || r.job.address || '')}${r.why ? ' · <span class="na-why">' + r.why + '</span>' : ''}</div>
+                </div>
+                <div class="na-actions">${r.actions.map(a => `<button class="btn btn-sm ${a.cls}" onclick="event.stopPropagation();${a.fn}">${_esc(a.label)}</button>`).join('')}</div>
+              </div>`).join('')}
+            ${g.rows.length > 5 ? `<div class="na-more">+${g.rows.length - 5} more in Jobs</div>` : ''}
+          </div>`).join('')
+      : '<div class="empty-state-sm" style="color:var(--color-success)">✓ Nothing waiting on you</div>';
 
     container.innerHTML = `
-      <div class="dash-role-card" style="${urgent.length > 0 ? 'border-color:rgba(239,68,68,0.3)' : ''}">
+      <div class="dash-role-card" style="${total > 0 ? 'border-color:rgba(239,68,68,0.3)' : ''}">
         <div class="dash-role-header">
           Needs Attention
-          ${urgent.length > 0 ? `<span class="dash-role-badge" style="background:rgba(239,68,68,0.15);color:var(--color-error)">${urgent.length}</span>` : ''}
+          ${total > 0 ? `<span class="dash-role-badge" style="background:rgba(239,68,68,0.15);color:var(--color-error)">${total}</span>` : ''}
         </div>
         ${urgentHTML}
       </div>
@@ -988,6 +1030,8 @@ const App = (() => {
     _state._conflictSet = _buildConflictSet();
     _renderDispatcherSourcesBanner();
     container.innerHTML = jobs.map(j => _jobCardHTML(j)).join('');
+    const strip = document.getElementById('board-funnel');
+    if (strip && _jobsViewMode !== 'kanban') strip.classList.add('hidden');
 
     // If kanban view is also open, keep it in sync
     if (_jobsViewMode === 'kanban' && _state.currentView === 'jobs') renderKanban();
@@ -2346,15 +2390,14 @@ const App = (() => {
          </button>`
       : '';
 
-    const followUpBtn = job.status === 'follow_up' && Auth.isAdminOrDisp() && job.phone
-      ? `<button class="detail-action-btn dab-warn" onclick="App.sendFollowUpWhatsApp('${job.jobId}')">
-           <span class="dab-icon">&#128172;</span><span class="dab-label">Remind</span>
+    // One tap to text the customer (WhatsApp, or copy into iMessage): confirm, on the way,
+    // estimate follow-up, review ask. The template list depends on where the job is.
+    const wantsReview = job.status === 'paid' && !job.reviewRequestedAt;
+    const followUpBtn = Auth.isAdminOrDisp() && job.phone
+      ? `<button class="detail-action-btn ${job.status === 'follow_up' ? 'dab-warn' : wantsReview ? 'dab-green' : ''}" onclick="App.openMessageSheet('${job.jobId}')">
+           <span class="dab-icon">&#128172;</span><span class="dab-label">${job.status === 'follow_up' ? 'Remind' : wantsReview ? 'Review' : 'Text'}</span>
          </button>`
-      : job.status === 'follow_up' && Auth.isAdminOrDisp() && !job.phone
-        ? `<div class="detail-action-btn" style="opacity:0.45;cursor:default" title="No phone on file">
-             <span class="dab-icon">&#128241;</span><span class="dab-label">No Phone</span>
-           </div>`
-        : '';
+      : '';
 
     return `
       <!-- Hero -->
@@ -2382,6 +2425,7 @@ const App = (() => {
 
       <!-- Status Actions (change job status) -->
       ${statusActions}
+      ${_estimatePanelHTML(job)}
 
       <!-- Close Job -->
       ${closeBtn}
@@ -2586,7 +2630,8 @@ const App = (() => {
     if (!body) return;
 
     const amount = parseFloat(job.estimatedTotal) || 0;
-    const day    = _followUpDay(job) || _todayStr();
+    // First reminder lands on the cadence (tomorrow), not today.
+    const day    = _followUpDay(job) || Pipeline.nextFollowUpDay(_todayStr(), job.followUpCount || 0) || _todayStr();
 
     body.innerHTML = `
       <div class="field-group">
@@ -4276,6 +4321,7 @@ const App = (() => {
     _setVal('s-tax-nj',          s.taxRateNJ);
     _setVal('s-apps-script-url', s.appsScriptUrl);
     _setVal('s-default-state',   s.defaultState);
+    _setVal('s-review-link',     s.reviewLink || '');
 
     // Load notification preferences from user profile
     const notifPrefs = user?.notification_preferences || {};
@@ -4373,7 +4419,7 @@ const App = (() => {
 
     // Hide admin-only settings sections from tech/contractor
     ['settings-myinfo-card','settings-tax-card','settings-tech-card','settings-sources-card',
-     'settings-data-card','settings-defaultstate-group','settings-ai-card'].forEach(id => {
+     'settings-data-card','settings-defaultstate-group','settings-ai-card','s-reviewlink-group'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.classList.toggle('hidden', !isAdmin);
     });
@@ -4780,7 +4826,11 @@ const App = (() => {
       taxRateNJ:     parseFloat(document.getElementById('s-tax-nj')?.value)       || 6.625,
       appsScriptUrl: document.getElementById('s-apps-script-url')?.value?.trim() || '',
       defaultState:  document.getElementById('s-default-state')?.value           || 'NY',
+      reviewLink:    document.getElementById('s-review-link')?.value?.trim()     || '',
     };
+    if (settings.reviewLink && !/^https?:\/\//i.test(settings.reviewLink)) {
+      showToast('The review link must start with https://', 'warning'); return;
+    }
 
     if (settings.taxRateNY < 0 || settings.taxRateNY > 20) {
       showToast('NY tax rate must be between 0-20%', 'warning'); return;
@@ -5246,20 +5296,33 @@ const App = (() => {
     if (!board) return;
 
     let jobs = DB.searchJobs(_state.jobSearch);
+    if (_state.jobFilterTech)   jobs = jobs.filter(j => j.assignedTechId === _state.jobFilterTech);
+    if (_state.jobFilterSource) jobs = jobs.filter(j => j.source === _state.jobFilterSource);
 
-    const statuses = [
-      { val: 'new',         label: 'New',         cls: 'kc-new' },
-      { val: 'scheduled',   label: 'Scheduled',   cls: 'kc-scheduled' },
-      { val: 'in_progress', label: 'In Progress', cls: 'kc-inprogress' },
-      { val: 'follow_up',   label: 'Follow-Up',   cls: 'kc-followup' },
-      { val: 'closed',      label: 'Closed',      cls: 'kc-closed' },
-      { val: 'paid',        label: 'Paid',         cls: 'kc-paid' },
+    // The board IS the funnel: one column per stage (see js/pipeline.js). Done and
+    // Lost show the last 30 days only, so the board stays light.
+    const monthAgo = Pipeline.addDays(_todayStr(), -30);
+    const cols = [
+      { id: 'lead',       label: 'Leads',       cls: 'kc-new' },
+      { id: 'booked',     label: 'Booked',      cls: 'kc-scheduled' },
+      { id: 'dispatched', label: 'Dispatched',  cls: 'kc-inprogress' },
+      { id: 'estimate',   label: 'Estimates',   cls: 'kc-followup' },
+      { id: 'done',       label: 'Done · 30d',  cls: 'kc-paid' },
+      { id: 'lost',       label: 'Lost · 30d',  cls: 'kc-lost' },
     ];
+    const byStage = {};
+    cols.forEach(c => { byStage[c.id] = []; });
+    jobs.forEach(j => {
+      const s = Pipeline.stageOf(j);
+      if (s === 'done' && (j.paidAt || j.scheduledDate || '').slice(0, 10) < monthAgo) return;
+      if (s === 'lost' && (j.lostAt || j.updatedAt || '').slice(0, 10) < monthAgo) return;
+      byStage[s].push(j);
+    });
 
-    board.innerHTML = statuses.map(s => {
-      const colJobs = jobs.filter(j => j.status === s.val);
-      return _kanbanColumn(s.val, s.label, s.cls, colJobs);
-    }).join('');
+    const strip = document.getElementById('board-funnel');
+    if (strip) { strip.innerHTML = _funnelSummaryHTML(jobs); strip.classList.remove('hidden'); }
+
+    board.innerHTML = cols.map(c => _kanbanColumn(c.id, c.label, c.cls, byStage[c.id])).join('');
 
     // Wire drag-and-drop
     board.querySelectorAll('.kanban-card').forEach(card => {
@@ -5281,39 +5344,46 @@ const App = (() => {
       col.addEventListener('drop', e => {
         e.preventDefault();
         col.classList.remove('drag-over');
-        const jobId    = e.dataTransfer.getData('text/plain');
-        const newStatus = col.dataset.status;
-        if (!jobId || !newStatus) return;
-        const job = DB.getJobById(jobId);
-        if (!job) return;
-        if (job.status === newStatus) return;
-        if (job.status === 'paid') { showToast('Cannot change status of a paid job', 'warning'); return; }
-        if (newStatus === 'paid')  { showToast('Use "Close Job" to mark as paid', 'info'); return; }
-        if (Auth.isTechOrContractor()) {
-          const allowed = ['in_progress', 'closed'];
-          if (!allowed.includes(newStatus)) { showToast('Techs can only move to In Progress or Closed', 'warning'); return; }
-        }
-        DB.saveJob({ ...job, status: newStatus });
-        SyncManager.queueJob(jobId);
-        showToast(`${_esc(job.customerName || 'Job')} → ${newStatus.replace('_', ' ')}`, 'success');
-        renderKanban();
-
-        // Auto-sync to Google Sheets when job is closed
-        if (newStatus === 'closed' && Auth.isAdminOrDisp()) {
-          const updatedJob = DB.getJobById(jobId);
-          SyncManager.syncJob(updatedJob).then(result => {
-            if (result.success && !result.skipped) {
-              console.log(`[Auto-sync] Job ${jobId} synced to Google Sheets`);
-            }
-          }).catch(err => {
-            console.warn(`[Auto-sync] Failed for job ${jobId}:`, err);
-          });
-        }
+        const jobId = e.dataTransfer.getData('text/plain');
+        const to = col.dataset.status; // a stage id
+        if (!jobId || !to) return;
+        _moveToStage(jobId, to);
       });
 
       // Touch drag support (simplified: tap to open, long-press not needed for touch)
       col.addEventListener('touchend', () => col.classList.remove('drag-over'));
     });
+  }
+
+  // Board drag = the same moves the buttons make. Money, quotes and reasons still go
+  // through their own sheets, so nothing is decided by accident.
+  function _moveToStage(jobId, to) {
+    const job = DB.getJobById(jobId);
+    if (!job) return;
+    if (Pipeline.stageOf(job) === to) return;
+    if (!Auth.canEditAllJobs()) { showToast('Not authorized', 'error'); return; }
+    if (job.status === 'paid') { showToast('A paid job stays put — reopen it from the job screen', 'warning'); return; }
+    if (to === 'done')     { showCloseJobModal(jobId); return; }
+    if (to === 'lost')     { openLostSheet(jobId); return; }
+    if (to === 'estimate') { showEstimateModal(jobId); return; }
+    const today = _todayStr();
+    if (to === 'lead')       DB.saveJob({ ...job, status: 'new', scheduledDate: '', scheduledTime: '', dispatchedAt: null, dispatchedTo: '', followUpAt: null });
+    if (to === 'booked')     DB.saveJob({ ...job, status: 'scheduled', scheduledDate: job.scheduledDate || today, dispatchedAt: null, dispatchedTo: '', followUpAt: null });
+    if (to === 'dispatched') DB.saveJob({ ...job, status: 'scheduled', scheduledDate: job.scheduledDate || today, followUpAt: null, dispatchedAt: new Date().toISOString(), dispatchedTo: job.assignedTechName || '' });
+    SyncManager.queueJob(jobId);
+    showToast(`${job.customerName || 'Job'} → ${Pipeline.stageLabel(to)}`, 'success');
+    renderKanban();
+  }
+
+  // Counts per stage + close rate, shown above the board.
+  function _funnelSummaryHTML(jobs) {
+    const c = { lead: 0, booked: 0, dispatched: 0, done: 0, estimate: 0, lost: 0 };
+    jobs.forEach(j => { c[Pipeline.stageOf(j)]++; });
+    const decided = c.done + c.lost;
+    const closeRate = decided ? Math.round(c.done / decided * 100) : 0;
+    return `<div class="bf-main">${['lead', 'booked', 'dispatched', 'done'].map(id =>
+        `<div class="bf-cell"><b>${c[id]}</b><span>${Pipeline.stageLabel(id)}</span></div>`).join('<div class="bf-arrow">&rsaquo;</div>')}</div>
+      <div class="bf-side"><span>Estimates <b>${c.estimate}</b></span><span>Lost <b>${c.lost}</b></span><span>Close rate <b>${closeRate}%</b></span></div>`;
   }
 
   function _kanbanColumn(status, label, cls, jobs) {
@@ -5336,7 +5406,7 @@ const App = (() => {
     const totalStr = Auth.canSeeFinancials() && total > 0 ? _fmt(total) : '';
     const timeStr = job.scheduledTime ? _formatTime(job.scheduledTime) : '';
     const dateStr = job.scheduledDate ? _formatDate(job.scheduledDate) : '';
-    const isFollowUp = job.status === 'follow_up';
+    const isFollowUp = job.status === 'follow_up' || Pipeline.isOverdue(job, _todayStr());
     return `<div class="kanban-card${isFollowUp ? ' kanban-card-urgent' : ''}" draggable="true" data-job-id="${job.jobId}"
          onclick="App.openJobDetail('${job.jobId}')">
       <div class="kanban-card-name">${_esc(job.customerName || 'Unknown')}</div>
@@ -5447,30 +5517,149 @@ const App = (() => {
   function sendFollowUpWhatsApp(jobId) {
     const job = DB.getJobById(jobId);
     if (!job) return;
-    if (!job.phone) { showToast('No phone number on file', 'warning'); return; }
+    openMessageSheet(jobId, job.status === 'follow_up' ? 'estimate' : 'checkin');
+  }
 
-    const cleanPhone = _cleanPhoneForWA(job.phone);
-    if (!cleanPhone) { showToast('Invalid phone number', 'warning'); return; }
-
-    const settings = DB.getSettings();
-    const ownerPhone = settings.ownerPhone || '(929) 429-2429';
-
-    const firstName = (job.customerName || 'there').split(' ')[0];
-    const serviceNote = job.description ? ` regarding your ${_esc(job.description)}` : '';
-    const msg = [
-      `Hi ${_esc(firstName)}! 👋`,
-      '',
-      `This is On Point Pro Doors checking in${serviceNote}.`,
-      '',
-      `We want to make sure your garage door issue is fully resolved. Is everything working properly, or would you like to schedule a follow-up visit?`,
-      '',
-      `We're available 7 days a week — just reply here or give us a call:`,
-      `📞 ${ownerPhone}`,
-      '',
-      `Thank you for choosing On Point Pro Doors! 🏠`,
-    ].join('\n');
-
-    window.open(_waUrl(cleanPhone, msg), '_blank', 'noopener');
+  // ── CUSTOMER MESSAGES — WhatsApp, or copy to paste into iMessage/SMS. Nothing is
+  // sent automatically: he reads and sends every one. Templates follow the funnel.
+  const BRAND = 'On Point Pro Doors';
+  function _firstName(job) { return (job.customerName || 'there').trim().split(/\s+/)[0]; }
+  function _whenText(job) {
+    if (!job.scheduledDate) return '';
+    const today = _todayStr();
+    const day = job.scheduledDate === today ? 'today'
+              : job.scheduledDate === Pipeline.addDays(today, 1) ? 'tomorrow'
+              : 'on ' + _formatDate(job.scheduledDate);
+    return day + (job.scheduledTime ? ' between ' + _formatTime(job.scheduledTime) : '');
+  }
+  // The review funnel page: 4-5 stars go to Google, 1-3 come to him privately.
+  function _reviewUrl(settings) {
+    const g = (settings.reviewLink || '').trim();
+    if (!g) return '';
+    const p = String(settings.ownerPhone || '').replace(/\D/g, '');
+    return location.origin + '/review.html?g=' + encodeURIComponent(g) + (p ? '&p=' + p : '') + '&n=' + encodeURIComponent(BRAND);
+  }
+  function _msgTemplates(job) {
+    const s = DB.getSettings();
+    const first = _firstName(job);
+    const when = _whenText(job);
+    const tech = job.assignedTechName ? job.assignedTechName.trim().split(/\s+/)[0] : 'our technician';
+    const amt = parseFloat(job.estimatedTotal) || 0;
+    const amtText = amt ? ' for $' + amt.toFixed(0) : '';
+    const n = Math.min(job.followUpCount || 0, 3);
+    // Day 1 / 3 / 7 / 14 — the last one is the "keep it open or close it out?" message,
+    // which gets the most replies of any follow-up.
+    const estimateText = [
+      `Hi ${first}, ${BRAND} here. Just making sure you got our estimate${amtText}. Happy to answer any questions — reply here anytime.`,
+      `Hi ${first}, following up on the estimate${amtText}. Want me to hold a spot for you this week? Reply with a day that works.`,
+      `Hi ${first}, are you leaning yes, no, or still deciding on the garage door? No pressure — I just want to close the loop.`,
+      `Hi ${first}, last check-in on the estimate${amtText}. Should I keep your file open or close it out? Either way, thank you.`,
+    ][n];
+    const review = _reviewUrl(s);
+    const list = [];
+    if (Pipeline.isOpen(job) && job.scheduledDate) {
+      list.push({ id: 'confirm', title: 'Confirm the appointment', text: `Hi ${first}, it's ${BRAND}. Confirming your garage door appointment ${when}. Reply here if anything changes. Thank you!` });
+      list.push({ id: 'onway', title: 'On the way', text: `Hi ${first}, ${tech} from ${BRAND} is on the way to you now. See you soon!` });
+    }
+    if (job.status === 'follow_up') list.push({ id: 'estimate', title: `Estimate follow-up (${n + 1} of 4)`, text: estimateText });
+    if (job.status === 'paid' || job.status === 'closed') {
+      list.push({ id: 'review', title: job.reviewRequestedAt ? 'Ask for a review (again)' : 'Ask for a review', text: `Hi ${first}, thanks for choosing ${BRAND}! If ${tech} did a good job, a quick Google review helps us a lot${review ? ': ' + review : '.'} Thank you!` });
+      list.push({ id: 'checkin', title: 'Check in after the job', text: `Hi ${first}, ${BRAND} checking in — is the garage door working the way it should? If anything is off, reply here and we will take care of it.` });
+    }
+    if (!list.length) list.push({ id: 'checkin', title: 'Check in', text: `Hi ${first}, ${BRAND} here — how can we help with your garage door? Reply here or call us at ${s.ownerPhone || '(929) 429-2429'}.` });
+    return list;
+  }
+  function openMessageSheet(jobId, kind) {
+    if (!Auth.isAdminOrDisp()) return;
+    const job = DB.getJobById(jobId);
+    if (!job) { showToast('Job not found', 'error'); return; }
+    const phone = _cleanPhoneForWA(job.phone);
+    if (!phone) { showToast('No valid phone on this job', 'warning'); return; }
+    if (kind === 'review' && !(DB.getSettings().reviewLink || '').trim()) showToast('Tip: add your Google review link in Settings so the message includes it', 'warning', 5000);
+    const templates = _msgTemplates(job);
+    const ex = document.getElementById('dispatch-choice-overlay');
+    if (ex) ex.remove();
+    const ov = document.createElement('div');
+    ov.id = 'dispatch-choice-overlay';
+    ov.className = 'dispatch-choice-overlay';
+    ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
+    const sheet = document.createElement('div');
+    sheet.className = 'dispatch-choice-sheet msg-sheet';
+    sheet.innerHTML =
+      '<div class="dispatch-choice-handle"></div>' +
+      '<div class="dispatch-choice-title">Text ' + _esc(_firstName(job)) + '</div>' +
+      '<div class="dispatch-choice-sub">' + _esc(job.phone) + ' · WhatsApp it, or copy it into your text app</div>' +
+      templates.map((t, i) =>
+        '<div class="msg-card' + (kind && t.id === kind ? ' msg-card-hot' : '') + '">' +
+          '<div class="msg-title">' + _esc(t.title) + '</div>' +
+          '<div class="msg-text">' + _esc(t.text) + '</div>' +
+          '<div class="msg-actions"><button type="button" class="btn btn-primary btn-sm" data-i="' + i + '" data-act="wa">WhatsApp</button>' +
+          '<button type="button" class="btn btn-secondary btn-sm" data-i="' + i + '" data-act="copy">Copy</button></div>' +
+        '</div>').join('') +
+      '<button type="button" class="dispatch-choice-cancel">Cancel</button>';
+    ov.appendChild(sheet);
+    document.body.appendChild(ov);
+    sheet.querySelector('.dispatch-choice-cancel').addEventListener('click', () => ov.remove());
+    sheet.querySelectorAll('.msg-actions button').forEach(b => b.addEventListener('click', () => {
+      const t = templates[parseInt(b.dataset.i, 10)];
+      if (!t) return;
+      ov.remove();
+      if (b.dataset.act === 'wa') {
+        window.open(_waUrl(phone, t.text), '_blank', 'noopener');
+        _afterMessage(jobId, t.id);
+      } else if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(t.text)
+          .then(() => { showToast('Copied — paste it into your text app', 'success'); _afterMessage(jobId, t.id); })
+          .catch(() => showToast('Copy failed', 'error'));
+      } else showToast('Clipboard not available', 'error');
+    }));
+  }
+  // What the message meant for the funnel.
+  function _afterMessage(jobId, kind) {
+    const job = DB.getJobById(jobId);
+    if (!job) return;
+    if (kind === 'estimate') {
+      const count = (job.followUpCount || 0) + 1;
+      const next = Pipeline.nextFollowUpDay(_todayStr(), count);
+      DB.saveJob({ ...job, followUpCount: count, lastFollowUpAt: new Date().toISOString(), followUpAt: next ? next + 'T12:00:00Z' : job.followUpAt });
+      SyncManager.queueJob(jobId);
+      showToast(next ? `Reminder ${count} logged · next one ${_formatDate(next)}` : `Reminder ${count} logged · that was the last — decide won or lost`, 'success', 4500);
+    } else if (kind === 'review') {
+      DB.saveJob({ ...job, reviewRequestedAt: new Date().toISOString() });
+      SyncManager.queueJob(jobId);
+    }
+    _refreshAfterJobChange(jobId);
+  }
+  function skipReview(jobId) {
+    const job = DB.getJobById(jobId);
+    if (!job) return;
+    DB.saveJob({ ...job, reviewRequestedAt: new Date().toISOString() });
+    _refreshAfterJobChange(jobId);
+  }
+  // The customer said yes to an estimate: back into the funnel as a booked job.
+  function winEstimate(jobId) {
+    if (!Auth.canEditAllJobs()) { showToast('Not authorized', 'error'); return; }
+    const job = DB.getJobById(jobId);
+    if (!job) return;
+    DB.saveJob({ ...job, status: 'scheduled', scheduledDate: job.scheduledDate || _todayStr(), followUpAt: null, dispatchedAt: null, dispatchedTo: '' });
+    SyncManager.queueJob(jobId);
+    showToast('Won! Now set the date and time', 'success');
+    _refreshAfterJobChange(jobId);
+    showEditJobModal(jobId);
+  }
+  // Estimate panel on the job screen: amount, cadence progress, next reminder, Won.
+  function _estimatePanelHTML(job) {
+    if (job.status !== 'follow_up') return '';
+    const n = job.followUpCount || 0, max = Pipeline.FOLLOW_UP_DAYS.length;
+    const due = _followUpDay(job);
+    const amt = parseFloat(job.estimatedTotal) || 0;
+    return `<div class="est-panel">
+      <div class="est-row"><span>Estimate</span><b>${amt ? '$' + amt.toFixed(2) : '—'}</b></div>
+      <div class="est-row"><span>Reminders sent</span><b>${n} of ${max}</b></div>
+      <div class="est-row"><span>Next reminder</span><b>${n >= max ? 'Done — decide won or lost' : (due ? _formatDate(due) : 'today')}</b></div>
+      ${job.lastFollowUpAt ? `<div class="est-row"><span>Last reminder</span><b>${_esc(_formatWhen(job.lastFollowUpAt))}</b></div>` : ''}
+      ${Auth.canEditAllJobs() ? `<button class="btn btn-success btn-full est-win" onclick="App.winEstimate('${job.jobId}')">&#10003; Won — book it</button>` : ''}
+    </div>`;
   }
 
   // ══════════════════════════════════════════════════════════
@@ -6802,8 +6991,11 @@ const App = (() => {
     toggleJobsView,
     renderKanban,
 
-    // Follow-up
+    // Follow-up / customer messages / estimate funnel
     sendFollowUpWhatsApp,
+    openMessageSheet,
+    skipReview,
+    winEstimate,
 
     // Modals
     showModal,

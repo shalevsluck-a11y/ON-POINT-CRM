@@ -28,7 +28,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
   <link rel="stylesheet" href="css/polish.css?v=20260430-2">
   <link rel="stylesheet" href="css/refine.css?v=20260907-a">
-  <link rel="stylesheet" href="css/pipeline.css?v=20260929-a">
+  <link rel="stylesheet" href="css/pipeline.css?v=20260929-b">
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <!-- iOS home-screen icon MUST be a PNG at the ROOT path (iOS auto-probes /apple-touch-icon.png; a .jpg or a 404 → iOS draws the "O" letter fallback) -->
@@ -432,6 +432,8 @@
         </div>
       </div>
 
+      <!-- Funnel counts above the board (filled by App.renderKanban) -->
+      <div id="board-funnel" class="board-funnel hidden"></div>
       <!-- Kanban board (hidden by default, shown when toggled) -->
       <div id="jobs-kanban-board" class="kanban-board hidden"></div>
 
@@ -820,6 +822,10 @@
         <div class="field-group" id="s-zelle-group">
           <label class="field-label">My Zelle Handle</label>
           <input type="text" id="s-owner-zelle" class="field-input" placeholder="Phone or email for Zelle">
+        </div>
+        <div class="field-group" id="s-reviewlink-group">
+          <label class="field-label">Google review link <span class="field-hint">(used by "Ask for a review")</span></label>
+          <input type="url" id="s-review-link" class="field-input" placeholder="https://g.page/r/.../review" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
         </div>
         <div class="field-group" id="settings-defaultstate-group">
           <label class="field-label">Default State <span class="field-hint">(used to pre-fill new jobs)</span></label>
@@ -1298,7 +1304,7 @@
 <script defer src="js/offline-queue.js?v=20260427"></script>
 <script defer src="js/optimistic-ui.js?v=20260427"></script>
 <script defer src="js/balance.js?v=20260921-d"></script>
-<script defer src="js/app.js?v=20260929-a"></script>
+<script defer src="js/app.js?v=20260929-b"></script>
 
 <!-- PWA: Service Worker + Install Prompt -->
 <script>

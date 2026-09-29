@@ -103,3 +103,45 @@
 .stage-side-lost    { background: var(--st-lost-bg, rgba(225,29,72,.12)); color: #b91c1c; }
 .stage-side-overdue { background: rgba(225,29,72,.12); color: #b91c1c; }
 .stage-meta { display: block; margin-top: 6px; font-size: 12px; color: var(--color-text-muted); }
+
+/* ── Home cockpit: grouped "needs attention" rows with one-tap actions ── */
+.na-group { margin-bottom: 8px; }
+.na-group-title {
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--color-text-faint); padding: 10px 14px 4px;
+}
+.na-count { display: inline-block; min-width: 18px; padding: 1px 6px; border-radius: 999px; background: var(--color-surface-3); color: var(--color-text); font-size: 11px; text-align: center; margin-left: 4px; }
+.na-row { flex-wrap: wrap; gap: 8px; }
+.na-row .urgent-info { flex: 1 1 160px; min-width: 0; }
+.na-why { color: var(--color-text-muted); font-weight: 600; }
+.na-actions { display: flex; gap: 6px; flex-shrink: 0; margin-left: auto; }
+.na-actions .btn { padding: 8px 12px !important; font-size: 13px !important; border-radius: 10px !important; min-height: 0 !important; }
+.na-more { font-size: 12px; color: var(--color-text-muted); padding: 4px 14px 8px; }
+
+/* ── Customer message sheet ── */
+.msg-sheet { max-height: 86vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.msg-card { border: 0.5px solid var(--color-border-2); background: var(--color-surface-2); border-radius: 16px; padding: 12px 14px; margin-bottom: 10px; }
+.msg-card-hot { border-color: var(--color-primary); background: var(--color-surface); }
+.msg-title { font-weight: 800; font-size: 14px; margin-bottom: 4px; }
+.msg-text { font-size: 14px; color: var(--color-text-muted); line-height: 1.45; white-space: pre-wrap; }
+.msg-actions { display: flex; gap: 8px; margin-top: 10px; }
+.msg-actions .btn { flex: 1; padding: 10px !important; font-size: 14px !important; min-height: 0 !important; border-radius: 12px !important; }
+
+/* ── Estimate panel on the job screen ── */
+.est-panel { background: var(--color-surface); border: 0.5px solid var(--color-border); border-radius: var(--radius-lg); padding: 6px 14px 12px; margin-bottom: 10px; box-shadow: var(--shadow-card); }
+.est-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,.05); font-size: 14px; color: var(--color-text-muted); }
+.est-row b { color: var(--color-text); }
+.est-row:last-of-type { border-bottom: none; }
+.est-win { margin-top: 8px; }
+
+/* ── Funnel counts above the board ── */
+.board-funnel { background: var(--color-surface); border: 0.5px solid var(--color-border); border-radius: var(--radius-lg); padding: 10px 12px; margin-bottom: 10px; box-shadow: var(--shadow-card); }
+.bf-main { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+.bf-cell { flex: 1; text-align: center; }
+.bf-cell b { display: block; font-size: 20px; font-weight: 800; letter-spacing: -.02em; }
+.bf-cell span { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--color-text-faint); }
+.bf-arrow { color: var(--color-text-faint); font-size: 18px; }
+.bf-side { display: flex; justify-content: space-around; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,.05); font-size: 12px; color: var(--color-text-muted); }
+.bf-side b { color: var(--color-text); margin-left: 3px; }
+.kc-lost .kanban-col-header { background: rgba(225,29,72,.06); }
+.kc-lost .kanban-col-title  { color: var(--st-lost, #e11d48); }

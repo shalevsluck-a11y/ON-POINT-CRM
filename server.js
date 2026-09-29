@@ -128,7 +128,7 @@ app.use((_req, res, next) => {
 
 // Only the files the app actually loads are public. Everything else at the repo
 // root (server.js, .git, .secrets, migrations, backups, docs) stays private.
-const PUBLIC_ASSET = /^\/(?:index\.html|sw\.js|manifest\.json|offline\.html|clear-cache\.html|apple-touch-icon(?:-precomposed)?\.png|js\/[\w.-]+\.js|css\/[\w.-]+\.css|assets\/[\w.-]+|public\/sounds\/[\w.-]+\.mp3)$/;
+const PUBLIC_ASSET = /^\/(?:index\.html|sw\.js|manifest\.json|offline\.html|clear-cache\.html|review\.html|apple-touch-icon(?:-precomposed)?\.png|js\/[\w.-]+\.js|css\/[\w.-]+\.css|assets\/[\w.-]+|public\/sounds\/[\w.-]+\.mp3)$/;
 const staticHandler = express.static(path.join(__dirname), {
   setHeaders(res, filePath) {
     // SW headers are set by nginx, don't duplicate
