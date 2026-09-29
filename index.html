@@ -28,6 +28,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
   <link rel="stylesheet" href="css/polish.css?v=20260430-2">
   <link rel="stylesheet" href="css/refine.css?v=20260907-a">
+  <link rel="stylesheet" href="css/pipeline.css?v=20260929-a">
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <!-- iOS home-screen icon MUST be a PNG at the ROOT path (iOS auto-probes /apple-touch-icon.png; a .jpg or a 404 → iOS draws the "O" letter fallback) -->
@@ -585,7 +586,12 @@
         <div class="field-group">
           <label class="field-label">Job Description <span id="conf-desc" class="conf-badge"></span></label>
           <textarea id="f-description" class="field-input field-textarea" rows="2"
-                    placeholder="Spring, opener, cable, etc."></textarea>
+                    placeholder="Spring, opener, cable, etc." oninput="App.onDescInput()"></textarea>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">Job Type <span class="field-hint">(guessed from the description — tap to change)</span></label>
+          <div id="f-jobtype" class="type-chips"></div>
         </div>
 
         <div class="field-group">
@@ -1292,7 +1298,7 @@
 <script defer src="js/offline-queue.js?v=20260427"></script>
 <script defer src="js/optimistic-ui.js?v=20260427"></script>
 <script defer src="js/balance.js?v=20260921-d"></script>
-<script defer src="js/app.js?v=20260921-b"></script>
+<script defer src="js/app.js?v=20260929-a"></script>
 
 <!-- PWA: Service Worker + Install Prompt -->
 <script>

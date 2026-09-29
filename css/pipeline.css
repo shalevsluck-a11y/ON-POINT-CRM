@@ -1,0 +1,105 @@
+/* ============================================================
+   PIPELINE.CSS — funnel strip, job-type chips, lost-reason sheet.
+   New class names only (no overrides), loaded after refine.css.
+   ============================================================ */
+
+/* Job type chips (new-job form) */
+.type-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.type-chip {
+  border: 0.5px solid var(--color-border-2);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.type-chip.selected { background: var(--color-primary); color: #fff; border-color: transparent; }
+.type-chip:active { transform: scale(.95); }
+.type-chip-static {
+  background: var(--color-surface-2);
+  border: 0.5px solid var(--color-border-2);
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+.type-select {
+  font-size: 13px !important;
+  font-weight: 600;
+  padding: 6px 8px !important;
+  min-height: 0 !important;
+  border-radius: 8px !important;
+  max-width: 180px;
+}
+
+/* Job cards */
+.job-card-type {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--color-text-muted);
+  background: var(--color-surface-2);
+  padding: 2px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.job-card-lostreason {
+  font-size: 11px;
+  font-weight: 700;
+  color: #b91c1c;
+  background: rgba(225, 29, 72, .10);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+/* Lost-reason bottom sheet (shares the dispatch sheet shell) */
+.reason-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
+.reason-chip {
+  border: 0.5px solid var(--color-border-2);
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  border-radius: 14px;
+  padding: 11px 13px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.reason-chip.selected { background: var(--st-lost, #e11d48); color: #fff; border-color: transparent; }
+.reason-chip:active { transform: scale(.96); }
+.lost-note { width: 100%; margin-bottom: 12px; resize: vertical; min-height: 56px; }
+.lost-confirm { margin-bottom: 6px; }
+.lost-confirm:disabled { opacity: .45; }
+
+/* Funnel strip in the job detail hero */
+.stage-strip { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 10px; }
+.stage-step {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: var(--color-text-faint);
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--color-surface-2);
+}
+.stage-step.done { color: var(--color-text); background: var(--color-surface-3); }
+.stage-step.on { color: #fff; background: var(--color-primary); }
+.stage-arrow { color: var(--color-text-faint); font-size: 14px; }
+.stage-side {
+  display: inline-block;
+  margin: 8px 6px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+.stage-side-est     { background: var(--st-estimate-bg, rgba(245,158,11,.16)); color: #7c4a00; }
+.stage-side-lost    { background: var(--st-lost-bg, rgba(225,29,72,.12)); color: #b91c1c; }
+.stage-side-overdue { background: rgba(225,29,72,.12); color: #b91c1c; }
+.stage-meta { display: block; margin-top: 6px; font-size: 12px; color: var(--color-text-muted); }

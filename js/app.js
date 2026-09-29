@@ -1174,6 +1174,7 @@ const App = (() => {
           </div>
         </div>
         <div class="job-card-mid">
+          ${job.jobType ? `<span class="job-card-type">${_esc(Pipeline.typeName(job.jobType, settings))}</span>` : ''}
           <span class="job-card-address">${_esc(job.address || '')}${job.city ? ', '+_esc(job.city) : ''}</span>
           <span class="job-card-date">${dateTimeStr}</span>
         </div>
@@ -1186,6 +1187,8 @@ const App = (() => {
             ${job.createdByName && Auth.isAdmin() ? `<span class="job-card-creator">+ ${_esc(job.createdByName)}</span>` : ''}
             ${_staleLeadBadge(job)}
             ${_jobConflictBadge(job, _state._conflictSet)}
+            ${Pipeline.isOverdue(job, _todayStr()) ? '<span class="job-card-stale jc-stale-red">&#9888; Overdue</span>' : ''}
+            ${job.status === 'lost' && job.lostReason ? `<span class="job-card-lostreason">${_esc(Pipeline.reasonName(job.lostReason, settings))}</span>` : ''}
           </div>
           <div class="job-card-actions">
             ${callBtn}
@@ -1311,6 +1314,7 @@ const App = (() => {
     // Repopulate source dropdown in case settings changed
     _populateSourceDropdown();
     _renderTechSelector();
+    _renderTypeChips('');
   }
 
   function goToStep(stepNum) {
@@ -1405,6 +1409,9 @@ const App = (() => {
       set('f-time', _tw);
       if(_tw){ const _p=_tw.split('-'); const _ff=document.getElementById('f-time-from'), _tf=document.getElementById('f-time-to'); if(_ff)_ff.value=String(parseInt(_p[0],10)); if(_tf)_tf.value=String(parseInt(_p[1],10)); }
       set('f-description', j.description);
+      _state.newJobDraft.jobType = Pipeline.guessType(j.description || '');
+      _state.newJobDraft.jobTypeManual = false;
+      _renderTypeChips(_state.newJobDraft.jobType);
       if (j.state) { const s = document.getElementById('f-state'); if (s) s.value = j.state; }
 
       try { checkReturningCustomer(); } catch (e) {}
@@ -2101,6 +2108,7 @@ const App = (() => {
       scheduledTime:   document.getElementById('f-time')?.value            || '',
       description:     document.getElementById('f-description')?.value?.trim() || '',
       notes:           document.getElementById('f-notes')?.value?.trim()   || '',
+      jobType:         _state.newJobDraft.jobType || Pipeline.guessType(document.getElementById('f-description')?.value || ''),
       rawLead:         _state.newJobDraft.rawLead || '',
       source:          source,
       contractorName:  contrName,
@@ -2282,10 +2290,12 @@ const App = (() => {
     const statusBadgeClass = {
       new: 'sb-new', scheduled: 'sb-scheduled',
       in_progress: 'sb-inprogress', closed: 'sb-closed', paid: 'sb-paid',
+      follow_up: 'sb-follow_up', lost: 'sb-lost',
     }[job.status] || 'sb-new';
 
     const statusLabel = {
       new:'New', scheduled:'Scheduled', in_progress:'In Progress', closed:'Closed', paid:'Paid',
+      follow_up:'Estimate', lost:'Lost',
     }[job.status] || job.status;
 
     const total = parseFloat(job.jobTotal) || parseFloat(job.estimatedTotal) || 0;
@@ -2352,9 +2362,11 @@ const App = (() => {
         <div class="detail-name">${_esc(job.customerName || 'Unknown Customer')}</div>
         <div class="detail-hero-row">
           <span class="status-badge ${statusBadgeClass}">${statusLabel}</span>
+          ${job.jobType ? `<span class="type-chip-static">${_esc(Pipeline.typeName(job.jobType, settings))}</span>` : ''}
           ${job.isRecurringCustomer ? '<span class="returning-badge">&#128260; Returning</span>' : ''}
           ${job.photos?.length ? `<span style="font-size:12px;color:var(--color-text-muted)">&#128247; ${job.photos.length} photo${job.photos.length!==1?'s':''}</span>` : ''}
         </div>
+        ${_stageStripHTML(job)}
       </div>
 
       <!-- Primary Action Row — Dispatch + Copy Details, same message, two delivery paths -->
@@ -2426,6 +2438,12 @@ const App = (() => {
             <div class="detail-row-label">Description</div>
             <div class="detail-row-value" style="white-space:pre-wrap">${_esc(job.description || '—')}</div>
           </div>
+          <div class="detail-row">
+            <div class="detail-row-label">Type</div>
+            <div class="detail-row-value">${Auth.canEditAllJobs()
+              ? `<select class="type-select" onchange="App.setJobType('${job.jobId}', this.value)"><option value="">— pick —</option>${Pipeline.jobTypes(settings).map(t => `<option value="${_esc(t.id)}" ${t.id === job.jobType ? 'selected' : ''}>${_esc(t.name)}</option>`).join('')}</select>`
+              : _esc(Pipeline.typeName(job.jobType, settings) || '—')}</div>
+          </div>
         </div>
       </div>
 
@@ -2487,6 +2505,19 @@ const App = (() => {
         </div>
       </div>` : ''}
 
+      <!-- Closing notes (what the tech found / did) -->
+      ${job.closingDetails ? `
+      <div class="detail-section" id="ds-closing">
+        <div class="detail-section-title" onclick="App.toggleDetailSection('ds-closing')">
+          Closing notes <span class="section-chevron">›</span>
+        </div>
+        <div class="detail-section-body">
+          <div style="padding:var(--sp-md);font-size:var(--font-sm);line-height:1.6;white-space:pre-wrap;color:var(--color-text)">
+            ${_esc(job.closingDetails)}
+          </div>
+        </div>
+      </div>` : ''}
+
       <!-- Photos -->
       <div class="detail-section collapsed" id="ds-photos">
         <div class="detail-section-title" onclick="App.toggleDetailSection('ds-photos')">
@@ -2520,7 +2551,7 @@ const App = (() => {
     }
     return `<div class="status-action-row">
       <button class="status-action-btn sab-est ${job.status==='follow_up'?'current':''}" onclick="App.showEstimateModal('${job.jobId}')">Estimate</button>
-      <button class="status-action-btn sab-lst" onclick="App.setJobStatus('${job.jobId}','lost')">Mark Lost</button>
+      <button class="status-action-btn sab-lst" onclick="App.openLostSheet('${job.jobId}')">Mark Lost</button>
     </div>`;
   }
 
@@ -3206,33 +3237,149 @@ const App = (() => {
     // it manually from the job detail view if they want to send to the tech.)
   }
 
+  // ══════════════════════════════════════════════════════════
+  // LOST — every path asks WHY (one tap). 86 of the first 173 jobs were
+  // lost with no reason recorded; the reasons list lives in Settings.
+  // ══════════════════════════════════════════════════════════
   function markJobLost(jobId) {
+    if (!Auth.canEditAllJobs()) { showToast('Not authorized', 'error'); return; }
+    closeModal(); // the Close Job modal's "Lost" button lands here
+    openLostSheet(jobId);
+  }
+
+  function openLostSheet(jobId) {
+    if (!Auth.canEditAllJobs()) { showToast('Not authorized', 'error'); return; }
+    const job = DB.getJobById(jobId);
+    if (!job) { showToast('Job not found', 'error'); return; }
+    if (job.status === 'paid') { showToast('A paid job cannot be lost', 'warning'); return; }
+    const ex = document.getElementById('dispatch-choice-overlay');
+    if (ex) ex.remove();
+    const reasons = Pipeline.lostReasons(DB.getSettings());
+    let picked = job.lostReason || '';
+    const ov = document.createElement('div');
+    ov.id = 'dispatch-choice-overlay';
+    ov.className = 'dispatch-choice-overlay';
+    ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
+    const sheet = document.createElement('div');
+    sheet.className = 'dispatch-choice-sheet';
+    sheet.innerHTML =
+      '<div class="dispatch-choice-handle"></div>' +
+      '<div class="dispatch-choice-title">Lost — ' + _esc(job.customerName || '') + '</div>' +
+      '<div class="dispatch-choice-sub">Why? One tap.</div>' +
+      '<div class="reason-chips">' + reasons.map(r =>
+        '<button type="button" class="reason-chip' + (r.id === picked ? ' selected' : '') + '" data-id="' + _esc(r.id) + '">' + _esc(r.name) + '</button>').join('') + '</div>' +
+      '<textarea class="field-input lost-note" rows="2" placeholder="Anything worth remembering (optional)">' + _esc(job.lostNote || '') + '</textarea>' +
+      '<button type="button" class="btn btn-danger btn-full lost-confirm">Mark Lost</button>' +
+      '<button type="button" class="dispatch-choice-cancel">Cancel</button>';
+    ov.appendChild(sheet);
+    document.body.appendChild(ov);
+    const confirmBtn = sheet.querySelector('.lost-confirm');
+    confirmBtn.disabled = !picked;
+    sheet.querySelectorAll('.reason-chip').forEach(b => b.addEventListener('click', () => {
+      picked = b.dataset.id;
+      sheet.querySelectorAll('.reason-chip').forEach(x => x.classList.toggle('selected', x === b));
+      confirmBtn.disabled = false;
+    }));
+    sheet.querySelector('.dispatch-choice-cancel').addEventListener('click', () => ov.remove());
+    confirmBtn.addEventListener('click', () => {
+      if (!picked) return;
+      const note = sheet.querySelector('.lost-note').value.trim();
+      ov.remove();
+      _applyLost(jobId, picked, note);
+    });
+  }
+
+  function _applyLost(jobId, reasonId, note) {
     const job = DB.getJobById(jobId);
     if (!job) return;
-
-    // Only admin/dispatcher can mark jobs as lost
-    if (!Auth.canEditAllJobs()) {
-      showToast('Not authorized', 'error');
-      return;
-    }
-
-    const updated = {
-      ...job,
-      status: 'lost',
-    };
-
-    DB.saveJob(updated);
+    if (job.status === 'paid') { showToast('A paid job cannot be lost', 'warning'); return; }
+    DB.saveJob({ ...job, status: 'lost', lostReason: reasonId || 'other', lostNote: note || '', lostAt: new Date().toISOString() });
     SyncManager.queueJob(jobId);
-    closeModal();
-    renderDashboard();
-    renderJobList();
+    showToast('Marked lost · ' + Pipeline.reasonName(reasonId || 'other', DB.getSettings()), 'info');
+    _refreshAfterJobChange(jobId);
+  }
 
-    // Refresh detail view if open
-    const container = document.getElementById('job-detail-content');
-    const refreshed = DB.getJobById(jobId);
-    if (container && refreshed) container.innerHTML = _buildJobDetailHTML(refreshed);
+  // Re-render whatever is on screen after a job changed (detail, list, board, home).
+  function _refreshAfterJobChange(jobId) {
+    try {
+      if (_state.currentView === 'job-detail' && _state.currentJobId === jobId) {
+        const container = document.getElementById('job-detail-content');
+        const refreshed = DB.getJobById(jobId);
+        if (container && refreshed) container.innerHTML = _buildJobDetailHTML(refreshed);
+      }
+      if (_state.currentView === 'jobs') { if (_jobsViewMode === 'kanban') renderKanban(); else renderJobList(); }
+      if (_state.currentView === 'dashboard') renderDashboard();
+      if (_state.currentView === 'calendar') renderCalendar();
+      if (_state.currentView === 'balance') renderReportsDashboard();
+    } catch (e) { console.warn('[refresh]', e); }
+  }
 
-    showToast('Job marked as lost', 'info');
+  // ── DISPATCH STAMP ─────────────────────────────────────────
+  // Every dispatch path (detail button, job card, Pointy, daily schedule) records
+  // that the job went out, and to whom. Open jobs only; re-stamps if the tech changed.
+  function _stampDispatched(jobId) {
+    const job = DB.getJobById(jobId);
+    if (!job || !Pipeline.isOpen(job)) return;
+    const to = job.assignedTechName || '';
+    if (job.dispatchedAt && job.dispatchedTo === to) return;
+    DB.saveJob({ ...job, dispatchedAt: new Date().toISOString(), dispatchedTo: to });
+    _refreshAfterJobChange(jobId);
+  }
+
+  // ── JOB TYPE ───────────────────────────────────────────────
+  function _typeChipsHTML(selectedId) {
+    return Pipeline.jobTypes(DB.getSettings()).map(t =>
+      `<button type="button" class="type-chip${t.id === selectedId ? ' selected' : ''}" onclick="App._selectJobType('${_esc(t.id)}')">${_esc(t.name)}</button>`).join('');
+  }
+  function _renderTypeChips(selectedId) {
+    const el = document.getElementById('f-jobtype');
+    if (el) el.innerHTML = _typeChipsHTML(selectedId || '');
+  }
+  function _selectJobType(id) {
+    const cur = _state.newJobDraft.jobType;
+    _state.newJobDraft.jobType = (cur === id) ? '' : id;   // tap again to clear
+    _state.newJobDraft.jobTypeManual = !!_state.newJobDraft.jobType;
+    _renderTypeChips(_state.newJobDraft.jobType);
+  }
+  // Guess the type from the description until the user picks one by hand.
+  function onDescInput() {
+    if (_state.newJobDraft.jobTypeManual) return;
+    const guess = Pipeline.guessType(document.getElementById('f-description')?.value || '');
+    if (guess !== _state.newJobDraft.jobType) { _state.newJobDraft.jobType = guess; _renderTypeChips(guess); }
+  }
+  // From the job detail: change the type in place.
+  function setJobType(jobId, typeId) {
+    if (!Auth.canEditAllJobs()) { showToast('Not authorized', 'error'); return; }
+    const job = DB.getJobById(jobId);
+    if (!job) return;
+    DB.saveJob({ ...job, jobType: typeId || '' });
+    SyncManager.queueJob(jobId);
+    showToast(typeId ? 'Type: ' + Pipeline.typeName(typeId, DB.getSettings()) : 'Type cleared', 'success');
+    _refreshAfterJobChange(jobId);
+  }
+
+  // ── FUNNEL STRIP (job detail hero) ─────────────────────────
+  // Lead → Booked → Dispatched → Done, with Estimate / Lost as the side exits they are.
+  function _stageStripHTML(job) {
+    const settings = DB.getSettings();
+    const stage = Pipeline.stageOf(job);
+    const main = ['lead', 'booked', 'dispatched', 'done'];
+    const idx = main.indexOf(stage);
+    const steps = main.map((id, i) => {
+      const cls = idx >= 0 ? (i < idx ? 'done' : i === idx ? 'on' : '') : (i <= 1 && (stage === 'estimate' || stage === 'lost') && (job.scheduledDate || i === 0) ? 'done' : '');
+      return `<span class="stage-step ${cls}">${id === 'lead' ? 'Lead' : Pipeline.stageLabel(id)}</span>`;
+    }).join('<span class="stage-arrow">&rsaquo;</span>');
+    let side = '';
+    if (stage === 'estimate') side = '<span class="stage-side stage-side-est">Estimate — waiting on the customer</span>';
+    if (stage === 'lost') side = `<span class="stage-side stage-side-lost">Lost${job.lostReason ? ' · ' + _esc(Pipeline.reasonName(job.lostReason, settings)) : ''}${job.lostNote ? ' — ' + _esc(job.lostNote) : ''}</span>`;
+    const overdue = Pipeline.isOverdue(job, _todayStr()) ? '<span class="stage-side stage-side-overdue">&#9888; Overdue — close it or mark it lost</span>' : '';
+    const disp = job.dispatchedAt ? `<span class="stage-meta">Sent to tech ${_esc(_formatWhen(job.dispatchedAt))}${job.dispatchedTo ? ' &rarr; ' + _esc(job.dispatchedTo) : ''}</span>` : '';
+    return `<div class="stage-strip">${steps}</div>${side}${overdue}${disp}`;
+  }
+  function _formatWhen(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
   }
 
   // ══════════════════════════════════════════════════════════
@@ -3422,6 +3569,13 @@ const App = (() => {
         <label class="field-label">Notes</label>
         <textarea id="edit-notes" class="field-input field-textarea" rows="2" ${isPaid ? 'disabled' : ''}>${_esc(job.notes || '')}</textarea>
       </div>
+      <div class="field-group">
+        <label class="field-label">Job Type</label>
+        <select id="edit-jobtype" class="field-input">
+          <option value="">— pick —</option>
+          ${Pipeline.jobTypes(settings).map(t => `<option value="${_esc(t.id)}" ${job.jobType === t.id ? 'selected' : ''}>${_esc(t.name)}</option>`).join('')}
+        </select>
+      </div>
       ${isDispatcher ? '' : `
       <div class="field-group">
         <label class="field-label">Company</label>
@@ -3570,6 +3724,7 @@ const App = (() => {
         assignedTechName: tech ? tech.name : '',
         isSelfAssigned:   tech ? tech.isOwner : false,
         closingDetails:   document.getElementById('edit-closing-details')?.value?.trim() || job.closingDetails,
+        jobType:          document.getElementById('edit-jobtype')?.value ?? job.jobType,
         jobTotal:         newJobTotal,
         partsCost:        newPartsCost,
         taxOption:        newTaxOption,
@@ -3596,6 +3751,7 @@ const App = (() => {
         scheduledTime:    document.getElementById('edit-time')?.value            || job.scheduledTime,
         description:      document.getElementById('edit-desc')?.value?.trim()    || job.description,
         notes:            document.getElementById('edit-notes')?.value?.trim()   || job.notes,
+        jobType:          document.getElementById('edit-jobtype')?.value ?? job.jobType,
         source:           newLeadSource,
         techPercent:      techPctEdit,
         assignedTechId:   techId,
@@ -3975,6 +4131,7 @@ const App = (() => {
     msg += `\n\nK?`;
 
     window.open(_waUrl(tech.phone, msg), '_blank');
+    jobs.forEach(j => _stampDispatched(j.jobId));
   }
 
   // ══════════════════════════════════════════════════════════
@@ -5183,6 +5340,7 @@ const App = (() => {
     return `<div class="kanban-card${isFollowUp ? ' kanban-card-urgent' : ''}" draggable="true" data-job-id="${job.jobId}"
          onclick="App.openJobDetail('${job.jobId}')">
       <div class="kanban-card-name">${_esc(job.customerName || 'Unknown')}</div>
+      ${job.jobType ? `<div class="kanban-card-addr" style="font-weight:700">${_esc(Pipeline.typeName(job.jobType, settings))}</div>` : ''}
       ${job.address ? `<div class="kanban-card-addr">${_esc(job.address)}${job.city ? ', ' + _esc(job.city) : ''}</div>` : ''}
       ${dateStr ? `<div class="kanban-card-date">${dateStr}${timeStr ? ' · ' + timeStr : ''}</div>` : ''}
       <div class="kanban-card-footer">
@@ -5909,6 +6067,7 @@ const App = (() => {
 
     // Open WhatsApp with pre-filled message (user chooses recipient)
     window.open(_waUrl('', msg), '_blank', 'noopener,noreferrer');
+    _stampDispatched(jobId);
   }
 
   // Copy the identical dispatch message to the clipboard — same text openWhatsApp()
@@ -5929,7 +6088,7 @@ const App = (() => {
     }
 
     navigator.clipboard.writeText(msg)
-      .then(() => showToast('Copied — paste into a text message', 'success'))
+      .then(() => { showToast('Copied — paste into a text message', 'success'); _stampDispatched(jobId); })
       .catch(() => showToast('Copy failed', 'error'));
   }
 
@@ -6262,7 +6421,8 @@ const App = (() => {
         ((p.address || p.city || p.state || p.zip)
           ? `<br>${_esc([p.address, p.city].filter(Boolean).join(', ') + (p.state ? ', ' + p.state : '') + (p.zip ? ' ' + p.zip : ''))}` : '') +
         (p.scheduledDate ? `<br><b>${_esc(_pointyDay(p.scheduledDate))}</b> ${_esc(p.scheduledTime ? _formatTime(_normTimeWindow(p.scheduledTime)) : '')}` : '') +
-        (p.description ? `<br><i>${_esc(p.description)}</i>` : '');
+        (p.description ? `<br><i>${_esc(p.description)}</i>` : '') +
+        ((p.jobType || Pipeline.guessType(p.description || '')) ? `<br><span class="type-chip-static">${_esc(Pipeline.typeName(p.jobType || Pipeline.guessType(p.description || ''), DB.getSettings()))}</span>` : '');
     } else if (a === 'close_job') {
       const job = p.jobId ? DB.getJobById(p.jobId) : null;
       title = 'Close job';
@@ -6273,7 +6433,9 @@ const App = (() => {
         (!p.jobId ? `<br><span class="pointy-warn">&#9888; I couldn't find that job — pick it in Jobs, or retype the exact name.</span>` : '');
     } else if (a === 'mark_lost') {
       title = 'Mark lost';
-      body = `<b>${_esc(p.customerName||'?')}</b>` + (p.reason ? `<br><i>${_esc(p.reason)}</i>` : '') +
+      body = `<b>${_esc(p.customerName||'?')}</b>` + (p.reason
+          ? `<br>Reason: <b>${_esc(Pipeline.reasonName(Pipeline.reasonFromText(p.reason) || 'other', DB.getSettings()))}</b> <i>(${_esc(p.reason)})</i>`
+          : '<br><span class="pointy-warn">No reason given &mdash; it will be filed as "Other".</span>') +
         (!p.jobId ? `<br><span class="pointy-warn">&#9888; Couldn't find that job — retype the exact name.</span>` : '');
     } else if (a === 'dispatch_job') {
       const d = (p.detail == 50) ? 50 : 100;
@@ -6369,6 +6531,7 @@ const App = (() => {
           // No date given = today, or the job never reaches the Schedule (operator 2026-09-16).
           scheduledDate: p.scheduledDate || _todayStr(), scheduledTime: _normTimeWindow(p.scheduledTime),
           description: p.description||'', notes: p.reference ? ('Ref: '+p.reference) : '',
+          jobType: p.jobType || Pipeline.guessType(p.description || ''),
           rawLead: '', source: 'my_lead',
           assignedTechId: owner?.id || '', assignedTechName: owner?.name || '', isSelfAssigned: !!owner,
           techPercent: owner?.percent || 0, contractorName: '', contractorPct: 0, ownerPct: 100,
@@ -6380,9 +6543,9 @@ const App = (() => {
         _pointyAppend('bot', `&#9989; Added <b>${_esc(job.customerName)}</b>.`);
       } else if (a === 'mark_lost') {
         const job = DB.getJobById(p.jobId); if (!job) throw new Error('Job not found');
-        job.status = 'lost'; if (p.reason) job.notes = ((job.notes||'') + ' | Lost: ' + p.reason).trim();
+        job.status = 'lost'; job.lostReason = Pipeline.reasonFromText(p.reason) || 'other'; job.lostNote = p.reason || ''; job.lostAt = new Date().toISOString();
         await DB.saveJob(job);
-        _pointyAppend('bot', `&#9989; Marked <b>${_esc(job.customerName)}</b> as lost.`);
+        _pointyAppend('bot', `&#9989; Marked <b>${_esc(job.customerName)}</b> as lost &mdash; ${_esc(Pipeline.reasonName(job.lostReason, DB.getSettings()))}.`);
       } else if (a === 'close_job') {
         const job = DB.getJobById(p.jobId); if (!job) throw new Error('Job not found');
         if (!job.scheduledDate) job.scheduledDate = _todayStr(); // closing a dateless job puts it on today
@@ -6472,6 +6635,7 @@ const App = (() => {
         if (p.phone) job.phone = LeadParser.formatPhone(p.phone);
         if (p.description) job.description = p.description;
         if (p.notes) job.notes = p.notes;
+        if (p.jobType) job.jobType = p.jobType;
         if (job.scheduledDate && job.status === 'new') job.status = 'scheduled';
         await DB.saveJob(job);
         try { SyncManager.queueJob(job.jobId); } catch(e){}
@@ -6484,7 +6648,7 @@ const App = (() => {
         const ids = pend.bulkJobs || []; let n = 0;
         for (const jid of ids) {
           const job = DB.getJobById(jid); if (!job) continue;
-          if (p.op === 'mark_lost') { job.status = 'lost'; await DB.saveJob(job); n++; }
+          if (p.op === 'mark_lost') { job.status = 'lost'; job.lostReason = Pipeline.reasonFromText(p.reason) || 'other'; job.lostNote = p.reason || 'Bulk via Pointy'; job.lostAt = new Date().toISOString(); await DB.saveJob(job); n++; }
           else if (p.op === 'mark_estimate') { job.status = 'follow_up'; await DB.saveJob(job); n++; }
         }
         _pointyAppend('bot', `&#9989; Updated <b>${n}</b> job(s).`);
@@ -6547,6 +6711,10 @@ const App = (() => {
     showEditJobModal,
     finalizeJob,
     markJobLost,
+    openLostSheet,
+    setJobType,
+    onDescInput,
+    _selectJobType,
     _updateClosePreview,
     _closeSelectPay,
     _closeTaxSelect,

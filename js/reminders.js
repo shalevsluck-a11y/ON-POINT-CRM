@@ -42,7 +42,7 @@ const Reminders = (() => {
     let newlyOverdue = 0;
 
     for (const job of jobs) {
-      if (['closed', 'paid', 'follow_up'].includes(job.status)) continue;
+      if (['closed', 'paid', 'follow_up', 'lost'].includes(job.status)) continue;
       if (!job.scheduledDate) continue;
       if (job.overdueAt) continue; // already flagged
 
@@ -53,15 +53,17 @@ const Reminders = (() => {
       const scheduled = new Date(y, m - 1, d, hh, mm);
 
       if (scheduled < cutoff) {
-        // Flag as follow-up
-        const updated = { ...job, status: 'follow_up', overdueAt: new Date().toISOString() };
+        // Flag only. An overdue job is NOT an estimate: it used to be flipped to
+        // follow_up, which filled the Estimate bucket with jobs nobody quoted
+        // (2026-09-29). The dashboard now lists overdue jobs from the date itself.
+        const updated = { ...job, overdueAt: new Date().toISOString() };
         await DB.saveJob(updated);
         newlyOverdue++;
 
         // Notify
         await Notifications.send({
-          title:  `⚠ Follow-up needed: ${job.customerName}`,
-          body:   `${job.description || 'Job'} at ${job.address || 'unknown address'} — was scheduled ${_scheduledLabel(job.scheduledDate, job.scheduledTime)} and hasn't been closed.`,
+          title:  `⚠ Not closed: ${job.customerName}`,
+          body:   `${job.description || 'Job'} at ${job.address || 'unknown address'} — was scheduled ${_scheduledLabel(job.scheduledDate, job.scheduledTime)}. Close it, or mark it lost.`,
           jobId:  job.jobId,
         });
       }
