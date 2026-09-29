@@ -4325,6 +4325,9 @@ const App = (() => {
     _setVal('s-apps-script-url', s.appsScriptUrl);
     _setVal('s-default-state',   s.defaultState);
     _setVal('s-review-link',     s.reviewLink || '');
+    // Funnel lists: what is in Settings, or the built-in defaults when nothing is saved yet.
+    _setVal('s-job-types',    Pipeline.jobTypes(s).map(t => t.name).join('\n'));
+    _setVal('s-lost-reasons', Pipeline.lostReasons(s).map(r => r.name).join('\n'));
 
     // Load notification preferences from user profile
     const notifPrefs = user?.notification_preferences || {};
@@ -4422,7 +4425,7 @@ const App = (() => {
 
     // Hide admin-only settings sections from tech/contractor
     ['settings-myinfo-card','settings-tax-card','settings-tech-card','settings-sources-card',
-     'settings-data-card','settings-defaultstate-group','settings-ai-card','s-reviewlink-group'].forEach(id => {
+     'settings-data-card','settings-defaultstate-group','settings-ai-card','s-reviewlink-group','settings-funnel-card'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.classList.toggle('hidden', !isAdmin);
     });
@@ -4795,6 +4798,19 @@ const App = (() => {
     return _withLoading('settings-save-btn', _doSaveSettings);
   }
 
+  // "One name per line" → [{id, name}]. A name that already exists keeps its id, so
+  // the jobs that reference it stay attached; a new name gets a slug id.
+  function _parseNamedList(text, existing) {
+    const seen = new Set();
+    return String(text || '').split('\n').map(l => l.trim()).filter(Boolean).map(name => {
+      const match = (existing || []).find(x => x.name.toLowerCase() === name.toLowerCase());
+      let id = match ? match.id : name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'item';
+      while (seen.has(id)) id += '_';
+      seen.add(id);
+      return { id, name };
+    });
+  }
+
   async function _doSaveSettings() {
     // Build notification preferences object
     const selectedSound = document.querySelector('input[name="notif-sound"]:checked')?.value || 'chime';
@@ -4830,9 +4846,14 @@ const App = (() => {
       appsScriptUrl: document.getElementById('s-apps-script-url')?.value?.trim() || '',
       defaultState:  document.getElementById('s-default-state')?.value           || 'NY',
       reviewLink:    document.getElementById('s-review-link')?.value?.trim()     || '',
+      jobTypes:      _parseNamedList(document.getElementById('s-job-types')?.value, Pipeline.jobTypes(DB.getSettings())),
+      lostReasons:   _parseNamedList(document.getElementById('s-lost-reasons')?.value, Pipeline.lostReasons(DB.getSettings())),
     };
     if (settings.reviewLink && !/^https?:\/\//i.test(settings.reviewLink)) {
       showToast('The review link must start with https://', 'warning'); return;
+    }
+    if (!settings.jobTypes.length || !settings.lostReasons.length) {
+      showToast('Job types and lost reasons cannot be empty', 'warning'); return;
     }
 
     if (settings.taxRateNY < 0 || settings.taxRateNY > 20) {

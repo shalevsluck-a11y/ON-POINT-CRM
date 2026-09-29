@@ -243,7 +243,7 @@ const Reports = (() => {
           <select class="balance-select" onchange="Reports.set('source',this.value)"><option value="">All companies</option>${Object.entries(sourceOpts).map(([k2, v]) => `<option value="${esc(k2)}"${_s.source === k2 ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select>
           <select class="balance-select" onchange="Reports.set('type',this.value)"><option value="">All types</option>${types.map(t => `<option value="${esc(t.id)}"${_s.type === t.id ? ' selected' : ''}>${esc(t.name)}</option>`).join('')}</select>
         </div>
-        <div class="rp-period">${esc(r.label)} · ${esc(fmtDay(r.from))} – ${esc(fmtDay(r.to))}</div>
+        <div class="rp-period">${esc(r.label)}${_s.preset === 'all' ? '' : ' · ' + esc(fmtDay(r.from)) + ' – ' + esc(fmtDay(r.to))}</div>
 
         <div class="rp-tiles">
           ${tiles.map((t, i) => `<div class="rp-tile ${t.cls}" ${i < 2 ? `onclick="Reports.drill('done')"` : ''}><div class="rp-tile-label">${t.label}</div><div class="rp-tile-value">${t.value}</div><div class="rp-tile-sub">${esc(t.sub)}</div></div>`).join('')}
@@ -346,7 +346,7 @@ const Reports = (() => {
   function text() {
     if (!_last) return '';
     const k = _last.kpis, r = _last.range;
-    const L = [`ON POINT — ${r.label} (${fmtDay(r.from)} – ${fmtDay(r.to)})`, '',
+    const L = [`ON POINT — ${r.label}${_s.preset === 'all' ? '' : ' (' + fmtDay(r.from) + ' – ' + fmtDay(r.to) + ')'}`, '',
       `Collected: ${money2(k.revenue)} (${k.done} jobs)`, `You keep: ${money2(k.profit)}${k.margin != null ? ' (' + k.margin + '%)' : ''}`,
       `Tech pay: ${money2(k.techPay)} · Parts: ${money2(k.parts)} · Company fees: ${money2(k.fees)}`,
       `Avg ticket: ${money2(k.avgTicket)} · Close rate: ${pct(k.closeRate)} (${k.done} won / ${k.lost} lost)`, ''];

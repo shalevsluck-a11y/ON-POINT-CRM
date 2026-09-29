@@ -889,6 +889,19 @@
         </div>
       </div>
 
+      <!-- Funnel lists (admin only): job types + lost reasons, one per line -->
+      <div class="settings-card" id="settings-funnel-card">
+        <div class="settings-section-title">Job Types &amp; Lost Reasons</div>
+        <div class="field-group">
+          <label class="field-label">Job types <span class="field-hint">(one per line — the app guesses the type from the description; blank = the built-in list)</span></label>
+          <textarea id="s-job-types" class="field-input field-textarea" rows="6" autocapitalize="words" spellcheck="false"></textarea>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Lost reasons <span class="field-hint">(one per line, asked on every Mark Lost)</span></label>
+          <textarea id="s-lost-reasons" class="field-input field-textarea" rows="5" autocapitalize="sentences" spellcheck="false"></textarea>
+        </div>
+      </div>
+
       <!-- Notifications -->
       <div class="settings-card" id="settings-notifications-card">
         <div class="settings-section-title">NOTIFICATIONS</div>
@@ -1291,7 +1304,7 @@
 <script defer src="js/auth.js?v=20260907-a"></script>
 <script defer src="js/tidy.js?v=20260921-c"></script>
 <script defer src="js/pipeline.js?v=20260929-a"></script>
-<script defer src="js/db.js?v=20260929-a"></script>
+<script defer src="js/db.js?v=20260929-b"></script>
 <script defer src="js/notifications.js?v=20260427"></script>
 <script defer src="js/notification-settings.js?v=20260427"></script>
 <script defer src="js/push-subscription-enforcer.js?v=20260913-a"></script>
@@ -1304,8 +1317,8 @@
 <script defer src="js/offline-queue.js?v=20260427"></script>
 <script defer src="js/optimistic-ui.js?v=20260427"></script>
 <script defer src="js/balance.js?v=20260921-d"></script>
-<script defer src="js/reports.js?v=20260929-a"></script>
-<script defer src="js/app.js?v=20260929-b"></script>
+<script defer src="js/reports.js?v=20260929-b"></script>
+<script defer src="js/app.js?v=20260929-c"></script>
 
 <!-- PWA: Service Worker + Install Prompt -->
 <script>

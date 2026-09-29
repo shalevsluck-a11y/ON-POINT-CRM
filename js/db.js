@@ -264,6 +264,8 @@ const DB = (() => {
       const prev = Storage.getJobById(job.jobId);
       if (job.status === 'lost' && !job.lostAt) job.lostAt = new Date().toISOString();
       if (job.status !== 'lost' && prev && prev.status === 'lost') { job.lostAt = null; job.lostReason = ''; job.lostNote = ''; }
+      // Who booked it (for the "Booked by" report): stamped once, on the first save.
+      if (!prev && !job.createdByName && typeof Auth !== 'undefined' && Auth.getUser) job.createdByName = (Auth.getUser() || {}).name || '';
     } catch (_) {}
     console.log('[DB] saveJob START - Job ID:', job.jobId, 'Customer:', job.customerName);
     console.log('[DB] saveJob CALLER STACK:', new Error().stack);
