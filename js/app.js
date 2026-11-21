@@ -2394,7 +2394,7 @@ const App = (() => {
       : '';
 
     // One tap to text the customer (WhatsApp, or copy into iMessage): confirm, on the way,
-    // estimate follow-up, review ask. The template list depends on where the job is.
+    // review ask. On an estimate the button is Remind = one follow-up EMAIL (no WhatsApp).
     const wantsReview = job.status === 'paid' && !job.reviewRequestedAt;
     const followUpBtn = Auth.isAdminOrDisp() && job.phone
       ? `<button class="detail-action-btn ${job.status === 'follow_up' ? 'dab-warn' : wantsReview ? 'dab-green' : ''}" onclick="App.openMessageSheet('${job.jobId}')">
@@ -5535,7 +5535,7 @@ const App = (() => {
   }
 
   // ══════════════════════════════════════════════════════════
-  // FOLLOW-UP WHATSAPP REMIND
+  // FOLLOW-UP REMIND (estimates: email only) + CUSTOMER TEXTS
   // ══════════════════════════════════════════════════════════
 
   function sendFollowUpWhatsApp(jobId) {
@@ -5568,24 +5568,12 @@ const App = (() => {
     const first = _firstName(job);
     const when = _whenText(job);
     const tech = job.assignedTechName ? job.assignedTechName.trim().split(/\s+/)[0] : 'our technician';
-    const amt = parseFloat(job.estimatedTotal) || 0;
-    const amtText = amt ? ' for $' + amt.toFixed(0) : '';
-    const n = Math.min(job.followUpCount || 0, 3);
-    // Day 1 / 3 / 7 / 14 — the last one is the "keep it open or close it out?" message,
-    // which gets the most replies of any follow-up.
-    const estimateText = [
-      `Hi ${first}, ${BRAND} here. Just making sure you got our estimate${amtText}. Happy to answer any questions — reply here anytime.`,
-      `Hi ${first}, following up on the estimate${amtText}. Want me to hold a spot for you this week? Reply with a day that works.`,
-      `Hi ${first}, are you leaning yes, no, or still deciding on the garage door? No pressure — I just want to close the loop.`,
-      `Hi ${first}, last check-in on the estimate${amtText}. Should I keep your file open or close it out? Either way, thank you.`,
-    ][n];
     const review = _reviewUrl(s);
     const list = [];
     if (Pipeline.isOpen(job) && job.scheduledDate) {
       list.push({ id: 'confirm', title: 'Confirm the appointment', text: `Hi ${first}, it's ${BRAND}. Confirming your garage door appointment ${when}. Reply here if anything changes. Thank you!` });
       list.push({ id: 'onway', title: 'On the way', text: `Hi ${first}, ${tech} from ${BRAND} is on the way to you now. See you soon!` });
     }
-    if (job.status === 'follow_up') list.push({ id: 'estimate', title: `Estimate follow-up (${n + 1} of 4)`, text: estimateText });
     if (job.status === 'paid' || job.status === 'closed') {
       list.push({ id: 'review', title: job.reviewRequestedAt ? 'Ask for a review (again)' : 'Ask for a review', text: `Hi ${first}, thanks for choosing ${BRAND}! If ${tech} did a good job, a quick Google review helps us a lot${review ? ': ' + review : '.'} Thank you!` });
       list.push({ id: 'checkin', title: 'Check in after the job', text: `Hi ${first}, ${BRAND} checking in — is the garage door working the way it should? If anything is off, reply here and we will take care of it.` });
@@ -5593,10 +5581,29 @@ const App = (() => {
     if (!list.length) list.push({ id: 'checkin', title: 'Check in', text: `Hi ${first}, ${BRAND} here — how can we help with your garage door? Reply here or call us at ${s.ownerPhone || '(929) 429-2429'}.` });
     return list;
   }
+  // Remind on an estimate = ONE follow-up email from service@, sent by the server (owner 11-21: "only email").
+  // The server keeps the rules: two follow-ups per estimate, none after the customer answered, one a day.
+  let _reminding = false;
+  async function remindEmail(jobId) {
+    if (!Auth.isAdminOrDisp() || _reminding) return;
+    _reminding = true;
+    showToast('Sending the follow-up email...', 'info', 4000);
+    try {
+      const session = await SupabaseClient.auth.getSession();
+      const token = session?.data?.session?.access_token;
+      const res = await fetch('/api/remind-email', { method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }, body: JSON.stringify({ jobId }) });
+      const r = await res.json();
+      showToast(r.msg || r.error || 'Email could not be sent', r.ok ? 'success' : 'warning', 7000);
+    } catch (e) {
+      showToast('Email could not be sent - check the connection', 'error', 6000);
+    } finally { _reminding = false; }
+  }
   function openMessageSheet(jobId, kind) {
     if (!Auth.isAdminOrDisp()) return;
     const job = DB.getJobById(jobId);
     if (!job) { showToast('Job not found', 'error'); return; }
+    if (job.status === 'follow_up') { remindEmail(jobId); return; }   // estimate reminders are email only (owner 11-21)
     const phone = _cleanPhoneForWA(job.phone);
     if (!phone) { showToast('No valid phone on this job', 'warning'); return; }
     if (kind === 'review' && !(DB.getSettings().reviewLink || '').trim()) showToast('Tip: add your Google review link in Settings so the message includes it', 'warning', 5000);
@@ -5642,13 +5649,7 @@ const App = (() => {
   function _afterMessage(jobId, kind) {
     const job = DB.getJobById(jobId);
     if (!job) return;
-    if (kind === 'estimate') {
-      const count = (job.followUpCount || 0) + 1;
-      const next = Pipeline.nextFollowUpDay(_todayStr(), count);
-      DB.saveJob({ ...job, followUpCount: count, lastFollowUpAt: new Date().toISOString(), followUpAt: next ? next + 'T12:00:00Z' : job.followUpAt });
-      SyncManager.queueJob(jobId);
-      showToast(next ? `Reminder ${count} logged · next one ${_formatDate(next)}` : `Reminder ${count} logged · that was the last — decide won or lost`, 'success', 4500);
-    } else if (kind === 'review') {
+    if (kind === 'review') {
       DB.saveJob({ ...job, reviewRequestedAt: new Date().toISOString() });
       SyncManager.queueJob(jobId);
     }

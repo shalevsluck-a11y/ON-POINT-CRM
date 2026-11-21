@@ -1056,6 +1056,34 @@ app.post('/api/test-push', async (req, res) => {
   }
 });
 
+// Remind button on an estimate: email only (owner 11-21). /root/estmail/followup.py sends ONE follow-up from service@,
+// writes the job note, and refuses a third one, a second one the same day, or any after the customer answered.
+app.post('/api/remind-email', rateLimit({ max: 10, windowMs: 60_000 }), async (req, res) => {
+  try {
+    const token = (req.headers.authorization || '').replace('Bearer ', '');
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !user) return res.status(401).json({ error: 'Invalid auth token' });
+    const { data: profile } = await supabaseAdmin.from('profiles').select('role').eq('id', user.id).single();
+    if (!profile || (profile.role !== 'admin' && profile.role !== 'dispatcher')) return res.status(403).json({ error: 'Not authorized' });
+    const jobId = String((req.body || {}).jobId || '');
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(jobId)) return res.status(400).json({ error: 'Bad job id' });
+    require('child_process').execFile('python3', ['/root/estmail/followup.py', '--job', jobId], { cwd: '/root/estmail', timeout: 90_000 }, (err, stdout) => {
+      let out = null;
+      try { out = JSON.parse(String(stdout || '').trim().split('\n').pop()); } catch (_) {}
+      if (!out || typeof out.msg !== 'string') {
+        console.error('[remind-email] failed for', jobId, err && err.message);
+        return res.status(500).json({ error: 'Email could not be sent' });
+      }
+      console.log('[remind-email]', jobId, out.ok ? 'sent' : 'not sent:', out.msg);
+      res.json({ ok: !!out.ok, msg: out.msg });
+    });
+  } catch (e) {
+    console.error('[remind-email]', e.message);
+    res.status(500).json({ error: 'Email could not be sent' });
+  }
+});
+
 app.get('/healthz', (_req, res) => res.json({ ok: true, uptime: Math.round(process.uptime()) }));
 
 // Pointy cost for the Settings card (owner only). Rows start 2026-09-13; older spend is only in the Anthropic Console.
