@@ -810,6 +810,7 @@ const DB = (() => {
       createdByName:       row.created_by_name || '',
       // Funnel + reporting fields (migration 052)
       jobType:             row.job_type || '',
+      leadChannel:         row.lead_channel || '',
       lostReason:          row.lost_reason || '',
       lostNote:            row.lost_note || '',
       lostAt:              row.lost_at || null,
@@ -887,6 +888,7 @@ const DB = (() => {
       follow_up_at:         job.followUpAt || null,
       created_by:           job.createdBy || null,
       job_type:             job.jobType || null,
+      lead_channel:         job.leadChannel || null,
       lost_reason:          job.lostReason || null,
       lost_note:            job.lostNote || '',
       lost_at:              job.lostAt || null,

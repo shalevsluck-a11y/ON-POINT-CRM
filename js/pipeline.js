@@ -36,6 +36,9 @@ const Pipeline = (() => {
     return isOpen(job) && !!job.scheduledDate && job.scheduledDate < today;
   }
 
+  // How the customer found us. Jobs store the word itself.
+  const CHANNELS = ['Google', 'Website', 'Yelp', 'Facebook', 'Marketplace', 'Nextdoor', 'Thumbtack', 'Referral', 'Repeat customer', 'Postcard', 'Other'];
+
   // ── JOB TYPES ─────────────────────────────────────────────
   // Defaults; Settings can replace the list. Jobs store the id.
   const JOB_TYPES = [
@@ -145,7 +148,7 @@ const Pipeline = (() => {
   function stageLabel(id) { const s = STAGES.find(x => x.id === id); return s ? s.label : id; }
 
   return {
-    STAGES, OPEN_STATUSES, JOB_TYPES, LOST_REASONS, FOLLOW_UP_DAYS,
+    STAGES, OPEN_STATUSES, CHANNELS, JOB_TYPES, LOST_REASONS, FOLLOW_UP_DAYS,
     stageOf, stageLabel, isOpen, isOverdue,
     guessType, reasonFromText,
     addDays, nextFollowUpDay, followUpDue,

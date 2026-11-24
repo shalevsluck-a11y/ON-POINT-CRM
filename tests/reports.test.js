@@ -17,7 +17,7 @@ assert.strictEqual(R.range('last_month', '2026-01-15').from, '2025-12-01');   //
 // ── a small book of jobs (no PayoutEngine in node → the fallback math: parts off the top, then %) ──
 const jobs = [
   // paid this month by Orel (40%), $500 total, $100 parts → labor 400 → tech 160, owner 240
-  { jobId: 'a', status: 'paid', paidAt: '2026-09-10T15:00:00Z', jobTotal: 500, partsCost: 100, techPercent: 40, contractorPct: 0, assignedTechId: 'orel', assignedTechName: 'Orel', source: 'my_lead', jobType: 'spring', createdByName: 'Solomon', paymentMethod: 'cash', createdAt: '2026-09-09T12:00:00Z' },
+  { jobId: 'a', status: 'paid', paidAt: '2026-09-10T15:00:00Z', jobTotal: 500, partsCost: 100, techPercent: 40, contractorPct: 0, assignedTechId: 'orel', assignedTechName: 'Orel', source: 'my_lead', leadChannel: 'Yelp', jobType: 'spring', createdByName: 'Solomon', paymentMethod: 'cash', createdAt: '2026-09-09T12:00:00Z' },
   // paid this month, self-assigned owner (50%), $200 → tech 100 + owner 100 = keep 200
   { jobId: 'b', status: 'paid', paidAt: '2026-09-12T15:00:00Z', jobTotal: 200, partsCost: 0, techPercent: 50, contractorPct: 0, isSelfAssigned: true, assignedTechId: 'me', assignedTechName: 'Shalev', source: 'SONART', jobType: 'opener', createdByName: 'Dispatcher D', paymentMethod: 'zelle', createdAt: '2026-09-11T12:00:00Z' },
   // paid LAST month — must not count this month
@@ -64,6 +64,8 @@ assert.strictEqual(me.profit, 200);
 // by source / type / lost reason / dispatcher / payment
 assert.strictEqual(res.bySource.find(x => x.key === 'my_lead').name, 'My leads');
 assert.strictEqual(res.bySource.find(x => x.key === 'SONART').revenue, 200);
+assert.strictEqual(res.byChannel.find(x => x.key === 'Yelp').revenue, 500);
+assert.strictEqual(res.byChannel.find(x => x.key === '').name, 'Not marked');
 assert.strictEqual(res.byType.find(x => x.key === 'spring').lost, 1);
 assert.strictEqual(res.byType.find(x => x.key === 'spring').closeRate, 50);
 assert.strictEqual(res.byLost.find(x => x.key === 'price').atRisk, 900);

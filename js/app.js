@@ -1255,6 +1255,8 @@ const App = (() => {
     console.log('[NEW JOB] Force syncing settings from database...');
 
     // Add loading state to dropdown
+    const chNew = document.getElementById('f-channel');
+    if (chNew) chNew.innerHTML = _channelOpts('');   // fresh form starts empty
     const sourceEl = document.getElementById('f-source');
     if (sourceEl) {
       sourceEl.innerHTML = '<option>Loading...</option>';
@@ -1972,7 +1974,13 @@ const App = (() => {
 
   // ── SOURCE DROPDOWN ──────────────────────────────────
 
+  function _channelOpts(cur) {
+    return '<option value="">— pick —</option>' + Pipeline.CHANNELS.map(c => `<option value="${_esc(c)}" ${c === cur ? 'selected' : ''}>${_esc(c)}</option>`).join('');
+  }
+
   function _populateSourceDropdown() {
+    const chEl = document.getElementById('f-channel');
+    if (chEl) chEl.innerHTML = _channelOpts(chEl.value);   // keep the pick: this runs on every settings sync
     const select = document.getElementById('f-source');
     if (!select) return;
     const settings = DB.getSettings();
@@ -2158,6 +2166,7 @@ const App = (() => {
       jobType:         _state.newJobDraft.jobType || Pipeline.guessType(document.getElementById('f-description')?.value || ''),
       rawLead:         _state.newJobDraft.rawLead || '',
       source:          source,
+      leadChannel:     document.getElementById('f-channel')?.value || '',
       contractorName:  contrName,
       contractorPct:   contrPct,
       ownerPct:        100 - techPct - contrPct,
@@ -2490,6 +2499,12 @@ const App = (() => {
             <div class="detail-row-value">${Auth.canEditAllJobs()
               ? `<select class="type-select" onchange="App.setJobType('${job.jobId}', this.value)"><option value="">— pick —</option>${Pipeline.jobTypes(settings).map(t => `<option value="${_esc(t.id)}" ${t.id === job.jobType ? 'selected' : ''}>${_esc(t.name)}</option>`).join('')}</select>`
               : _esc(Pipeline.typeName(job.jobType, settings) || '—')}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-row-label">Found us on</div>
+            <div class="detail-row-value">${Auth.canEditAllJobs()
+              ? `<select class="type-select" onchange="App.setLeadChannel('${job.jobId}', this.value)">${_channelOpts(job.leadChannel)}</select>`
+              : _esc(job.leadChannel || '—')}</div>
           </div>
         </div>
       </div>
@@ -3395,6 +3410,17 @@ const App = (() => {
     const guess = Pipeline.guessType(document.getElementById('f-description')?.value || '');
     if (guess !== _state.newJobDraft.jobType) { _state.newJobDraft.jobType = guess; _renderTypeChips(guess); }
   }
+  // From the job detail: set how the customer found us.
+  function setLeadChannel(jobId, channel) {
+    if (!Auth.canEditAllJobs()) { showToast('Not authorized', 'error'); return; }
+    const job = DB.getJobById(jobId);
+    if (!job) return;
+    DB.saveJob({ ...job, leadChannel: channel || '' });
+    SyncManager.queueJob(jobId);
+    showToast(channel ? 'Found us on: ' + channel : 'Cleared', 'success');
+    _refreshAfterJobChange(jobId);
+  }
+
   // From the job detail: change the type in place.
   function setJobType(jobId, typeId) {
     if (!Auth.canEditAllJobs()) { showToast('Not authorized', 'error'); return; }
@@ -3624,6 +3650,10 @@ const App = (() => {
           ${Pipeline.jobTypes(settings).map(t => `<option value="${_esc(t.id)}" ${job.jobType === t.id ? 'selected' : ''}>${_esc(t.name)}</option>`).join('')}
         </select>
       </div>
+      <div class="field-group">
+        <label class="field-label">How did they find us?</label>
+        <select id="edit-channel" class="field-input">${_channelOpts(job.leadChannel)}</select>
+      </div>
       ${isDispatcher ? '' : `
       <div class="field-group">
         <label class="field-label">Company</label>
@@ -3773,6 +3803,7 @@ const App = (() => {
         isSelfAssigned:   tech ? tech.isOwner : false,
         closingDetails:   document.getElementById('edit-closing-details')?.value?.trim() || job.closingDetails,
         jobType:          document.getElementById('edit-jobtype')?.value ?? job.jobType,
+        leadChannel:      document.getElementById('edit-channel')?.value ?? job.leadChannel,
         jobTotal:         newJobTotal,
         partsCost:        newPartsCost,
         taxOption:        newTaxOption,
@@ -3800,6 +3831,7 @@ const App = (() => {
         description:      document.getElementById('edit-desc')?.value?.trim()    || job.description,
         notes:            document.getElementById('edit-notes')?.value?.trim()   || job.notes,
         jobType:          document.getElementById('edit-jobtype')?.value ?? job.jobType,
+        leadChannel:      document.getElementById('edit-channel')?.value ?? job.leadChannel,
         source:           newLeadSource,
         techPercent:      techPctEdit,
         assignedTechId:   techId,
@@ -6927,6 +6959,7 @@ const App = (() => {
     markJobLost,
     openLostSheet,
     setJobType,
+    setLeadChannel,
     onDescInput,
     _selectJobType,
     _updateClosePreview,

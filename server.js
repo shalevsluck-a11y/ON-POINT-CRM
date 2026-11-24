@@ -683,6 +683,7 @@ app.post('/api/save-job', rateLimit({ max: 120, windowMs: 60_000 }), async (req,
       created_by_name:      job.createdByName || null,
       // Funnel + reporting fields (migration 052)
       job_type:             job.jobType || null,
+      lead_channel:         job.leadChannel || null,
       lost_reason:          job.lostReason || null,
       lost_note:            job.lostNote || '',
       lost_at:              job.lostAt || null,

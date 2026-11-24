@@ -25,6 +25,7 @@ const Reports = (() => {
     { id: 'tech',   label: 'Tech' },
     { id: 'source', label: 'Company' },
     { id: 'type',   label: 'Job type' },
+    { id: 'channel', label: 'Found us on' },
     { id: 'lost',   label: 'Lost why' },
     { id: 'dispatcher', label: 'Booked by' },
     { id: 'month',  label: 'Months' },
@@ -115,13 +116,14 @@ const Reports = (() => {
     const leads = all.filter(j => inRange(leadDay(j), r));
 
     const k = { revenue: 0, parts: 0, labor: 0, techPay: 0, fees: 0, profit: 0, tax: 0, done: paid.length, lost: lost.length, leads: leads.length };
-    const byTech = {}, bySource = {}, byType = {}, byLost = {}, byDisp = {}, byPay = {};
+    const byTech = {}, bySource = {}, byType = {}, byLost = {}, byDisp = {}, byPay = {}, byChannel = {};
     paid.forEach(j => {
       const c = calc(j, settings);
       k.revenue += c.jobTotal; k.parts += c.partsCost; k.labor += c.netAfterParts; k.techPay += c.techPayout; k.fees += c.contractorFee; k.profit += profitOf(j, c); k.tax += (c.taxAmount || 0);
       bump(byTech, techKey(j), techName(j), 'done', j, c);
       bump(bySource, j.source || 'my_lead', sourceName(j), 'done', j, c);
       bump(byType, j.jobType || '', typeName(j.jobType), 'done', j, c);
+      bump(byChannel, j.leadChannel || '', j.leadChannel || 'Not marked', 'done', j, c);
       bump(byDisp, j.createdByName || '', j.createdByName || 'Unknown', 'done', j, c);
       bump(byPay, j.paymentMethod || 'cash', cap(j.paymentMethod || 'cash'), 'done', j, c);
     });
@@ -130,6 +132,7 @@ const Reports = (() => {
       bump(byTech, techKey(j), techName(j), 'lost', j, c);
       bump(bySource, j.source || 'my_lead', sourceName(j), 'lost', j, c);
       bump(byType, j.jobType || '', typeName(j.jobType), 'lost', j, c);
+      bump(byChannel, j.leadChannel || '', j.leadChannel || 'Not marked', 'lost', j, c);
       bump(byDisp, j.createdByName || '', j.createdByName || 'Unknown', 'lost', j, c);
       const row = byLost[j.lostReason || ''] || (byLost[j.lostReason || ''] = Object.assign(newRow(j.lostReason || '', reasonName(j.lostReason)), { atRisk: 0 }));
       row.lost++; row.lostIds.push(j.jobId); row.atRisk += (+j.estimatedTotal || 0);
@@ -138,6 +141,7 @@ const Reports = (() => {
       const c = { jobTotal: 0, partsCost: 0, netAfterParts: 0, techPayout: 0, contractorFee: 0, ownerPayout: 0 };
       bump(byDisp, j.createdByName || '', j.createdByName || 'Unknown', 'lead', j, c);
       bump(bySource, j.source || 'my_lead', sourceName(j), 'lead', j, c);
+      bump(byChannel, j.leadChannel || '', j.leadChannel || 'Not marked', 'lead', j, c);
     });
     const decided = k.done + k.lost;
     k.closeRate = decided ? Math.round(k.done / decided * 100) : null;
@@ -174,7 +178,7 @@ const Reports = (() => {
       range: r, kpis: k, now,
       byTech: sortRows(byTech, 'revenue'), bySource: sortRows(bySource, 'revenue'), byType: sortRows(byType, 'revenue'),
       byLost: Object.values(byLost).sort((a, b) => b.lost - a.lost), byDispatcher: sortRows(byDisp, 'done'),
-      byMonth: months, byPay: sortRows(byPay, 'revenue'),
+      byMonth: months, byPay: sortRows(byPay, 'revenue'), byChannel: sortRows(byChannel, 'leads'),
       ids: { done: paid.map(j => j.jobId), lost: lost.map(j => j.jobId), leads: leads.map(j => j.jobId) },
     };
   }
@@ -293,6 +297,11 @@ const Reports = (() => {
       const rows = res.byDispatcher;
       if (!rows.length) return '<div class="rp-empty">Nothing booked in this period.</div>';
       return head(['Booked by', 'Leads', 'Done', 'Close']) + rows.map(x => `<div class="rp-row" onclick="Reports.drillRow('byDispatcher','${esc(x.key)}','done')"><span class="rp-name">${esc(x.name)}</span><span>${x.leads}</span><span>${x.done}</span><span>${pct(x.closeRate)}</span></div>`).join('');
+    }
+    if (tab === 'channel') {
+      const rows = res.byChannel; const max = Math.max(1, ...rows.map(x => x.leads));
+      if (!rows.length) return '<div class="rp-empty">Nothing in this period.</div>';
+      return head(['Found us on', 'Leads', 'Done', 'Collected']) + rows.map(x => `<div class="rp-row" onclick="Reports.drillRow('byChannel','${esc(x.key)}','done')"><span class="rp-name">${esc(x.name)}${bar(x.leads, max)}</span><span>${x.leads}</span><span>${x.done}</span><span>${money(x.revenue)}</span></div>`).join('');
     }
     const key = tab === 'source' ? 'bySource' : tab === 'type' ? 'byType' : 'byTech';
     const rows = res[key]; const max = Math.max(1, ...rows.map(x => x.revenue));
